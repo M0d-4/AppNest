@@ -295,8 +295,11 @@ struct LCUpdatesView: View {
 
     @MainActor
     private func enqueueInstallURLs(_ urls: [URL]) {
+        // Mark all as updates so installIpaFile auto-replaces
+        sharedModel.downloadHelper.isUpdate = true
         sharedModel.pendingInstallURLs.append(contentsOf: urls)
-        withAnimation { DataManager.shared.model.selectedTab = .apps }
+        // Do NOT switch tabs here — LCAppListView.installFromUrl switches
+        // to apps after each download finishes so the user sees progress.
     }
 
     @MainActor

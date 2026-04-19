@@ -8,57 +8,6 @@
 import Foundation
 import SwiftUI
 
-/// Finds and enables/disables the UITabBar in the view hierarchy
-private struct TabBarInteractionBlocker: UIViewRepresentable {
-    var isBlocked: Bool
-
-    func makeUIView(context: Context) -> UIView {
-        let v = UIView()
-        v.backgroundColor = .clear
-        v.isUserInteractionEnabled = false
-        return v
-    }
-
-    func updateUIView(_ uiView: UIView, context: Context) {
-        DispatchQueue.main.async {
-            guard let windowScene = UIApplication.shared.connectedScenes
-                    .first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene,
-                  let window = windowScene.windows.first(where: { $0.isKeyWindow }) else { return }
-            // Walk both VC and view hierarchies to cover all iOS versions
-            if let rootVC = window.rootViewController {
-                Self.blockInVC(!isBlocked, vc: rootVC)
-            }
-            Self.blockTabViews(!isBlocked, in: window)
-        }
-    }
-
-    // VC hierarchy — covers UITabBarController on iPhone/standard iPad
-    private static func blockInVC(_ enabled: Bool, vc: UIViewController) {
-        if let tbc = vc as? UITabBarController {
-            tbc.tabBar.isUserInteractionEnabled = enabled
-        }
-        for child in vc.children { blockInVC(enabled, vc: child) }
-        if let pvc = vc.presentedViewController { blockInVC(enabled, vc: pvc) }
-    }
-
-    // UIView hierarchy — covers iPadOS 26 new Tab bar (private UIKit class, not UITabBar subclass).
-    // IMPORTANT: only match UITabBar exactly or classes that START with "UITabBar" / contain
-    // "TabSidebar". We must NOT disable the UINavigationBar or its subviews — those contain
-    // the multiselect toolbar buttons (trash, lock, etc.) and disabling them would block taps.
-    private static func blockTabViews(_ enabled: Bool, in view: UIView) {
-        let className = NSStringFromClass(type(of: view))
-        let isTabBar = view is UITabBar
-            || className == "UITabBar"
-            || className.hasPrefix("UITabBar")
-            || className.contains("UITabSidebar")
-            || (className.contains("TabBar") && !className.contains("NavigationBar") && !className.contains("ToolBar") && !className.contains("Toolbar"))
-        if isTabBar {
-            view.isUserInteractionEnabled = enabled
-        }
-        for sub in view.subviews { blockTabViews(enabled, in: sub) }
-    }
-}
-
 struct LCTabView: View {
     @Binding var appDataFolderNames: [String]
     @Binding var tweakFolderNames: [String]
@@ -235,9 +184,6 @@ struct LCTabView: View {
             }
         }
 
-        // UIKit-level blocker as a belt-and-suspenders fallback
-        TabBarInteractionBlocker(isBlocked: sharedModel.isMultiSelectMode)
-            .frame(width: 0, height: 0)
         } // end ZStack
     }
     

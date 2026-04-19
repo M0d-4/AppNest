@@ -359,14 +359,12 @@ func setMode(_ mode: AppLaunchMode) {
             
             .navigationTitle("lc.appList.myApps".loc)
             .toolbar {
-                // ── Leading: install spinner during sign phase (install actions are in the tray) ──
+                // ── Leading: install spinner during sign phase ──
                 ToolbarItem(placement: .topBarLeading) {
                     if !isMultiSelectMode && installprogressVisible {
                         ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
                     }
                 }
-                // ── The download tray (persistent overlay at ZStack bottom) handles
-                // ── all download progress display — no toolbar indicator needed here.
                 ToolbarItem(placement: .topBarLeading) {
                     if !isMultiSelectMode {
                         if UserDefaults.sideStoreExist() {
@@ -400,45 +398,6 @@ func setMode(_ mode: AppLaunchMode) {
                         Button("lc.appList.openLink".loc, systemImage: "link", action: {
                             Task { await onOpenWebViewTapped() }
                         })
-                    }
-                }
-
-                // ── Trailing: delete-data toggle (only in multi-select) ──
-                ToolbarItem(placement: .topBarTrailing) {
-                    if isMultiSelectMode {
-                        Button {
-                            withAnimation { deleteAppData.toggle() }
-                        } label: {
-                            Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
-                                .foregroundColor(deleteAppData ? .red : .secondary)
-                        }
-                        .disabled(isDeleting)
-                    }
-                }
-
-                // ── Trailing: trash button (only in multi-select) ──
-                ToolbarItem(placement: .topBarTrailing) {
-                    if isMultiSelectMode {
-                        Button {
-                            Task { await deleteSelectedApps() }
-                        } label: {
-                            Image(systemName: "trash")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
-                        }
-                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-                    }
-                }
-
-                // ── Trailing: lock-and-hide button (only in multi-select) ──
-                ToolbarItem(placement: .topBarTrailing) {
-                    if isMultiSelectMode {
-                        Button {
-                            Task { await lockAndHideSelectedApps() }
-                        } label: {
-                            Image(systemName: "lock.fill")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
-                        }
-                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
                     }
                 }
 
@@ -493,10 +452,61 @@ func setMode(_ mode: AppLaunchMode) {
         }
         .navigationViewStyle(StackNavigationViewStyle())
 
-        // ── Persistent download/install tray ───────────────────────────────────
-        // Always visible at the bottom of the screen regardless of download state.
-        // The "From File" and "From URL" actions inside the tray fully replace the
-        // old toolbar + button. The tray also shows live per-download progress cards.
+        // ── Multiselect action bar (replaces toolbar buttons to avoid hit-test issues) ──
+        if isMultiSelectMode {
+            VStack {
+                Spacer()
+                HStack(spacing: 0) {
+                    // Delete-data toggle
+                    Button {
+                        withAnimation { deleteAppData.toggle() }
+                    } label: {
+                        Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
+                            .font(.system(size: 20))
+                            .foregroundColor(deleteAppData ? .red : .primary)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .disabled(isDeleting)
+
+                    Divider().frame(height: 28)
+
+                    // Trash button
+                    Button {
+                        Task { await deleteSelectedApps() }
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 20))
+                            .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+
+                    Divider().frame(height: 28)
+
+                    // Lock-and-hide button
+                    Button {
+                        Task { await lockAndHideSelectedApps() }
+                    } label: {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                    }
+                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+                }
+                .background(.regularMaterial)
+                .overlay(Divider(), alignment: .top)
+            }
+            .transition(.move(edge: .bottom))
+            .animation(.easeInOut(duration: 0.2), value: isMultiSelectMode)
+            .ignoresSafeArea(edges: .bottom)
+            .zIndex(100)
+        }
+
+        // ── Persistent download/install tray ──
         if sharedModel.multiLCStatus != 2 && !isMultiSelectMode {
             DownloadTrayView(
                 manager: sharedModel.downloadHelper,
