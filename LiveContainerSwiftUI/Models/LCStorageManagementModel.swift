@@ -139,7 +139,7 @@ final class LCStorageManagementModel: ObservableObject {
             librarySize = try await calculateSize(at: libraryPath)
         }
         // Other is the residual after explicit categories are removed from the known storage roots, plus loose root-level files.
-        let residualOtherSize = max(0, knownRootsSize - appBundleSize - containersSize - appGroupSize - tweaksSize - sideStoreContainerSize)
+        let residualOtherSize = knownRootsSize - appBundleSize - containersSize - appGroupSize - tweaksSize
         let otherSize = residualOtherSize + librarySize
 
         return LCStorageBreakdown(
