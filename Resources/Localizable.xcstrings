@@ -30684,72 +30684,22 @@
         }
       }
     },
-    "lc.settings.tintColor": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App Tint Color"
-          }
-        }
-      }
-    },
-    "lc.settings.tintColorEnabled": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tint App Icons"
-          }
-        }
-      }
-    },
-    "lc.settings.tintColorPicker": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Choose Colour"
-          }
-        }
-      }
-    },
-    "lc.settings.customAppIcon": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Custom App Icon"
-          }
-        }
-      }
-    },
-    "lc.settings.removeCustomAppIcon": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Remove Custom Icon"
-          }
-        }
-      }
-    },
-    "lc.settings.customAppIconApplied": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Custom icon saved."
-          }
-        }
-      }
-    },
     "lc.appList.sort": {
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Sort"
+          }
+        }
+      }
+    },
+    "lc.settings.showExitButtonDesc": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows a floating button on top of running apps so you can quickly return to AppNest."
           }
         }
       }
