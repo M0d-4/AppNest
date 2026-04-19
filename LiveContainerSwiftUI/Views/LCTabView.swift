@@ -50,6 +50,7 @@ private struct TabBarInteractionBlocker: UIViewRepresentable {
         let isTabBar = view is UITabBar
             || className == "UITabBar"
             || className.hasPrefix("UITabBar")
+            || className.contains("UITabSidebar")
             || (className.contains("TabBar") && !className.contains("NavigationBar") && !className.contains("ToolBar") && !className.contains("Toolbar"))
         if isTabBar {
             view.isUserInteractionEnabled = enabled
