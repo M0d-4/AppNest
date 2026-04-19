@@ -231,9 +231,6 @@ static void lceb_relaunchLC(void) {
         actionWithTitle:@"Leave App"
         style:UIAlertActionStyleDestructive
         handler:^(UIAlertAction *_) {
-            // Dismiss the alert without animation before calling relaunchLC.
-            // Calling relaunchLC while UIKit is mid-presentation tears down the
-            // window hierarchy and causes a "view not in window" crash.
             UIViewController *strong = weakRoot;
             void (^doRelaunch)(void) = ^{
                 dispatch_after(
@@ -280,6 +277,8 @@ static id g_windowObserver = nil;
 // Called before NUDGuestHooksInit() so g_lcDefaults captures the real LC
 // NSUserDefaults before it is redirected to the guest container.
 void LCExitButtonGuestHooksInit(BOOL isLiveProcess, BOOL isSideStore) {
+    // Exit button removed from single-app mode — return immediately.
+    return;
     if (isLiveProcess || isSideStore) return;
 
     g_lcScheme   = [lcAppUrlScheme copy];
