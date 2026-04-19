@@ -398,33 +398,39 @@ func setMode(_ mode: AppLaunchMode) {
                     }
                 }
 
-                // ── Trailing: single ToolbarItemGroup prevents iOS overflow "..." ──
+                // ── Trailing: one ToolbarItemGroup so iOS never collapses buttons ──
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if isMultiSelectMode {
                         // Delete-data toggle
                         Button {
                             deleteAppData.toggle()
                         } label: {
-                            Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
+                            Image(systemName: deleteAppData
+                                  ? "externaldrive.fill.badge.minus"
+                                  : "externaldrive.badge.minus")
                                 .foregroundColor(deleteAppData ? .red : .secondary)
                         }
                         .disabled(isDeleting)
 
-                        // Lock + hide
+                        // Lock + hide selected apps
                         Button {
                             Task { await lockAndHideSelectedApps() }
                         } label: {
                             Image(systemName: "lock.shield")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
+                                .foregroundColor(
+                                    selectedAppsForDeletion.isEmpty || isDeleting
+                                    ? .secondary : .orange)
                         }
                         .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
 
-                        // Trash
+                        // Delete selected apps
                         Button {
                             Task { await deleteSelectedApps() }
                         } label: {
                             Image(systemName: "trash")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
+                                .foregroundColor(
+                                    selectedAppsForDeletion.isEmpty || isDeleting
+                                    ? .secondary : .red)
                         }
                         .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
 
@@ -474,11 +480,13 @@ func setMode(_ mode: AppLaunchMode) {
                                 Button {
                                     customSortViewPresent = true
                                 } label: {
-                                    Label("lc.appList.sort.customManage".loc, systemImage: "slider.horizontal.3")
+                                    Label("lc.appList.sort.customManage".loc,
+                                          systemImage: "slider.horizontal.3")
                                 }
                             }
                         } label: {
-                            Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
+                            Label("lc.appList.sort".loc,
+                                  systemImage: "line.3.horizontal.decrease.circle")
                         }
                     }
                 }
@@ -1260,7 +1268,7 @@ func setMode(_ mode: AppLaunchMode) {
             guard !(downloadHelper.items.first(where: { $0.id == itemID })?.isCancelled ?? false)
             else { return }
 
-            // Download done — redirect to Apps tab so the install progress bar is visible
+            // Download done — switch to Apps tab so the install progress bar is visible
             await MainActor.run {
                 withAnimation { DataManager.shared.model.selectedTab = .apps }
             }
