@@ -6,7 +6,6 @@
 //
 
 import Foundation
-import UIKit
 
 class LCContainer : ObservableObject, Hashable {
     @Published var folderName : String
@@ -19,6 +18,7 @@ class LCContainer : ObservableObject, Hashable {
     var bookmarkResolveContinuation: UnsafeContinuation<(), Never>? = nil
     
     @Published var isolateAppGroup : Bool
+
     @Published var spoofIdentifierForVendor : Bool {
         didSet {
             if spoofIdentifierForVendor && spoofedIdentifier == nil {
@@ -90,21 +90,18 @@ class LCContainer : ObservableObject, Hashable {
         )
         
         if let bookmarkData {
-//            Task {
+
                 do {
                     var isStale = false
                     let url = try URL(resolvingBookmarkData: bookmarkData, bookmarkDataIsStale: &isStale)
-//                    DispatchQueue.main.async {
-                        self.resolvedContainerURL = url
-//                    }
+
+                    self.resolvedContainerURL = url
+
                 } catch {
                     print(error.localizedDescription)
                 }
-//                DispatchQueue.main.async {
-                    self.bookmarkResolved = true
-//                }
-//            }
 
+                self.bookmarkResolved = true
         }
         
         do {
@@ -163,11 +160,9 @@ class LCContainer : ObservableObject, Hashable {
     func reloadInfoPlist() {
         infoDict = NSDictionary(contentsOf: infoDictUrl) as? [String : Any]
     }
-    
+
     func loadName() {
-        if infoDict == nil {
-            infoDict = NSDictionary(contentsOf: infoDictUrl) as? [String : Any]
-        }
+        reloadInfoPlist()
         guard let infoDict else {
             return
         }
@@ -189,6 +184,12 @@ class LCContainer : ObservableObject, Hashable {
 extension LCAppInfo {
     var containers : [LCContainer] {
         get {
+            if self is BuiltInSideStoreAppInfo {
+                let container = LCContainer(folderName: "", name: "SideStore", isShared: false)
+                container.resolvedContainerURL = LCPath.docPath.appendingPathComponent("SideStore")
+                return [container]
+            }
+            
             var upgrade = false
             // upgrade
             if let oldDataUUID = dataUUID, containerInfo == nil {

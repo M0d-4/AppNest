@@ -81,6 +81,8 @@ class SharedModel: ObservableObject {
 
     /// Shared download helper — observed by both LCAppListView and LCUpdatesView.
     let downloadHelper = DownloadHelper()
+    private var downloadHelperCancellable: AnyCancellable?
+    private var sourcesViewModelCancellable: AnyCancellable?
 
     
     static let isPhone: Bool = {
@@ -116,6 +118,14 @@ class SharedModel: ObservableObject {
     
     init() {
         updateMultiLCStatus()
+        // Forward any change from downloadHelper so views observing SharedModel
+        // re-render when isDownloading / appName / progress etc. change.
+        downloadHelperCancellable = downloadHelper.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+        // Also forward sourcesViewModel changes so LCUpdatesView re-renders
+        // when sources or isRefreshingAll change.
+        sourcesViewModelCancellable = sourcesViewModel.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
     }
 }
 

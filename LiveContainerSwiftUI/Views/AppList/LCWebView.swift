@@ -27,7 +27,6 @@ struct LCWebView: View {
     @State private var errorInfo = ""
     
     @EnvironmentObject private var sharedModel : SharedModel
-    @AppStorage("LCLaunchInMultitaskMode") var launchInMultitaskMode = false
     
     var itmsServicesHandler: ((String) async -> Void)?
     
@@ -152,7 +151,7 @@ struct LCWebView: View {
         
         UserDefaults.standard.setValue(url.absoluteString, forKey: "launchAppUrlScheme")
         do {
-            try await app.runApp(multitask: launchInMultitaskMode)
+            try await app.runApp()
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true

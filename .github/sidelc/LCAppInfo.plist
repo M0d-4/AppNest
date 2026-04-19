@@ -17,6 +17,8 @@
 	<string>752B6522-37A4-404B-B0C6-8A37556C9F72</string>
 	<key>LCPatchRevision</key>
 	<integer>99999</integer>
+	<key>MultitaskSpecified</key>
+	<integer>1</integer>
 	<key>dontInjectTweakLoader</key>
 	<true/>
 	<key>dontLoadTweakLoader</key>

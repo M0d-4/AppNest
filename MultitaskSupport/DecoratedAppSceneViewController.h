@@ -1,3 +1,4 @@
+#pragma once
 #import "FoundationPrivate.h"
 #import "AppSceneViewController.h"
 

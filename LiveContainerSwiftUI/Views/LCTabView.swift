@@ -93,7 +93,7 @@ struct LCTabView: View {
                             LCTweaksView(tweakFolders: $tweakFolderNames)
                         }
                     }
-                    Tab("Updates", systemImage: "arrow.down.circle", value: LCTabIdentifier.updates) {
+                    Tab("lc.tabView.updates".loc, systemImage: "arrow.down.circle", value: LCTabIdentifier.updates) {
                         LCUpdatesView()
                     }
                     Tab("lc.tabView.settings".loc, systemImage: "gearshape.fill", value: LCTabIdentifier.settings) {
@@ -136,7 +136,7 @@ struct LCTabView: View {
                     }
                     LCUpdatesView()
                         .tabItem {
-                            Label("Updates", systemImage: "arrow.down.circle")
+                            Label("lc.tabView.updates".loc, systemImage: "arrow.down.circle")
                         }
                         .tag(LCTabIdentifier.updates)
                     
@@ -268,6 +268,12 @@ struct LCTabView: View {
             switch host {
             case "livecontainer-launch", "install", "open-web-page", "open-url":
                 sharedModel.selectedTab = .apps
+            case "livecontainer-relaunch":
+                // Guest app pressed the exit button (non-multitask mode). LC is now
+                // in the foreground with `selected` already cleared by LCBootstrap.
+                // Just land on the apps tab — no deep-link processing needed.
+                sharedModel.selectedTab = .apps
+                return
             case "certificate":
                 sharedModel.selectedTab = .settings
             case "source":

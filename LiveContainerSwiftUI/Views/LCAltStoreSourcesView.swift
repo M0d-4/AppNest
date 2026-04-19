@@ -188,9 +188,9 @@ final class AltStoreSourcesViewModel: ObservableObject {
     }
     
     func refreshAllSources() async {
-        guard !sources.isEmpty else {
-            return
-        }
+        // Do not guard on sources.isEmpty — the updates tab calls this on appear
+        // and sources may still be loading from UserDefaults at that point.
+        // An empty loop is harmless.
         isRefreshingAll = true
         for url in sources.map({ $0.url }) {
             await refreshSource(url: url)
@@ -691,11 +691,15 @@ struct LCSourcesView: View {
         withAnimation {
             DataManager.shared.model.selectedTab = .apps
         }
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-            NotificationCenter.default.post(name: NSNotification.InstallAppNotification, object: ["url": downloadURL])
+        // Use 0.8s so LCAppListView is fully appeared and its onReceive is live
+        // before the notification fires. Also pass the human-readable app name so
+        // the toolbar indicator shows it instead of the raw filename.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+            NotificationCenter.default.post(
+                name: NSNotification.InstallAppNotification,
+                object: ["url": downloadURL, "appName": app.name]
+            )
         }
-
-
     }
     
     private func toggleExpansion(for id: URL) {
@@ -1055,31 +1059,76 @@ private struct LCSourceAppBanner: View {
     }
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// MARK: - SourceIconView (cache-backed, lag-free)
+// The original AsyncImage implementation spawned a new URLSession data task for
+// every icon on every re-render, with no caching. With dozens of apps visible at
+// once this caused severe main-thread contention and janky scrolling.
+//
+// This replacement uses a two-level cache:
+//   1. NSCache<NSURL, UIImage>  — in-memory, fast, automatic eviction under pressure
+//   2. URLCache.shared          — on-disk HTTP cache, respects Cache-Control headers
+//
+// Images that are already cached render instantly with no async work at all.
+// ─────────────────────────────────────────────────────────────────────────────
+
+@MainActor
+private final class IconImageCache {
+    static let shared = IconImageCache()
+    private let cache = NSCache<NSURL, UIImage>()
+
+    private init() {
+        cache.countLimit = 300
+        cache.totalCostLimit = 60 * 1024 * 1024 // 60 MB
+    }
+
+    func image(for url: URL) -> UIImage? {
+        cache.object(forKey: url as NSURL)
+    }
+
+    func store(_ image: UIImage, for url: URL) {
+        let cost = Int(image.size.width * image.size.height * 4)
+        cache.setObject(image, forKey: url as NSURL, cost: cost)
+    }
+}
+
 private struct SourceIconView: View {
     let url: URL?
-    
+    @State private var uiImage: UIImage? = nil
+
     var body: some View {
-        if let url {
-            AsyncImage(url: url) { phase in
-                switch phase {
-                case .empty:
-                    placeholder
-                case .success(let image):
-                    image.resizable().scaledToFill()
-                case .failure:
-                    placeholder
-                @unknown default:
-                    placeholder
-                }
+        Group {
+            if let img = uiImage {
+                Image(uiImage: img)
+                    .resizable()
+                    .scaledToFill()
+            } else {
+                placeholderImage
+                    .task(id: url) { await loadImage() }
             }
-        } else {
-            placeholder
         }
     }
-    
-    private var placeholder: some View {
+
+    private var placeholderImage: some View {
         Image("DefaultIcon")
             .resizable()
             .scaledToFill()
+    }
+
+    private func loadImage() async {
+        guard let url else { return }
+
+        // 1. In-memory cache hit — synchronous, zero cost
+        if let cached = IconImageCache.shared.image(for: url) {
+            uiImage = cached
+            return
+        }
+
+        // 2. Network fetch — off main thread via async URLSession
+        guard let (data, _) = try? await URLSession.shared.data(from: url),
+              let img = UIImage(data: data) else { return }
+
+        IconImageCache.shared.store(img, for: url)
+        uiImage = img
     }
 }

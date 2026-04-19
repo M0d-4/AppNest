@@ -520,7 +520,7 @@ extension LCUtils {
 
     
     static func openSideStore(delegate: LCAppModelDelegate? = nil) {
-        let sideStoreApp = LCAppModel(appInfo: LCAppInfo(bundlePath: Bundle.main.bundleURL.appendingPathComponent("Frameworks/SideStoreApp.framework").path), delegate: delegate)
+        let sideStoreApp = LCAppModel(appInfo: BuiltInSideStoreAppInfo(), delegate: delegate)
         
         Task {
             try await sideStoreApp.runApp(bundleIdOverride: "builtinSideStore")

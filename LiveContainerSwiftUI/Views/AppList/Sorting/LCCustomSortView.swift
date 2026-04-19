@@ -23,8 +23,7 @@ struct LCCustomSortView: View {
                 if !localApps.isEmpty {
                         ForEach(localApps, id: \.self) { app in
                             HStack {
-                                Image(uiImage: app.appInfo.iconIsDarkIcon(darkModeIcon))
-                                    .resizable()
+                                IconImageView(icon: app.appInfo.iconIsDarkIcon(darkModeIcon))
                                     .frame(width: 60, height: 60)
                                     .clipShape(RoundedRectangle(cornerRadius: 16))
                                 
@@ -55,10 +54,8 @@ struct LCCustomSortView: View {
                     Section("lc.appList.hiddenApps".loc) {
                         ForEach(localHiddenApps, id: \.self) { app in
                              HStack {
-                                Image(uiImage: app.appInfo.iconIsDarkIcon(darkModeIcon))
-                                    .resizable()
+                                 IconImageView(icon: app.appInfo.iconIsDarkIcon(darkModeIcon))
                                     .frame(width: 60, height: 60)
-                                    .clipShape(RoundedRectangle(cornerRadius: 12))
                                 
                                 VStack(alignment: .leading, spacing: 2) {
                                     Text(app.appInfo.displayName())

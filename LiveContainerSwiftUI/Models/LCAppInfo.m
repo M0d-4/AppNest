@@ -3,6 +3,7 @@
 
 #import <Foundation/Foundation.h>
 #import <UIKit/UIKit.h>
+#import <notify.h>
 #import "LCAppInfo.h"
 #import "LCUtils.h"
 #import "../../LiveContainer/LCSharedUtils.h"
@@ -10,8 +11,6 @@
 uint32_t dyld_get_sdk_version(const struct mach_header* mh);
 
 @interface LCAppInfo()
-@property UIImage* cachedIcon;
-@property UIImage* cachedIconDark;
 @property (nonatomic, readonly) NSMutableDictionary *lcMutableAddonSettingsByContainer;
 @property (nonatomic, readonly) NSDictionary *lcCurrentContainerAddonSettings;
 @property (nonatomic, readonly) NSString *lcCurrentAddonContainerId;
@@ -276,6 +275,39 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
     [self setCachedColorDark:nil];
     _cachedIcon = nil;
     _cachedIconDark = nil;
+}
+
+// Flush the system-wide icon cache held by iconservicesd so that Files.app
+// and Springboard pick up new icons immediately without a reinstall.
+// We notify LSApplicationWorkspace that the bundle has changed, which
+// causes iconservicesd to invalidate its cached ISIcon entries for this bundle.
++ (void)flushSystemIconCache {
+    // NSClassFromString returns Class (opaque to the compiler), so we must use
+    // id-typed intermediates for all message sends — the compiler rejects
+    // [[Class defaultWorkspace] ...] because Class has no known selectors.
+    Class lsClass = NSClassFromString(@"LSApplicationWorkspace");
+    if (!lsClass) return;
+
+    // Obtain the shared workspace instance via performSelector on the class object
+    // cast to id, which suppresses the "no known class method" error.
+    SEL defaultWSSel = NSSelectorFromString(@"defaultWorkspace");
+#pragma clang diagnostic push
+#pragma clang diagnostic ignored "-Warc-performSelector-leaks"
+    id workspace = [(id)lsClass performSelector:defaultWSSel];
+
+    // _LSClearApplicationCache flushes iconservicesd's persistent icon store —
+    // the same call SpringBoard makes after an app update.
+    if (workspace) {
+        SEL clearSel = NSSelectorFromString(@"_LSClearApplicationCache");
+        if ([workspace respondsToSelector:clearSel]) {
+            [workspace performSelector:clearSel];
+        }
+    }
+#pragma clang diagnostic pop
+
+    // Darwin notification that iconservicesd and Files.app listen to
+    // for bundle-change events. Triggers a re-query of icon data.
+    notify_post("com.apple.iconservices.iconchanged");
 }
 
 - (UIImage *)generateLiveContainerWrappedIconWithStyle:(GeneratedIconStyle)style {
@@ -790,12 +822,18 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
 
 - (LCOrientationLock)orientationLock {
     return (LCOrientationLock) [((NSNumber*) _info[@"LCOrientationLock"]) intValue];
-
 }
 - (void)setOrientationLock:(LCOrientationLock)orientationLock {
     _info[@"LCOrientationLock"] = [NSNumber numberWithInt:(int) orientationLock];
     [self save];
-    
+}
+
+- (MultitaskSpecified)multitaskSpecified {
+    return (LCOrientationLock) [((NSNumber*) _info[@"MultitaskSpecified"]) intValue];
+}
+- (void)setMultitaskSpecified:(MultitaskSpecified)multitaskSpecified {
+    _info[@"MultitaskSpecified"] = [NSNumber numberWithInt:(int) multitaskSpecified];
+    [self save];
 }
 
 - (bool)forceIPhoneMode {

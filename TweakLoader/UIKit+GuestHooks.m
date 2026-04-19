@@ -741,15 +741,18 @@ BOOL canAppOpenItself(NSURL* url) {
 }
 
 - (void)hook_openURL:(NSURL *)url options:(NSDictionary<NSString *,id> *)options completionHandler:(void (^)(_Bool))completion {
+    // When running as built-in SideStore, pass ALL URLs straight through — including
+    // livecontainer:// which is otherwise in the blocked list. relaunchLC needs it.
+    // This check must come BEFORE LCShouldBlockExternalURL.
+    if(NSUserDefaults.isSideStore) {
+        [self hook_openURL:url options:options completionHandler:completion];
+        return;
+    }
     if (LCShouldBlockExternalURL(url)) {
         NSLog(@"[LC] Blocked external URL scheme: %@", url.scheme);
         if (completion) {
             completion(NO);
         }
-        return;
-    }
-    if(NSUserDefaults.isSideStore && ![url.scheme isEqualToString:@"livecontainer"]) {
-        [self hook_openURL:url options:options completionHandler:completion];
         return;
     }
     
@@ -767,6 +770,12 @@ BOOL canAppOpenItself(NSURL* url) {
     }
 }
 - (BOOL)hook_canOpenURL:(NSURL *) url {
+    // When running as built-in SideStore pass through directly — livecontainer://
+    // is in the blocked list but SideStore needs it for relaunchLC.
+    // This check must come BEFORE LCShouldBlockExternalURL.
+    if (NSUserDefaults.isSideStore) {
+        return [self hook_canOpenURL:url];
+    }
     if (LCShouldBlockExternalURL(url)) {
         return NO;
     }

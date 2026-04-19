@@ -23,6 +23,8 @@ struct LCDataManagementView : View {
     @StateObject private var resetUserDefaultsAlert = YesNoHelper()
     
     @StateObject private var keyChainRemovalAlert = YesNoHelper()
+    @StateObject private var tmpRemovalAlert = YesNoHelper()
+    @StateObject private var clearIconCacheAlert = YesNoHelper()
     
     @State var errorShow = false
     @State var errorInfo = ""
@@ -30,7 +32,6 @@ struct LCDataManagementView : View {
     @State var successInfo = ""
     
     @EnvironmentObject private var sharedModel : SharedModel
-    @AppStorage("LCLaunchInMultitaskMode") var launchInMultitaskMode = false
     
     init(appDataFolderNames: Binding<[String]>) {        
         _appDataFolderNames = appDataFolderNames
@@ -75,6 +76,12 @@ struct LCDataManagementView : View {
                 } label: {
                     Text("lc.settings.cleanKeychain".loc)
                 }
+                
+                Button(role:.destructive) {
+                    Task { await clearTemporaryFiles() }
+                } label: {
+                    Text("lc.settings.cleanTmp".loc)
+                }
 
                 Button(role:.destructive) {
                     Task { await resetUserDefaults() }
@@ -85,7 +92,7 @@ struct LCDataManagementView : View {
             
             Section {
                 Button {
-                    Task { await clearIconCache() }
+                    Task { await confirmAndClearIconCache() }
                 } label: {
                     Text("lc.settings.clearIconCache".loc)
                 }
@@ -157,6 +164,19 @@ struct LCDataManagementView : View {
         } message: {
             Text("lc.settings.cleanKeychainDesc".loc)
         }
+        .alert("lc.settings.cleanTmp".loc, isPresented: $tmpRemovalAlert.show) {
+            Button(role: .destructive) {
+                tmpRemovalAlert.close(result: true)
+            } label: {
+                Text("lc.common.delete".loc)
+            }
+
+            Button("lc.common.cancel".loc, role: .cancel) {
+                tmpRemovalAlert.close(result: false)
+            }
+        } message: {
+            Text("lc.settings.cleanTmpConfirm".loc)
+        }
         .onAppear {
             onAppearFunc()
         }
@@ -172,6 +192,18 @@ struct LCDataManagementView : View {
             }
         } message: {
             Text("This will completely reset NSUserDefaults to fix issue due to corruption (supports both legacy and new storage systems). LiveContainer will restart with clean preferences. Your app data in Files/LiveContainer is preserved.")
+        }
+        .alert("lc.settings.clearIconCache".loc, isPresented: $clearIconCacheAlert.show) {
+            Button(role: .destructive) {
+                clearIconCacheAlert.close(result: true)
+            } label: {
+                Text("lc.common.confirm".loc)
+            }
+            Button("lc.common.cancel".loc, role: .cancel) {
+                clearIconCacheAlert.close(result: false)
+            }
+        } message: {
+            Text("lc.settings.clearIconCacheMsg".loc)
         }
     }
     
@@ -294,6 +326,34 @@ struct LCDataManagementView : View {
         // Remove keychain entries
         for folderName in allFolderNames {
             LCUtils.removeAppKeychain(dataUUID: folderName)
+        }
+    }
+    func clearTemporaryFiles() async {
+        guard let result = await tmpRemovalAlert.open(), result else {
+            return
+        }
+
+        let fm = FileManager.default
+        let tmpDirectory = fm.temporaryDirectory
+
+        do {
+            let tmpItems = try fm.contentsOfDirectory(at: tmpDirectory, includingPropertiesForKeys: nil)
+
+            if tmpItems.isEmpty {
+                successInfo = "lc.settings.noTmpToClean".loc
+                successShow = true
+                return
+            }
+
+            for item in tmpItems {
+                try fm.removeItem(at: item)
+            }
+
+            successInfo = "lc.settings.cleanTmpComplete".loc
+            successShow = true
+        } catch {
+            errorInfo = error.localizedDescription
+            errorShow = true
         }
     }
     
@@ -633,7 +693,7 @@ struct LCDataManagementView : View {
             do {
                 try await sharedModel.apps.first(where: { app in
                     return app.appInfo.bundleIdentifier() == "com.tigisoftware.Filza"
-                })?.runApp(multitask: launchInMultitaskMode)
+                })?.runApp()
             } catch {
                 successInfo = error.localizedDescription
                 successShow = true
@@ -641,11 +701,24 @@ struct LCDataManagementView : View {
         }
     }
     
+    func confirmAndClearIconCache() async {
+        guard let confirmed = await clearIconCacheAlert.open(), confirmed else { return }
+        await clearIconCache()
+        successInfo = "lc.settings.clearIconCacheDone".loc
+        successShow = true
+    }
+
     func clearIconCache() async {
         for app in sharedModel.apps {
             app.appInfo.clearIconCache()
         }
+        for app in sharedModel.hiddenApps {
+            app.appInfo.clearIconCache()
+        }
+        // Flush iconservicesd system cache so Files.app refreshes immediately.
+        LCAppInfo.flushSystemIconCache()
     }
+
 }
 
 extension String {

@@ -374,3 +374,16 @@ private struct UIKitContextMenuContainer<Content: View>: UIViewControllerReprese
         }
     }
 }
+
+struct IconImageView: View {
+    var icon: UIImage
+    
+    var body: some View {
+        GeometryReader { g in
+            Image(uiImage: icon)
+                .resizable()
+                .aspectRatio(contentMode: .fit)
+                .clipShape(RoundedRectangle(cornerRadius: g.size.width*0.2667))
+        }
+    }
+}

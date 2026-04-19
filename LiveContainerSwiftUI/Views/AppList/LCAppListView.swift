@@ -363,56 +363,14 @@ func setMode(_ mode: AppLaunchMode) {
             
             .navigationTitle("lc.appList.myApps".loc)
             .toolbar {
-                // ── Leading: install / sidestore (hidden during multi-select) ──
+                // ── Leading: install spinner during sign phase (install actions are in the tray) ──
                 ToolbarItem(placement: .topBarLeading) {
-                    if !isMultiSelectMode {
-                        if sharedModel.multiLCStatus != 2 {
-                            if !installprogressVisible {
-                                Menu {
-                                    Button("lc.appList.installFromIpa".loc, systemImage: "doc.badge.plus", action: {
-                                        choosingIPA = true
-                                    })
-                                    Button("lc.appList.installFromUrl".loc, systemImage: "link.badge.plus", action: {
-                                        Task{ await startInstallFromUrl() }
-                                    })
-                                } label: {
-                                    Label("add", systemImage: "plus")
-                                }
-                            } else {
-                                ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
-                            }
-                        }
+                    if !isMultiSelectMode && installprogressVisible {
+                        ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
                     }
                 }
-                // ── Leading: download indicator (only while downloading from source) ──
-                ToolbarItem(placement: .topBarLeading) {
-                    if downloadHelper.isDownloading && !downloadHelper.isUpdate && !isMultiSelectMode {
-                        HStack(spacing: 4) {
-                            Image(systemName: "arrow.down.circle")
-                                .foregroundColor(.accentColor)
-                            VStack(alignment: .leading, spacing: 1) {
-                                Text(downloadHelper.appName.isEmpty ? "lc.download.downloading".loc : downloadHelper.appName)
-                                    .font(.system(size: 11, weight: .medium))
-                                    .lineLimit(1)
-                                    .foregroundColor(.primary)
-                                Text("\(formatBytes(downloadHelper.downloadedSize)) / \(formatBytes(downloadHelper.totalSize))")
-                                    .font(.system(size: 10))
-                                    .foregroundColor(.secondary)
-                                    .lineLimit(1)
-                            }
-                            Button {
-                                downloadHelper.cancel()
-                            } label: {
-                                Image(systemName: "xmark.circle.fill")
-                                    .font(.system(size: 14))
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                        .transition(.opacity)
-                        .animation(.easeInOut(duration: 0.2), value: downloadHelper.isDownloading)
-                    }
-                }
+                // ── The download tray (persistent overlay at ZStack bottom) handles
+                // ── all download progress display — no toolbar indicator needed here.
                 ToolbarItem(placement: .topBarLeading) {
                     if !isMultiSelectMode {
                         if UserDefaults.sideStoreExist() {
@@ -527,6 +485,19 @@ func setMode(_ mode: AppLaunchMode) {
         .navigationViewStyle(StackNavigationViewStyle())
         .id(navRefreshID)
 
+        // ── Persistent download/install tray ───────────────────────────────────
+        // Always visible at the bottom of the screen regardless of download state.
+        // The "From File" and "From URL" actions inside the tray fully replace the
+        // old toolbar + button. The tray also shows live per-download progress cards.
+        if sharedModel.multiLCStatus != 2 {
+            DownloadTrayView(
+                manager: sharedModel.downloadHelper,
+                onInstallIPA: { choosingIPA = true },
+                onInstallURL: { Task { await startInstallFromUrl() } }
+            )
+            .padding(.bottom, isMultiSelectMode ? 48 : 0)
+            .allowsHitTesting(!isMultiSelectMode)
+        }
 
         } // end ZStack
         .alert("lc.common.error".loc, isPresented: $errorShow){
@@ -665,6 +636,16 @@ func setMode(_ mode: AppLaunchMode) {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.InstallAppNotification)) { obj in
             if let obj2 = obj.object as? [String: Any], let installUrl = obj2["url"] as? URL {
+                // Pre-set the display name so the tray shows it before the download begins.
+                if let name = obj2["appName"] as? String, !name.isEmpty {
+                    downloadHelper._pendingLegacyName = name
+                }
+                // Propagate the isUpdate flag sent by the Updates tab so that
+                // installFromUrl → installIpaFile knows to auto-replace and skip
+                // the install/replace dialog.
+                if let isUpdate = obj2["isUpdate"] as? Bool, isUpdate {
+                    downloadHelper.isUpdate = true
+                }
                 Task { await installFromUrl(urlStr: installUrl.absoluteString) }
             }
         }
@@ -799,7 +780,7 @@ func setMode(_ mode: AppLaunchMode) {
             
             UserDefaults.standard.setValue(urlToOpen.url!.absoluteString, forKey: "launchAppUrlScheme")
             do {
-                try await appToLaunch.runApp(multitask: launchInMultitaskMode)
+                try await appToLaunch.runApp()
             } catch {
                 errorInfo = error.localizedDescription
                 errorShow = true
@@ -836,7 +817,7 @@ func setMode(_ mode: AppLaunchMode) {
         extract(path, destination, progress)
     }
     
-    func installIpaFile(_ url:URL) async throws {
+    func installIpaFile(_ url:URL, wasUpdate: Bool = false) async throws {
         let fm = FileManager()
         
         let installProgress = Progress.discreteProgress(totalUnitCount: 100)
@@ -876,6 +857,25 @@ func setMode(_ mode: AppLaunchMode) {
             throw "lc.appList.infoPlistCannotReadError".loc
         }
 
+        // ── Update validation ─────────────────────────────────────────────────
+        // If this install was triggered from the Updates tab (wasUpdate == true),
+        // verify the extracted IPA's bundle ID matches an installed app. If it does
+        // NOT match, the user is downloading a fresh app (not an update). We cancel
+        // the install and surface an alert directing them to the Apps tab.
+        if wasUpdate, let downloadedBundleId = newAppInfo.bundleIdentifier() {
+            let allApps = sharedModel.apps + sharedModel.hiddenApps
+            if let reason = LCUpdatesValidator.validateIfMarkedAsUpdate(
+                downloadedBundleId: downloadedBundleId,
+                allApps: allApps
+            ) {
+                // Clean up extracted payload
+                try? fm.removeItem(at: payloadPath)
+                self.installprogressVisible = false
+                throw reason
+            }
+        }
+        // ─────────────────────────────────────────────────────────────────────
+
         var appRelativePath = "\(newAppInfo.bundleIdentifier()!.sanitizeNonACSII()).app"
         var outputFolder = LCPath.bundlePath.appendingPathComponent(appRelativePath)
         var appToReplace : LCAppModel? = nil
@@ -907,29 +907,49 @@ func setMode(_ mode: AppLaunchMode) {
         
         if fm.fileExists(atPath: outputFolder.path) || sameBundleIdApp.count > 0 {
             appRelativePath = "\(newAppInfo.bundleIdentifier()!)_\(Int(CFAbsoluteTimeGetCurrent())).app"
-            
-            self.installOptions = [AppReplaceOption(isReplace: false, nameOfFolderToInstall: appRelativePath)]
-            
-            for app in sameBundleIdApp {
-                self.installOptions.append(AppReplaceOption(isReplace: true, nameOfFolderToInstall: app.appInfo.relativeBundlePath, appToReplace: app))
-            }
 
-            guard let installOptionChosen = await installReplaceAlert.open() else {
-                // user cancelled
-                self.installprogressVisible = false
-                try fm.removeItem(at: payloadPath)
-                return
-            }
-            
-            if let appToReplace = installOptionChosen.appToReplace, appToReplace.uiIsShared {
-                outputFolder = LCPath.lcGroupBundlePath.appendingPathComponent(installOptionChosen.nameOfFolderToInstall)
-            } else {
-                outputFolder = LCPath.bundlePath.appendingPathComponent(installOptionChosen.nameOfFolderToInstall)
-            }
-            appRelativePath = installOptionChosen.nameOfFolderToInstall
-            appToReplace = installOptionChosen.appToReplace
-            if installOptionChosen.isReplace {
+            // When this is an update (triggered from the Updates tab), automatically
+            // replace the first matching installed app without showing the dialog.
+            // This mirrors how a normal app-store update works — the user already
+            // confirmed the update by tapping "Update" on the Updates tab.
+            if wasUpdate, let existingApp = sameBundleIdApp.first {
+                let replaceOption = AppReplaceOption(
+                    isReplace: true,
+                    nameOfFolderToInstall: existingApp.appInfo.relativeBundlePath,
+                    appToReplace: existingApp
+                )
+                if existingApp.uiIsShared {
+                    outputFolder = LCPath.lcGroupBundlePath.appendingPathComponent(replaceOption.nameOfFolderToInstall)
+                } else {
+                    outputFolder = LCPath.bundlePath.appendingPathComponent(replaceOption.nameOfFolderToInstall)
+                }
+                appRelativePath = replaceOption.nameOfFolderToInstall
+                appToReplace = existingApp
                 try fm.removeItem(at: outputFolder)
+            } else {
+                self.installOptions = [AppReplaceOption(isReplace: false, nameOfFolderToInstall: appRelativePath)]
+                
+                for app in sameBundleIdApp {
+                    self.installOptions.append(AppReplaceOption(isReplace: true, nameOfFolderToInstall: app.appInfo.relativeBundlePath, appToReplace: app))
+                }
+
+                guard let installOptionChosen = await installReplaceAlert.open() else {
+                    // user cancelled
+                    self.installprogressVisible = false
+                    try fm.removeItem(at: payloadPath)
+                    return
+                }
+                
+                if let appToReplace = installOptionChosen.appToReplace, appToReplace.uiIsShared {
+                    outputFolder = LCPath.lcGroupBundlePath.appendingPathComponent(installOptionChosen.nameOfFolderToInstall)
+                } else {
+                    outputFolder = LCPath.bundlePath.appendingPathComponent(installOptionChosen.nameOfFolderToInstall)
+                }
+                appRelativePath = installOptionChosen.nameOfFolderToInstall
+                appToReplace = installOptionChosen.appToReplace
+                if installOptionChosen.isReplace {
+                    try fm.removeItem(at: outputFolder)
+                }
             }
         }
 
@@ -1141,7 +1161,10 @@ func setMode(_ mode: AppLaunchMode) {
             return
         }
         
-        self.installprogressVisible = true
+        // Don't set installprogressVisible yet — the download phase shows progress
+        // via the persistent DownloadTrayView overlay. installprogressVisible (the nav bar
+        // spinner + progress bar) only activates during the install/sign phase inside
+        // installIpaFile. This way the tray is visible during download.
         defer {
             self.installprogressVisible = false
         }
@@ -1197,26 +1220,49 @@ func setMode(_ mode: AppLaunchMode) {
             if fileManager.fileExists(atPath: destinationURL.path) {
                 try fileManager.removeItem(at: destinationURL)
             }
-            // Only set name/isUpdate when caller hasn't already set them (updates page sets isUpdate=true)
-            if !downloadHelper.isUpdate {
-                let rawName = installUrl.lastPathComponent
-                downloadHelper.appName = rawName.hasSuffix(".ipa") ? String(rawName.dropLast(4))
-                    : rawName.hasSuffix(".tipa") ? String(rawName.dropLast(5)) : rawName
-            }
+
+            // Build a display name for the tray.
+            // If a caller pre-set _pendingLegacyName (e.g. sources view set appName,
+            // updates view set displayName), consume it; otherwise derive from URL.
+            let presetName = downloadHelper._pendingLegacyName
+            let rawName    = installUrl.lastPathComponent
+            let displayName = !presetName.isEmpty ? presetName
+                : (rawName.hasSuffix(".ipa")  ? String(rawName.dropLast(4))
+                :  rawName.hasSuffix(".tipa") ? String(rawName.dropLast(5))
+                :  rawName)
+            downloadHelper._pendingLegacyName = ""
+
             let wasUpdate = downloadHelper.isUpdate
-            try await downloadHelper.download(url: installUrl, to: destinationURL)
-            // Reset isUpdate after download completes
             downloadHelper.isUpdate = false
-            if downloadHelper.cancelled {
-                return
+
+            let item = DownloadItem(
+                url: installUrl,
+                destinationURL: destinationURL,
+                appName: displayName,
+                isUpdate: wasUpdate
+            )
+            let itemID = downloadHelper.enqueue(item: item)
+
+            // Wait for this specific download to finish
+            while downloadHelper.items.contains(where: { $0.id == itemID && $0.isActive }) {
+                try? await Task.sleep(nanoseconds: 50_000_000)
             }
-            // If this was an update download, switch to apps tab so per-app progress is visible
+
+            // Bail silently if cancelled
+            guard !(downloadHelper.items.first(where: { $0.id == itemID })?.isCancelled ?? false)
+            else { return }
+
+            // If this was an update, switch to apps tab so per-app sign progress is visible
             if wasUpdate {
                 await MainActor.run {
                     withAnimation { DataManager.shared.model.selectedTab = .apps }
                 }
             }
-            try await installIpaFile(destinationURL)
+
+            // Download done — start install/sign phase (shows nav bar progress)
+            self.installprogressVisible = true
+            self.installProgressPercentage = 0.0
+            try await installIpaFile(destinationURL, wasUpdate: wasUpdate)
             try fileManager.removeItem(at: destinationURL)
         } catch {
             errorInfo = error.localizedDescription
@@ -1311,7 +1357,7 @@ func setMode(_ mode: AppLaunchMode) {
         //⭐️⭐️⭐️switch mode
     if launchInMultitaskMode {
         do {
-            try await appFound.runApp(multitask: true, containerFolderName: container, forceJIT: forceJIT)
+            try await appFound.runApp(multitask: nil, containerFolderName: container, forceJIT: forceJIT)
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
@@ -1320,12 +1366,6 @@ func setMode(_ mode: AppLaunchMode) {
           LCUtils.appGroupUserDefault.bool(forKey: "LCRealIPhoneMode") { 
 
 
-        do {
-            try await appFound.runApp(multitask: false, containerFolderName: container, forceJIT: forceJIT)
-        } catch {
-            errorInfo = error.localizedDescription
-            errorShow = true
-        }
         
     }
 }

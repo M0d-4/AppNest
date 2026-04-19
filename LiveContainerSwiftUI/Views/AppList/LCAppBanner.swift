@@ -38,7 +38,6 @@ struct LCAppBanner : View {
     
     @AppStorage("dynamicColors", store: LCUtils.appGroupUserDefault) var dynamicColors = true
     @AppStorage("darkModeIcon", store: LCUtils.appGroupUserDefault) var darkModeIcon = false
-    @AppStorage("LCLaunchInMultitaskMode") var launchInMultitaskMode = false
     @State private var mainColor : Color
     @State private var icon: UIImage
     
@@ -64,16 +63,15 @@ struct LCAppBanner : View {
 
         HStack {
             HStack {
-                Image(uiImage: icon)
-                    .resizable().resizable().frame(width: 60, height: 60)
-                    .clipShape(RoundedRectangle(cornerSize: CGSize(width:16, height: 16)))
+                IconImageView(icon: icon)
+                    .frame(width: 60, height: 60)
 
                 VStack (alignment: .leading, content: {
                     let color = (dynamicColors ? mainColor : Color("FontColor"))
                     // note: keep this so the color updates when toggling dark mode
                     let textColor = colorScheme == .dark ? color.readableTextColor() : color.readableTextColor()
                     HStack {
-                        Text(appInfo.displayName()).font(.system(size: 16)).bold()
+                        Text(model.displayName).font(.system(size: 16)).bold()
                         if model.uiIsShared {
                             Image(systemName: "arrowshape.turn.up.left.fill")
                                 .font(.system(size: 8))
@@ -187,7 +185,7 @@ struct LCAppBanner : View {
                         .padding(.vertical, 4)
 
                     Button {
-                        if #available(iOS 16.0, *), launchInMultitaskMode {
+                        if #available(iOS 16.0, *) {
                              if let currentDataFolder = model.uiSelectedContainer?.folderName,
                                 MultitaskManager.isUsing(container: currentDataFolder) {
                                  var found = false
@@ -202,9 +200,9 @@ struct LCAppBanner : View {
                                  }
                              }
 
-                            Task{ await runApp(multitask: true) }
+                            Task{ await runApp() }
                         } else {
-                            Task{ await runApp(multitask: false) }
+                            Task{ await runApp() }
                         }
                     } label: {
                         if !model.isSigningInProgress {
@@ -241,7 +239,7 @@ struct LCAppBanner : View {
                 .disabled(model.isAppRunning)
             } else {
                 Button {
-                    if #available(iOS 16.0, *), launchInMultitaskMode {
+                    if #available(iOS 16.0, *) {
                          if let currentDataFolder = model.uiSelectedContainer?.folderName,
                             MultitaskManager.isUsing(container: currentDataFolder) {
                              var found = false
@@ -256,9 +254,9 @@ struct LCAppBanner : View {
                              }
                          }
 
-                        Task{ await runApp(multitask: true) }
+                        Task{ await runApp() }
                     } else {
-                        Task{ await runApp(multitask: false) }
+                        Task{ await runApp() }
                     }
                 } label: {
                     if !model.isSigningInProgress {
@@ -459,11 +457,11 @@ struct LCAppBanner : View {
 
         // Multitask Toggle
         if #available(iOS 16.0, *) {
-            let runTitle = launchInMultitaskMode ? "lc.appBanner.run".loc : "lc.appBanner.multitask".loc
-            let runImage = launchInMultitaskMode ? "play.fill" : "macwindow.badge.plus"
+            let runTitle = model.shouldLaunchInMultitaskMode ? "lc.appBanner.run".loc : "lc.appBanner.multitask".loc
+            let runImage = model.shouldLaunchInMultitaskMode ? "play.fill" : "macwindow.badge.plus"
 
             let multitaskAction = UIAction(title: runTitle, image: UIImage(systemName: runImage)) { _ in
-                Task { await runApp(multitask: !launchInMultitaskMode) }
+                Task { await runApp(multitask: !model.shouldLaunchInMultitaskMode) }
             }
             sectionChildren.append(multitaskAction)
         }
@@ -531,7 +529,7 @@ struct LCAppBanner : View {
 
     // MARK: - Functions
     
-    func runApp(multitask: Bool) async {
+    func runApp(multitask: Bool? = nil) async {
         if appInfo.isLocked && !sharedModel.isHiddenAppUnlocked {
             do {
                 if !(try await LCUtils.authenticateUser()) {

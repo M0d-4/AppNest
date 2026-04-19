@@ -122,7 +122,42 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             appInfo.customUrlSchemes = uiCustomUrlSchemes
         }
     }
-    
+
+    @Published var uiIsMultitaskModeSpecificed : MultitaskSpecified {
+        didSet {
+            appInfo.multitaskSpecified = uiIsMultitaskModeSpecificed;
+        }
+    }
+
+    public var shouldLaunchInMultitaskMode : Bool {
+        get {
+            if #available(iOS 16.0, *) {
+                return uiIsMultitaskModeSpecificed == .yes ||
+                (uiIsMultitaskModeSpecificed == .default && UserDefaults.standard.bool(forKey: "LCLaunchInMultitaskMode"))
+            } else {
+                return false
+            }
+        }
+    }
+
+    public var bundleIdentifier: String {
+        get {
+            return appInfo.bundleIdentifier() ?? "?"
+        }
+    }
+
+    public var version: String {
+        get {
+            return appInfo.version() ?? "?"
+        }
+    }
+
+    public var displayName: String {
+        get {
+            return appInfo.displayName() ?? "?"
+        }
+    }
+
     @Published var supportedLanguages : [String]?
 
     // MARK: GPS Addon Section
@@ -692,6 +727,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         self.uiTweakFolder = appInfo.tweakFolder
         self.uiDoSymlinkInbox = appInfo.doSymlinkInbox
         self.uiOrientationLock = appInfo.orientationLock
+        self.uiIsMultitaskModeSpecificed = appInfo.multitaskSpecified
         self.uiUseLCBundleId = appInfo.doUseLCBundleId
         self.uiFixFilePickerNew = appInfo.fixFilePickerNew
         self.uiFixLocalNotification = appInfo.fixLocalNotification
@@ -1155,7 +1191,8 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         hasher.combine(ObjectIdentifier(self))
     }
     
-    func runApp(multitask: Bool = false, containerFolderName : String? = nil, bundleIdOverride : String? = nil, forceJIT: Bool? = nil) async throws{
+    // You should let LCAppModel.runApp to decide whether to run in multitask mode, but you may override the multitask parameter if necessary
+    func runApp(multitask: Bool? = nil, containerFolderName : String? = nil, bundleIdOverride : String? = nil, forceJIT: Bool? = nil) async throws{
         if isAppRunning {
             return
         }
@@ -1175,7 +1212,9 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             uiSelectedContainer = uiContainers.first { $0.folderName == containerFolderName } ?? uiSelectedContainer
         }
         let currentDataFolder = containerFolderName ?? uiSelectedContainer?.folderName
-        
+
+       let multitask = multitask ?? shouldLaunchInMultitaskMode;
+
         if multitask,
            let currentDataFolder,
            await bringExistingMultitaskWindowIfNeeded(dataUUID: currentDataFolder) {

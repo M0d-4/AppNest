@@ -293,6 +293,13 @@ struct LCSettingsView: View {
                 }
                     
                 Section {
+                    if sharedModel.multiLCStatus != 2 {
+                        NavigationLink {
+                            LCStorageManagementView()
+                        } label: {
+                            Text("lc.settings.storageManagement".loc)
+                        }
+                    }
                     NavigationLink {
                         LCDataManagementView(appDataFolderNames: $appDataFolderNames)
                     } label: {
@@ -321,24 +328,22 @@ struct LCSettingsView: View {
                     }
                 } header: {
                     Text("lc.settings.about".loc)
-                } footer: {
-                    Text("lc.settings.warning".loc)
                 }
                 Section {
                     HStack {
                         Image("GitHub")
-                        Button("Mod4-Da-GOAT") {
+                        Button("M0d-4") {
                             openForkOwnerGitHub()
                         }
                     }
                     HStack {
                         Image("GitHub")
-                        Button("Mod4-Da-GOAT/LiveContainer") {
+                        Button("M0d-4/LiveContainer") {
                             openForkedRepo()
                         }
                     }
                 } header: {
-                    Text("About Fork Owner")
+                    Text("About Fork and the Fork's Owner")
                 }
                 
                 VStack{
@@ -512,11 +517,11 @@ struct LCSettingsView: View {
         UIApplication.shared.open(URL(string: "https://twitter.com/khanhduytran0")!)
     }
     func openForkOwnerGitHub() {
-        UIApplication.shared.open(URL(string: "https://github.com/Mod4-Da-GOAT")!)
+        UIApplication.shared.open(URL(string: "https://github.com/M0d-4")!)
     }
 
     func openForkedRepo() {
-        UIApplication.shared.open(URL(string: "https://github.com/Mod4-Da-GOAT/LiveContainer")!)
+        UIApplication.shared.open(URL(string: "https://github.com/M0d-4/LiveContainer")!)
     }
 
     func isDebuggerAttached() -> Bool {

@@ -165,6 +165,7 @@ struct LCMultitaskSettingView: View {
     @AppStorage("LCRestartTerminatedApp", store: LCUtils.appGroupUserDefault) var restartTerminatedApp = false
     @AppStorage("LCMaxOneAppOnStage", store: LCUtils.appGroupUserDefault) var onlyOneAppOnStage = false
     @AppStorage("LCDockWidth", store: LCUtils.appGroupUserDefault) var dockWidth: Double = 80
+    @AppStorage("LCHideCollapsedDock", store: LCUtils.appGroupUserDefault) var hideCollapsedDock: Bool = false
     @AppStorage("LCRedirectURLToHost", store: LCUtils.appGroupUserDefault) var redirectURLToHost = false
     
     var body: some View {
@@ -211,23 +212,30 @@ struct LCMultitaskSettingView: View {
                     Toggle(isOn: $redirectURLToHost) {
                         Text("lc.settings.redirectURLToHost".loc)
                     }
-                    VStack(alignment: .leading, spacing: 12) {
-                        HStack {
-                            Text("lc.settings.dockWidth".loc)
-                                .foregroundColor(.primary)
-                            Spacer()
-                            Text("\(Int(dockWidth))px")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                        }
-                        Slider(value: $dockWidth, in: 60...110) {
-                            Text("lc.settings.dockWidth".loc)
-                        }
-                        .tint(.accentColor)
-                    }
-                    .padding(.vertical, 4)
+
                 }
-            } 
+            }
+            
+            Section {
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("lc.settings.dockWidth".loc)
+                            .foregroundColor(.primary)
+                        Spacer()
+                        Text("\(Int(dockWidth))px")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                    }
+                    Slider(value: $dockWidth, in: 20...120) {
+                        Text("lc.settings.dockWidth".loc)
+                    }
+                    .tint(.accentColor)
+                }
+                .padding(.vertical, 4)
+                Toggle(isOn: $hideCollapsedDock) {
+                    Text("lc.settings.hideCollapsedDock".loc)
+                }
+            }
         }
         .navigationTitle("lc.appBanner.multitask".loc)
         .navigationBarTitleDisplayMode(.inline)
