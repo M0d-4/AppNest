@@ -101,13 +101,7 @@ struct MultitaskAppWindow: View {
     @Environment(\.openWindow) var openWindow
     @AppStorage("LCMultitaskMode", store: LCUtils.appGroupUserDefault) var multitaskMode: MultitaskMode = .virtualWindow
     @AppStorage("LCSkipTerminatedScreen", store: LCUtils.appGroupUserDefault) var skipTerminatedScreen = false
-    @AppStorage("LCShowExitButton") var showExitButton = true
-    @AppStorage("LCExitButtonPosition") var exitButtonOnRight = false  // false = left, true = right
-    // iPhone mode is read from the app group store — same suite that AppSceneViewController reads.
-    // The VC's viewWillLayoutSubviews already handles centering natively; we only need the flag
-    // here to know whether to show the exit button on the correct side when narrowed.
     @AppStorage("LCRealIPhoneMode", store: LCUtils.appGroupUserDefault) var isiPhoneMode = false
-    @StateObject private var exitConfirmAlert = YesNoHelper()
     let pub = NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)
     init(id: String) {
         guard let appInfo = MultitaskWindowManager.appDict[id] else {
@@ -136,37 +130,7 @@ struct MultitaskAppWindow: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .ignoresSafeArea(.all, edges: .all)
-            .overlay(alignment: exitButtonOnRight ? .topTrailing : .topLeading) {
-                if showExitButton {
-                    Button {
-                        Task { await confirmExit() }
-                    } label: {
-                        Image(systemName: "xmark.circle.fill")
-                            .font(.system(size: 28, weight: .semibold))
-                            .foregroundStyle(.white, Color.black.opacity(0.6))
-                            .shadow(color: .black.opacity(0.4), radius: 4, x: 0, y: 2)
-                    }
-                    .buttonStyle(.plain)
-                    .padding(.top, 52)
-                    .padding(exitButtonOnRight ? .trailing : .leading, 16)
-                }
-            }
             .navigationTitle(Text("\(appInfo.displayName) - \(String(pid))"))
-            .background(
-                // Alert is attached to an EmptyView in the background so it
-                // cannot affect the proposed size of the GeometryReader above.
-                EmptyView()
-                    .alert("lc.appList.exitAppConfirmTitle".loc, isPresented: $exitConfirmAlert.show) {
-                        Button(role: .destructive) {
-                            exitConfirmAlert.close(result: true)
-                        } label: { Text("lc.appList.exitAppConfirmLeave".loc) }
-                        Button("lc.common.cancel".loc, role: .cancel) {
-                            exitConfirmAlert.close(result: false)
-                        }
-                    } message: {
-                        Text("lc.appList.exitAppConfirmMessage".loc)
-                    }
-            )
             .onReceive(pub) { out in
                 if let scene1 = sceneDelegate.window?.windowScene, let scene2 = out.object as? UIWindowScene, scene1 == scene2 {
                     show = false
@@ -227,11 +191,6 @@ struct MultitaskAppWindow: View {
         }
     }
     
-    private func confirmExit() async {
-        guard let confirmed = await exitConfirmAlert.open(), confirmed else { return }
-        requestSceneDestruction(isManual: true)
-    }
-
     private func requestSceneDestruction(isManual: Bool = false) {
         if isManual {
             didRequestManualClose = true

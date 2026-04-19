@@ -513,7 +513,7 @@ void handleLiveContainerLaunch(NSURL* url) {
             lcAppInfo = [NSDictionary dictionaryWithContentsOfURL:[bundle URLForResource:@"LCAppInfo" withExtension:@"plist"]];
         }
         
-        if(!bundle || ([lcAppInfo[@"isHidden"] boolValue] && [NSUserDefaults.lcSharedDefaults boolForKey:@"LCStrictHiding"])) {
+        if(!bundle) {
             LCShowAppNotFoundAlert(bundleName);
         } else if ([lcAppInfo[@"isLocked"] boolValue]) {
             // need authentication

@@ -107,6 +107,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @State private var deleteAppData = false
     @State private var isDeleting = false
     @StateObject private var multiDeleteConfirmAlert = YesNoHelper()
+    @StateObject private var multiLockHideConfirmAlert = YesNoHelper()
 
  //⭐️⭐️⭐️Switch mode
    var currentLaunchMode: AppLaunchMode {
@@ -275,7 +276,15 @@ func setMode(_ mode: AppLaunchMode) {
                     destination: navigateTo,
                     isActive: Binding(
                         get: { isNavigationActive && !isMultiSelectMode },
-                        set: { isNavigationActive = $0 }
+                        set: { newValue in
+                            if !newValue && isNavigationActive {
+                                // User tapped back — run the full close sequence
+                                // so navRefreshID is refreshed and toolbar animates correctly
+                                closeNavigationView()
+                            } else {
+                                isNavigationActive = newValue
+                            }
+                        }
                     ),
                     label: { EmptyView() }
                 )
@@ -291,29 +300,7 @@ func setMode(_ mode: AppLaunchMode) {
                 .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredApps)
 
                 VStack {
-                    if LCUtils.appGroupUserDefault.bool(forKey: "LCStrictHiding") {
-                        if sharedModel.isHiddenAppUnlocked {
-                            VStack(spacing: 8) {
-                                HStack {
-                                    Text("lc.appList.hiddenApps".loc)
-                                        .font(.system(.title2).bold())
-                                    Spacer()
-                                }
-                                
-                                ForEach(filteredHiddenApps, id: \.self) { app in
-                                    appRow(app: app, isHidden: true)
-                                }
-                            }
-                            .padding()
-                            .transition(.opacity)
-                            .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredHiddenApps)
-                            
-                            if sharedModel.hiddenApps.count == 0 {
-                                Text("lc.appList.hideAppTip".loc)
-                                    .foregroundStyle(.gray)
-                            }
-                        }
-                    } else if sharedModel.hiddenApps.count > 0 {
+                    if sharedModel.hiddenApps.count > 0 {
                         VStack(spacing: 8) {
                             HStack {
                                 Text("lc.appList.hiddenApps".loc)
@@ -346,7 +333,7 @@ func setMode(_ mode: AppLaunchMode) {
                         .onTapGesture(count: 3) {
                             Task { await authenticateUser() }
                         }
-                }.animation(searchContext.isTyping ? nil : .easeInOut, value: LCUtils.appGroupUserDefault.bool(forKey: "LCStrictHiding"))
+                }.animation(searchContext.isTyping ? nil : .easeInOut, value: sharedModel.hiddenApps.count)
 
                 if sharedModel.multiLCStatus == 2 {
                     Text("lc.appList.manageInPrimaryTip".loc).foregroundStyle(.gray).padding()
@@ -428,6 +415,19 @@ func setMode(_ mode: AppLaunchMode) {
                         } label: {
                             Image(systemName: "trash")
                                 .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
+                        }
+                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+                    }
+                }
+
+                // ── Trailing: lock-and-hide button (only in multi-select) ──
+                ToolbarItem(placement: .topBarTrailing) {
+                    if isMultiSelectMode {
+                        Button {
+                            Task { await lockAndHideSelectedApps() }
+                        } label: {
+                            Image(systemName: "lock.fill")
+                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
                         }
                         .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
                     }
@@ -568,6 +568,12 @@ func setMode(_ mode: AppLaunchMode) {
             Button("lc.common.cancel".loc, role: .cancel) { multiDeleteConfirmAlert.close(result: false) }
         } message: {
             Text("lc.appList.deleteSelectedMessage %lld".localizeWithFormat(selectedAppsForDeletion.count))
+        }
+        .alert("Lock & Hide Apps", isPresented: $multiLockHideConfirmAlert.show) {
+            Button(role: .destructive) { multiLockHideConfirmAlert.close(result: true) } label: { Text("Lock & Hide") }
+            Button("lc.common.cancel".loc, role: .cancel) { multiLockHideConfirmAlert.close(result: false) }
+        } message: {
+            Text("Lock and move \(selectedAppsForDeletion.count) app(s) to hidden mode? They will require authentication to access.")
         }
 
         .textFieldAlert(
@@ -742,7 +748,7 @@ func setMode(_ mode: AppLaunchMode) {
         if urlToOpen.scheme != "https" && urlToOpen.scheme != "http" {
             var appToLaunch : LCAppModel? = nil
             var appListsToConsider = [sharedModel.apps]
-            if sharedModel.isHiddenAppUnlocked || !LCUtils.appGroupUserDefault.bool(forKey: "LCStrictHiding") {
+            if sharedModel.isHiddenAppUnlocked {
                 appListsToConsider.append(sharedModel.hiddenApps)
             }
             appLoop:
@@ -1323,7 +1329,7 @@ func setMode(_ mode: AppLaunchMode) {
                 break
             }
         }
-        if appFound == nil && !LCUtils.appGroupUserDefault.bool(forKey: "LCStrictHiding") {
+        if appFound == nil {
             for app in sharedModel.hiddenApps {
                 if app.appInfo.relativeBundlePath == bundleId {
                     appFound = app
@@ -1589,15 +1595,21 @@ func setMode(_ mode: AppLaunchMode) {
     @ViewBuilder
     func appRow(app: LCAppModel, isHidden: Bool) -> some View {
         ZStack(alignment: .leading) {
-            LCAppBanner(appModel: app, delegate: self, appDataFolders: $appDataFolderNames, tweakFolders: $tweakFolderNames, updateAction: nil)
+            LCAppBanner(appModel: app, delegate: self, appDataFolders: $appDataFolderNames, tweakFolders: $tweakFolderNames, updateAction: updateAction(for: app))
                 .padding(.leading, isMultiSelectMode ? 36 : 0)
                 .animation(.easeInOut(duration: 0.2), value: isMultiSelectMode)
                 .allowsHitTesting(!isMultiSelectMode && !isDeleting)
 
             if isMultiSelectMode {
+                // Hidden apps cannot be selected for lock/hide (they're already hidden).
+                // They can still be selected for deletion (isHidden == true cases).
                 let isSelected = selectedAppsForDeletion.contains(app)
-                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                    .foregroundColor(isSelected ? .green : .secondary)
+                let isBlockedForLockHide = isHidden
+                Image(systemName: isBlockedForLockHide
+                        ? "lock.slash"
+                        : (isSelected ? "checkmark.circle.fill" : "circle"))
+                    .foregroundColor(isBlockedForLockHide ? .secondary.opacity(0.4)
+                                     : (isSelected ? .green : .secondary))
                     .font(.title2)
                     .padding(.leading, 6)
                     .transition(.opacity.combined(with: .move(edge: .leading)))
@@ -1607,6 +1619,9 @@ func setMode(_ mode: AppLaunchMode) {
         .contentShape(Rectangle())
         .onTapGesture {
             guard isMultiSelectMode, !isDeleting else { return }
+            // Hidden apps cannot be selected when in multiselect mode
+            // (lock/hide applies only to visible apps; delete is handled separately)
+            guard !isHidden else { return }
             withAnimation(.easeInOut(duration: 0.1)) {
                 if selectedAppsForDeletion.contains(app) {
                     selectedAppsForDeletion.remove(app)
@@ -1686,6 +1701,41 @@ func setMode(_ mode: AppLaunchMode) {
                 selectedAppsForDeletion.removeAll()
                 isMultiSelectMode = false
                 deleteAppData = false
+                isDeleting = false
+            }
+            sharedModel.isMultiSelectMode = false
+        }
+    }
+
+    func lockAndHideSelectedApps() async {
+        guard !selectedAppsForDeletion.isEmpty else { return }
+        guard let confirmed = await multiLockHideConfirmAlert.open(), confirmed else { return }
+
+        let appsToProcess = selectedAppsForDeletion
+
+        isDeleting = true
+
+        await MainActor.run {
+            for app in appsToProcess {
+                // Lock and mark as hidden
+                app.appInfo.isLocked = true
+                app.appInfo.isHidden = true
+                app.appInfo.save()
+                // Move from visible list to hidden list
+                sharedModel.apps.removeAll { $0 == app }
+                if !sharedModel.hiddenApps.contains(app) {
+                    sharedModel.hiddenApps.append(app)
+                }
+                // Remove URL schemes from shared list since app is now hidden
+                if let schemes = app.appInfo.urlSchemes() as? [String] {
+                    UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
+                        .removeObjects(in: schemes)
+                }
+            }
+
+            withAnimation {
+                selectedAppsForDeletion.removeAll()
+                isMultiSelectMode = false
                 isDeleting = false
             }
             sharedModel.isMultiSelectMode = false

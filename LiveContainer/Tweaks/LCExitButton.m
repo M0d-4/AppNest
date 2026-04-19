@@ -261,29 +261,7 @@ static void lceb_relaunchLC(void) {
 static id g_windowObserver = nil;
 
 // ─── Entry point ───────────────────────────────────────────────
-// Called before NUDGuestHooksInit() so g_lcDefaults captures the real LC
-// NSUserDefaults before it is redirected to the guest container.
+// Exit button feature removed. Function kept as no-op for ABI compatibility.
 void LCExitButtonGuestHooksInit(BOOL isLiveProcess, BOOL isSideStore) {
-    if (isLiveProcess || isSideStore) return;
-
-    g_lcScheme   = [lcAppUrlScheme copy];
-    g_lcDefaults = lcUserDefaults;
-
-    id stored = [g_lcDefaults objectForKey:@"LCShowExitButton"];
-    BOOL showButton = stored ? [g_lcDefaults boolForKey:@"LCShowExitButton"] : NO;
-    if (!showButton) return;
-
-    g_windowObserver = [[NSNotificationCenter defaultCenter]
-        addObserverForName:UIWindowDidBecomeKeyNotification
-        object:nil
-        queue:[NSOperationQueue mainQueue]
-        usingBlock:^(NSNotification *note) {
-            UIWindow *window = note.object;
-            // Short delay so rootViewController and safeAreaInsets are populated.
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW,
-                                         (int64_t)(0.5 * NSEC_PER_SEC)),
-                           dispatch_get_main_queue(), ^{
-                [LCExitButtonView installInWindow:window];
-            });
-        }];
+    // Feature removed — exit button is no longer supported.
 }

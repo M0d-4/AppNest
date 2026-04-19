@@ -47,11 +47,9 @@ struct LCSettingsView: View {
     @StateObject private var certificateImportFileAlert = AlertHelper<URL>()
     @StateObject private var certificateImportPasswordAlert = InputHelper()
     
-    @AppStorage("LCFrameShortcutIcons") var frameShortIcon = false
     @AppStorage("LCSwitchAppWithoutAsking") var silentSwitchApp = false
     @AppStorage("LCOpenWebPageWithoutAsking") var silentOpenWebPage = false
     @AppStorage("LCDontSignApp", store: LCUtils.appGroupUserDefault) var dontSignApp = false
-    @AppStorage("LCStrictHiding", store: LCUtils.appGroupUserDefault) var strictHiding = false
     @AppStorage("dynamicColors", store: LCUtils.appGroupUserDefault) var dynamicColors = true
     @AppStorage("darkModeIcon", store: LCUtils.appGroupUserDefault) var darkModeIcon = false
     
@@ -67,8 +65,6 @@ struct LCSettingsView: View {
     @AppStorage("selected32BitLayer") var liveExec32Path : String = ""
     #endif
     @AppStorage("LCKeepSelectedWhenQuit") var keepSelectedWhenQuit = false
-    @AppStorage("LCShowExitButton") var showExitButton = true
-    @AppStorage("LCExitButtonPosition") var exitButtonOnRight = false
     @AppStorage("LCWaitForDebugger") var waitForDebugger = false
     @AppStorage("LCSharePrivateDataWithLiveProcess") var sharePrivateDataWithLiveProcess = false
     @AppStorage("BKNoWatchdogs") var disableLiveProcessWatchdog = false
@@ -234,28 +230,10 @@ struct LCSettingsView: View {
                             Text("lc.settings.darkModeIcon".loc)
                         }
                     }
-                    Toggle(isOn: $showExitButton) {
-                        Text("lc.settings.showExitButton".loc)
-                    }
-                    if showExitButton {
-                        Picker("lc.settings.exitButtonPosition".loc, selection: $exitButtonOnRight) {
-                            Text("lc.settings.exitButtonPosition.left".loc).tag(false)
-                            Text("lc.settings.exitButtonPosition.right".loc).tag(true)
-                        }
-                    }
                 } header: {
                     Text("lc.settings.interface".loc)
                 } footer: {
                     Text("lc.settings.dynamicColors.desc".loc)
-                }
-                Section{
-                    Toggle(isOn: $frameShortIcon) {
-                        Text("lc.settings.FrameIcon".loc)
-                    }
-                } header: {
-                    Text("lc.common.miscellaneous".loc)
-                } footer: {
-                    Text("lc.settings.FrameIconDesc".loc)
                 }
                 
                 Section {
@@ -274,16 +252,6 @@ struct LCSettingsView: View {
                     Text("lc.settings.silentOpenWebPageDesc".loc)
                 }
 
-                if sharedModel.isHiddenAppUnlocked {
-                    Section {
-                        Toggle(isOn: $strictHiding) {
-                            Text("lc.settings.strictHiding".loc)
-                        }
-                    } footer: {
-                        Text("lc.settings.strictHidingDesc".loc)
-                    }
-                }
-                
                 Section {
                     Toggle(isOn: $dontSignApp) {
                         Text("lc.settings.dontSign".loc)
@@ -293,13 +261,6 @@ struct LCSettingsView: View {
                 }
                     
                 Section {
-                    if sharedModel.multiLCStatus != 2 {
-                        NavigationLink {
-                            LCStorageManagementView()
-                        } label: {
-                            Text("lc.settings.storageManagement".loc)
-                        }
-                    }
                     NavigationLink {
                         LCDataManagementView(appDataFolderNames: $appDataFolderNames)
                     } label: {
