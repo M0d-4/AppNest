@@ -114,15 +114,13 @@ struct MultitaskAppWindow: View {
         let isVirtualWindowMode = multitaskMode == .virtualWindow
         if show, let appInfo {
             GeometryReader { geometry in
-                let iPhoneWidth = isiPhoneMode ? min(geometry.size.height * (9.0 / 16.0), geometry.size.width) : geometry.size.width
-                let iPhoneOffsetX = isiPhoneMode ? (geometry.size.width - iPhoneWidth) / 2.0 : 0
-                let iPhoneSize = isiPhoneMode ? CGSize(width: iPhoneWidth, height: geometry.size.height) : geometry.size
-
+                // Pass full geometry to the native VC — it handles iPhone centering
+                // internally via LCRealIPhoneMode in viewWillLayoutSubviews.
+                // We just add a black background so the letterbox areas are filled.
                 ZStack {
                     Color.black
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-                    AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: iPhoneSize,
+                    AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: geometry.size,
                                         onAppInitialize: { pid, error in
                         DispatchQueue.main.async {
                             if error == nil {
@@ -134,8 +132,7 @@ struct MultitaskAppWindow: View {
                             DataManager.shared.model.pidCallback = nil
                         }
                     })
-                    .frame(width: iPhoneSize.width, height: iPhoneSize.height)
-                    .offset(x: iPhoneOffsetX)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }

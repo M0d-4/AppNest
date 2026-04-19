@@ -324,14 +324,14 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
         CGFloat h = self.view.frame.size.height / self.scaleRatio;
         if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
             CGFloat targetW = MIN(h * (9.0 / 16.0), w);
-            // In native-window (fullscreen) mode the scene frame is in screen
-            // coordinates, so we offset to center. In virtual-window (windowed)
-            // mode the frame origin is always (0,0) — centering is purely a
-            // contentView.frame concern handled by viewWillLayoutSubviews and
-            // DecoratedAppSceneViewController.
+            // In native-window mode, center the contentView horizontally so the
+            // guest app appears as an iPhone pillar-boxed in the center of the display.
             if (self.isNativeWindow) {
-                // no-op: native window uses full-screen coords — center offset
-                // is not needed here because the scene fills the whole display.
+                CGFloat offsetX = (w - targetW) / 2.0;
+                self.contentView.autoresizingMask = UIViewAutoresizingNone;
+                self.contentView.frame = CGRectMake(offsetX * self.scaleRatio, 0,
+                                                    targetW * self.scaleRatio,
+                                                    h * self.scaleRatio);
             }
             w = targetW;
         }

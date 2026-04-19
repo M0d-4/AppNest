@@ -98,9 +98,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     private var downloadHelper: DownloadHelper { sharedModel.downloadHelper }
 
     
-    // Used to force NavigationView redraw on pop and prevent toolbar animation glitch
-    @State private var navRefreshID = UUID()
-
     // Multi-select deletion
     @State private var isMultiSelectMode = false
     @State private var selectedAppsForDeletion: Set<LCAppModel> = []
@@ -291,7 +288,7 @@ func setMode(_ mode: AppLaunchMode) {
                         set: { newValue in
                             if !newValue && isNavigationActive {
                                 // User tapped back — run the full close sequence
-                                // so navRefreshID is refreshed and toolbar animates correctly
+                                // so the navigation state resets cleanly
                                 closeNavigationView()
                             } else {
                                 isNavigationActive = newValue
@@ -495,7 +492,6 @@ func setMode(_ mode: AppLaunchMode) {
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .id(navRefreshID)
 
         // ── Persistent download/install tray ───────────────────────────────────
         // Always visible at the bottom of the screen regardless of download state.
@@ -1270,14 +1266,11 @@ func setMode(_ mode: AppLaunchMode) {
             guard !(downloadHelper.items.first(where: { $0.id == itemID })?.isCancelled ?? false)
             else { return }
 
-            // If this was an update, switch to apps tab so per-app sign progress is visible
-            if wasUpdate {
-                await MainActor.run {
-                    withAnimation { DataManager.shared.model.selectedTab = .apps }
-                }
+            // Download done — start install/sign phase (shows nav bar progress).
+            // Switch to apps tab now so the per-app sign progress bar is visible.
+            await MainActor.run {
+                withAnimation { DataManager.shared.model.selectedTab = .apps }
             }
-
-            // Download done — start install/sign phase (shows nav bar progress)
             self.installprogressVisible = true
             self.installProgressPercentage = 0.0
             try await installIpaFile(destinationURL, wasUpdate: wasUpdate)
@@ -1520,16 +1513,10 @@ func setMode(_ mode: AppLaunchMode) {
     
     func closeNavigationView() {
         isNavigationActive = false
-        navigateTo = nil
-        // Force NavigationView to re-render without animation, fixing toolbar glitch on pop.
-        // With reduced motion the pop is instant, so we skip the delay entirely.
-        let delay = UIAccessibility.isReduceMotionEnabled ? 0.0 : 0.35
-        DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
-            var t = Transaction()
-            t.disablesAnimations = true
-            withTransaction(t) {
-                navRefreshID = UUID()
-            }
+        // Clear destination after the pop animation completes so the
+        // navigation bar title restores cleanly without a flash.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            navigateTo = nil
         }
     }
     

@@ -1904,13 +1904,6 @@ struct LCAppSettingsView: View {
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { sharedModel.isInAppSettings = true }
         .onDisappear { sharedModel.isInAppSettings = false }
-        .apply {
-            if #available(iOS 16.0, *) {
-                $0.toolbar(.hidden, for: .tabBar)
-            } else {
-                $0
-            }
-        }
     }
 
     private var settingsFormAlerts: some View {

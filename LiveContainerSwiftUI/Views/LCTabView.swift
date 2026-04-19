@@ -41,12 +41,17 @@ private struct TabBarInteractionBlocker: UIViewRepresentable {
         if let pvc = vc.presentedViewController { blockInVC(enabled, vc: pvc) }
     }
 
-    // UIView hierarchy — covers iPadOS 26 new Tab bar (private UIKit class, not UITabBar subclass)
-    // We match by class name containing "TabBar" to future-proof across private API renames.
+    // UIView hierarchy — covers iPadOS 26 new Tab bar (private UIKit class, not UITabBar subclass).
+    // IMPORTANT: only match UITabBar exactly or classes that START with "UITabBar" / contain
+    // "TabSidebar". We must NOT disable the UINavigationBar or its subviews — those contain
+    // the multiselect toolbar buttons (trash, lock, etc.) and disabling them would block taps.
     private static func blockTabViews(_ enabled: Bool, in view: UIView) {
         let className = NSStringFromClass(type(of: view))
-        // Match UITabBar AND any private SwiftUI/UIKit tab bar container
-        if view is UITabBar || className.contains("TabBar") || className.contains("UITabSidebar") {
+        let isTabBar = view is UITabBar
+            || className == "UITabBar"
+            || className.hasPrefix("UITabBar")
+            || (className.contains("TabBar") && !className.contains("NavigationBar") && !className.contains("ToolBar") && !className.contains("Toolbar"))
+        if isTabBar {
             view.isUserInteractionEnabled = enabled
         }
         for sub in view.subviews { blockTabViews(enabled, in: sub) }
@@ -208,7 +213,9 @@ struct LCTabView: View {
         }
         .apply {
             if #available(iOS 16.0, *) {
-                $0.toolbar(sharedModel.isMultiSelectMode ? .hidden : .visible, for: .tabBar)
+                // Hide tab bar during multiselect OR when inside app settings
+                let shouldHide = sharedModel.isMultiSelectMode || sharedModel.isInAppSettings
+                $0.toolbar(shouldHide ? .hidden : .visible, for: .tabBar)
             } else {
                 $0
             }

@@ -688,19 +688,17 @@ struct LCSourcesView: View {
             errorMessage = "lc.sources.error.missingDownload".loc
             return
         }
-        // Switch to apps tab and fire the install notification together,
-        // so the redirect only happens when the download is actually starting.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            withAnimation {
-                DataManager.shared.model.selectedTab = .apps
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-                NotificationCenter.default.post(
-                    name: NSNotification.InstallAppNotification,
-                    object: ["url": downloadURL, "appName": app.name, "iconURL": app.iconURL as Any]
-                )
-            }
-        }
+        // Pre-set name and icon so the tray row shows them immediately.
+        sharedModel.downloadHelper._pendingLegacyName = app.name
+        sharedModel.downloadHelper._pendingIconURL = app.iconURL
+        // Post notification — LCAppListView receives it, starts the download,
+        // and will switch to the apps tab only after the download finishes.
+        NotificationCenter.default.post(
+            name: NSNotification.InstallAppNotification,
+            object: ["url": downloadURL, "appName": app.name, "iconURL": app.iconURL as Any]
+        )
+        // Switch to apps tab immediately so the user can see the download tray.
+        withAnimation { DataManager.shared.model.selectedTab = .apps }
     }
     
     private func toggleExpansion(for id: URL) {
