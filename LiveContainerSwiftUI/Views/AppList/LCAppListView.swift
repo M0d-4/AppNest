@@ -253,11 +253,23 @@ func setMode(_ mode: AppLaunchMode) {
         ) else { return nil }
         let downloadURL = updateVersion.downloadURL
         return {
-            withAnimation {
-                DataManager.shared.model.selectedTab = .apps
-            }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
-                NotificationCenter.default.post(name: NSNotification.InstallAppNotification, object: ["url": downloadURL])
+            // Stay on current tab — redirect will happen after download completes
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                // Find the source app to get its icon URL
+                let sourceIconURL: URL? = DataManager.shared.model.sourcesViewModel.sources
+                    .compactMap { $0.source }
+                    .flatMap { $0.apps }
+                    .first { $0.bundleIdentifier == app.appInfo.bundleIdentifier() }?
+                    .iconURL
+                NotificationCenter.default.post(
+                    name: NSNotification.InstallAppNotification,
+                    object: [
+                        "url": downloadURL,
+                        "appName": app.appInfo.displayName() as Any,
+                        "isUpdate": true,
+                        "iconURL": sourceIconURL as Any
+                    ]
+                )
             }
         }
     }
@@ -489,14 +501,12 @@ func setMode(_ mode: AppLaunchMode) {
         // Always visible at the bottom of the screen regardless of download state.
         // The "From File" and "From URL" actions inside the tray fully replace the
         // old toolbar + button. The tray also shows live per-download progress cards.
-        if sharedModel.multiLCStatus != 2 {
+        if sharedModel.multiLCStatus != 2 && !isMultiSelectMode {
             DownloadTrayView(
                 manager: sharedModel.downloadHelper,
                 onInstallIPA: { choosingIPA = true },
                 onInstallURL: { Task { await startInstallFromUrl() } }
             )
-            .padding(.bottom, isMultiSelectMode ? 48 : 0)
-            .allowsHitTesting(!isMultiSelectMode)
         }
 
         } // end ZStack
@@ -642,13 +652,15 @@ func setMode(_ mode: AppLaunchMode) {
         }
         .onReceive(NotificationCenter.default.publisher(for: NSNotification.InstallAppNotification)) { obj in
             if let obj2 = obj.object as? [String: Any], let installUrl = obj2["url"] as? URL {
-                // Pre-set the display name so the tray shows it before the download begins.
+                // Pre-set display name so the tray shows it before download begins.
                 if let name = obj2["appName"] as? String, !name.isEmpty {
                     downloadHelper._pendingLegacyName = name
                 }
-                // Propagate the isUpdate flag sent by the Updates tab so that
-                // installFromUrl → installIpaFile knows to auto-replace and skip
-                // the install/replace dialog.
+                // Pre-set icon URL so the tray row shows the app icon.
+                if let iconURL = obj2["iconURL"] as? URL {
+                    downloadHelper._pendingIconURL = iconURL
+                }
+                // Propagate the isUpdate flag so installIpaFile auto-replaces.
                 if let isUpdate = obj2["isUpdate"] as? Bool, isUpdate {
                     downloadHelper.isUpdate = true
                 }
@@ -1634,12 +1646,13 @@ func setMode(_ mode: AppLaunchMode) {
 
     /// Installs URLs from sharedModel.pendingInstallURLs one at a time.
     /// Each URL is dequeued before starting so concurrent calls self-cancel.
+    /// All items in the pending queue come from the Updates tab so isUpdate=true.
     func drainInstallQueue() async {
         while true {
-            // Atomically dequeue the next URL
             guard !sharedModel.pendingInstallURLs.isEmpty else { return }
             let url = sharedModel.pendingInstallURLs.removeFirst()
-            // Wait for this install to fully complete before moving to the next
+            // Mark as update so installIpaFile auto-replaces without showing dialog
+            await MainActor.run { downloadHelper.isUpdate = true }
             await installFromUrl(urlStr: url.absoluteString)
         }
     }

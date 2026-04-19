@@ -114,19 +114,29 @@ struct MultitaskAppWindow: View {
         let isVirtualWindowMode = multitaskMode == .virtualWindow
         if show, let appInfo {
             GeometryReader { geometry in
-                AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: geometry.size,
-                                    onAppInitialize: { pid, error in
-                    DispatchQueue.main.async {
-                        if error == nil {
-                            self.pid = Int(pid)
-                        } else {
-                            self.errorMessage = error?.localizedDescription
+                let iPhoneWidth = isiPhoneMode ? min(geometry.size.height * (9.0 / 16.0), geometry.size.width) : geometry.size.width
+                let iPhoneOffsetX = isiPhoneMode ? (geometry.size.width - iPhoneWidth) / 2.0 : 0
+                let iPhoneSize = isiPhoneMode ? CGSize(width: iPhoneWidth, height: geometry.size.height) : geometry.size
+
+                ZStack {
+                    Color.black
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                    AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: iPhoneSize,
+                                        onAppInitialize: { pid, error in
+                        DispatchQueue.main.async {
+                            if error == nil {
+                                self.pid = Int(pid)
+                            } else {
+                                self.errorMessage = error?.localizedDescription
+                            }
+                            DataManager.shared.model.pidCallback?(NSNumber(value: pid), error)
+                            DataManager.shared.model.pidCallback = nil
                         }
-                        DataManager.shared.model.pidCallback?(NSNumber(value: pid), error)
-                        DataManager.shared.model.pidCallback = nil
-                    }
-                })
-                .background(.black)
+                    })
+                    .frame(width: iPhoneSize.width, height: iPhoneSize.height)
+                    .offset(x: iPhoneOffsetX)
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .ignoresSafeArea(.all, edges: .all)

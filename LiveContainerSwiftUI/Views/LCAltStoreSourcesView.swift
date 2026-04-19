@@ -688,17 +688,18 @@ struct LCSourcesView: View {
             errorMessage = "lc.sources.error.missingDownload".loc
             return
         }
-        withAnimation {
-            DataManager.shared.model.selectedTab = .apps
-        }
-        // Use 0.8s so LCAppListView is fully appeared and its onReceive is live
-        // before the notification fires. Also pass the human-readable app name so
-        // the toolbar indicator shows it instead of the raw filename.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
-            NotificationCenter.default.post(
-                name: NSNotification.InstallAppNotification,
-                object: ["url": downloadURL, "appName": app.name]
-            )
+        // Switch to apps tab and fire the install notification together,
+        // so the redirect only happens when the download is actually starting.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            withAnimation {
+                DataManager.shared.model.selectedTab = .apps
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.8) {
+                NotificationCenter.default.post(
+                    name: NSNotification.InstallAppNotification,
+                    object: ["url": downloadURL, "appName": app.name, "iconURL": app.iconURL as Any]
+                )
+            }
         }
     }
     

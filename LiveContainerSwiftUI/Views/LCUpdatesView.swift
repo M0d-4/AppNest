@@ -244,13 +244,19 @@ struct LCUpdatesView: View {
         // Here we add a secondary pre-flight guard: verify the source version's bundle
         // ID still matches what is installed (guards against source mismatches).
         let downloadURL = entry.newVersion.downloadURL
+        // Look up iconURL from sources for this app
+        let sourceIconURL: URL? = sharedModel.sourcesViewModel.sources
+            .compactMap { $0.source }
+            .flatMap { $0.apps }
+            .first { $0.bundleIdentifier == bundleId }?
+            .iconURL
         NotificationCenter.default.post(
             name: NSNotification.InstallAppNotification,
             object: [
                 "url":     downloadURL,
                 "appName": entry.app.appInfo.displayName() as Any,
-                // Signal that this is an update so installFromUrl marks wasUpdate=true
-                "isUpdate": true
+                "isUpdate": true,
+                "iconURL": sourceIconURL as Any
             ]
         )
 

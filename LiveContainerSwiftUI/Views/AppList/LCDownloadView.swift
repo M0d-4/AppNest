@@ -82,6 +82,7 @@ public final class DownloadQueueManager: ObservableObject, @unchecked Sendable {
     // Written/read exclusively on the main thread by SwiftUI views —
     // no actor annotation needed; callers are always @MainActor views.
     public var _pendingLegacyName: String = ""
+    public var _pendingIconURL: URL? = nil
 
     private var _tasks: [UUID: URLSessionDownloadTask] = [:]
     private var _continuations: [UUID: UnsafeContinuation<(), Never>] = [:]
@@ -98,7 +99,11 @@ public final class DownloadQueueManager: ObservableObject, @unchecked Sendable {
         if m.appName.isEmpty && !_pendingLegacyName.isEmpty {
             m.appName = _pendingLegacyName
         }
+        if m.iconURL == nil, let pending = _pendingIconURL {
+            m.iconURL = pending
+        }
         _pendingLegacyName = ""
+        _pendingIconURL = nil
         DispatchQueue.main.async { self.items.append(m) }
         Task { await _start(id: m.id) }
         return m.id
