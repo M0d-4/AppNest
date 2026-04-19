@@ -4,6 +4,7 @@
 //
 //  Created by s s on 2025/6/3.
 //
+#pragma once
 @import Foundation;
 @import AVKit;
 @import UIKit;

@@ -91,15 +91,12 @@ final class LCStorageManagementModel: ObservableObject {
         
         sizesByCategory[.appBundle] = 0
         sizesByCategory[.containers] = 0
-        
-        var sideStoreContainerSize: Int64 = 0
         for appItem in appItems {
-            if !(appItem.appModel.appInfo is BuiltInSideStoreAppInfo) {
-                sizesByCategory[.appBundle]! += appItem.bundleSize ?? 0
-            } else {
-                sideStoreContainerSize = appItem.containersSize
+            if appItem.appModel.appInfo is BuiltInSideStoreAppInfo {
+                continue
             }
             
+            sizesByCategory[.appBundle]! += appItem.bundleSize ?? 0
             for containerDetail in appItem.containerDetails {
                 if containerDetail.isExternalContainer {
                     continue
@@ -134,13 +131,11 @@ final class LCStorageManagementModel: ObservableObject {
         let appGroupSize = sizesByCategory[.appGroup] ?? 0
         let tweaksSize = sizesByCategory[.tweaks] ?? 0
         let knownRootsSize = try await calculateCombinedSize(of: knownRoots)
-        var librarySize: Int64 = 0
-        if let libraryPath = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first {
-            librarySize = try await calculateSize(at: libraryPath)
-        }
+        let excludedRoots = bundleRoots + containerRoots + appGroupRoots + tweakRoots
+        let looseFilesSize = try await calculateLooseFilesSize(in: knownRoots, excluding: excludedRoots)
         // Other is the residual after explicit categories are removed from the known storage roots, plus loose root-level files.
-        let residualOtherSize = knownRootsSize - appBundleSize - containersSize - appGroupSize - tweaksSize
-        let otherSize = residualOtherSize + librarySize
+        let residualOtherSize = max(0, knownRootsSize - appBundleSize - containersSize - appGroupSize - tweaksSize - looseFilesSize)
+        let otherSize = residualOtherSize + looseFilesSize
 
         return LCStorageBreakdown(
             totalSize: appBundleSize + containersSize + temporaryFilesSize + appGroupSize + tweaksSize + otherSize,
@@ -269,6 +264,50 @@ final class LCStorageManagementModel: ObservableObject {
         return uniqueURLs
     }
 
+    nonisolated private static func calculateLooseFilesSize(in roots: [URL], excluding excludedRoots: [URL]) async throws -> Int64 {
+        let fileManager = FileManager.default
+        let excludedPaths = Set(excludedRoots.map { $0.standardizedFileURL.path })
+        let resourceKeys: Set<URLResourceKey> = [
+            .isDirectoryKey,
+            .isRegularFileKey,
+            .totalFileAllocatedSizeKey,
+            .fileAllocatedSizeKey,
+            .fileSizeKey
+        ]
+
+        var totalSize: Int64 = 0
+
+        for root in roots {
+            let children = try fileManager.contentsOfDirectory(
+                at: root,
+                includingPropertiesForKeys: Array(resourceKeys),
+                options: []
+            )
+
+            for child in children {
+                try Task.checkCancellation()
+
+                let standardizedChildPath = child.standardizedFileURL.path
+                guard !excludedPaths.contains(standardizedChildPath) else {
+                    continue
+                }
+
+                let resourceValues = try child.resourceValues(forKeys: resourceKeys)
+                guard resourceValues.isRegularFile == true else {
+                    continue
+                }
+
+                let fileSize = resourceValues.totalFileAllocatedSize
+                    ?? resourceValues.fileAllocatedSize
+                    ?? resourceValues.fileSize
+                    ?? 0
+                totalSize += Int64(fileSize)
+            }
+        }
+
+        return totalSize
+    }
+
     nonisolated private static func calculateSize(at url: URL) async throws -> Int64 {
         let fileManager = FileManager.default
         let resourceKeys: Set<URLResourceKey> = [
@@ -287,7 +326,11 @@ final class LCStorageManagementModel: ObservableObject {
         }
 
         var totalSize: Int64 = 0
-        for case let fileURL as URL in enumerator {
+        // Collect all URLs upfront to avoid Swift 6 error:
+        // "instance method 'makeIterator' is unavailable from asynchronous contexts"
+        // NSDirectoryEnumerator's iterator is not safe to use directly in async code.
+        let allURLs = enumerator.compactMap { $0 as? URL }
+        for fileURL in allURLs {
             try Task.checkCancellation()
 
             let resourceValues = try fileURL.resourceValues(forKeys: resourceKeys)

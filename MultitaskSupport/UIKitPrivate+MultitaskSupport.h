@@ -124,6 +124,19 @@
 @end
 
 @interface RBSTarget : NSObject
++ (instancetype)targetWithPid:(pid_t)pid;
++ (instancetype)targetWithPid:(pid_t)pid environmentIdentifier:(NSString *)environmentIdentifier;
+@end
+
+@interface RBSDomainAttribute : NSObject
++ (instancetype)attributeWithDomain:(NSString *)domain name:(NSString *)name;
++ (instancetype)attributeWithDomain:(NSString *)domain name:(NSString *)name sourceEnvironment:(NSString *)env;
+@end
+
+@interface RBSAssertion : NSObject
+- (instancetype)initWithExplanation:(NSString *)explanation target:(RBSTarget *)target attributes:(NSArray *)attributes;
+- (BOOL)acquireWithError:(NSError **)error;
+- (void)invalidate;
 @end
 
 @interface UIApplicationSceneSpecification : FBSSceneSpecification

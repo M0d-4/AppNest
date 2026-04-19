@@ -29,7 +29,6 @@ struct LCContainerView : View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var sharedModel : SharedModel
     @State private var typingContainerName : String = ""
-    @State private var typingIDFV: String = ""
     @State private var inUse = false
     @State private var runningLC : String? = nil
     
@@ -72,6 +71,12 @@ struct LCContainerView : View {
                     .onChange(of: container.isolateAppGroup) { newValue in
                         saveContainer()
                     }
+                    Toggle(isOn: $container.spoofIdentifierForVendor) {
+                        Text("lc.container.spoofIdentifierForVendor".loc)
+                    }
+                    .onChange(of: container.spoofIdentifierForVendor) { newValue in
+                        saveContainer()
+                    }
                     
                     if let settingsBundle {
                         NavigationLink {
@@ -92,26 +97,6 @@ struct LCContainerView : View {
                     }
                 } footer: {
                     Text("lc.container.defaultContainerDesc".loc)
-                }
-                
-                Section {
-                    Toggle(isOn: $container.spoofIdentifierForVendor) {
-                        Text("lc.container.spoofIdentifierForVendor".loc)
-                    }
-                    .onChange(of: container.spoofIdentifierForVendor) { newValue in
-                        saveContainer()
-                    }
-                    
-                    if container.spoofIdentifierForVendor {
-                        HStack {
-                            Text("UUID")
-                            TextField("lc.common.auto".loc, text: $typingIDFV)
-                                .multilineTextAlignment(.trailing)
-                                .onSubmit {
-                                    saveIDFV()
-                                }
-                        }
-                    }
                 }
 
                 Section {
@@ -151,6 +136,7 @@ struct LCContainerView : View {
                                 Text("lc.container.removeContainer".loc)
                             }
                         }
+
                         
                     }
                 }
@@ -224,24 +210,11 @@ struct LCContainerView : View {
         }
         .onAppear() {
             container.reloadInfoPlist()
-            if let spoofedIDFV = container.spoofedIdentifier {
-                typingIDFV = spoofedIDFV
-            }
             settingsBundle = delegate.getSettingsBundle()
             runningLC = LCSharedUtils.getContainerUsingLCScheme(withFolderName: container.folderName)
             inUse = runningLC != nil
         }
         
-    }
-    
-    func saveIDFV() {
-        guard let newIDFV = UUID(uuidString: typingIDFV) else {
-            errorInfo = "lc.container.invalidIDFV".loc
-            errorShow = true
-            return
-        }
-        container.spoofedIdentifier = newIDFV.uuidString
-        delegate.saveContainer(container: container)
     }
 
     func saveContainer() {
@@ -275,6 +248,7 @@ struct LCContainerView : View {
         do {
             let fm = FileManager.default
             try fm.removeItem(at: container.containerURL)
+            LCUtils.removeAppKeychain(dataUUID: container.folderName)
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
@@ -326,6 +300,7 @@ struct LCContainerView : View {
                 }
                 try fm.removeItem(at: file)
             }
+            LCUtils.removeAppKeychain(dataUUID: container.folderName)
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true

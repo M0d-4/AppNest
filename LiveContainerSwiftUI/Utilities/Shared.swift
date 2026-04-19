@@ -69,6 +69,21 @@ class SharedModel: ObservableObject {
     @Published var hiddenApps : [LCAppModel] = []
     
     @Published var pidCallback : ((NSNumber, Error?) -> Void)? = nil
+    @Published var isMultiSelectMode = false
+    @Published var isInAppSettings = false
+
+    /// Shared across all views — loads once, refreshes on demand.
+    @MainActor let sourcesViewModel = AltStoreSourcesViewModel()
+
+    /// URLs queued for sequential installation by LCAppListView.
+    /// Push URLs here from anywhere; LCAppListView drains them one-by-one.
+    @Published var pendingInstallURLs: [URL] = []
+
+    /// Shared download helper — observed by both LCAppListView and LCUpdatesView.
+    let downloadHelper = DownloadHelper()
+    private var downloadHelperCancellable: AnyCancellable?
+    private var sourcesViewModelCancellable: AnyCancellable?
+
     
     static let isPhone: Bool = {
         UIDevice.current.userInterfaceIdiom == .phone
@@ -103,6 +118,14 @@ class SharedModel: ObservableObject {
     
     init() {
         updateMultiLCStatus()
+        // Forward any change from downloadHelper so views observing SharedModel
+        // re-render when isDownloading / appName / progress etc. change.
+        downloadHelperCancellable = downloadHelper.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+        // Also forward sourcesViewModel changes so LCUpdatesView re-renders
+        // when sources or isRefreshingAll change.
+        sourcesViewModelCancellable = sourcesViewModel.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
     }
 }
 
@@ -193,6 +216,7 @@ extension UTType {
     static let tipa = UTType(filenameExtension: "tipa")!
     static let dylib = UTType(filenameExtension: "dylib")!
     static let deb = UTType(filenameExtension: "deb")!
+    static let zipArchive = UTType(filenameExtension: "zip")!
     static let lcFramework = UTType(filenameExtension: "framework", conformingTo: .package)!
     static let p12 = UTType(filenameExtension: "p12")!
 }
@@ -314,4 +338,5 @@ public enum LCTabIdentifier: Hashable {
     case tweaks
     case settings
     case search
+    case updates
 }

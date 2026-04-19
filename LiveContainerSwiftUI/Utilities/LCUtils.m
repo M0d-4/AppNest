@@ -10,6 +10,7 @@
 #import "../../MultitaskSupport/DecoratedAppSceneViewController.h"
 #import "../../ZSign/zsigner.h"
 #import "LiveContainerSwiftUI-Swift.h"
+#import <objc/runtime.h>
 
 // make SFSafariView happy and open data: URLs
 @implementation NSURL(hack)
@@ -124,6 +125,110 @@
     } else {
         return @"altstore://install?url=%@";
     }
+}
+
++ (void)repackageLCWithCustomSchemes:(NSArray<NSString*>*)customSchemes
+                   completionHandler:(void(^)(NSURL* ipaURL, NSError* error))completionHandler {
+    NSError *error;
+    NSFileManager *manager = NSFileManager.defaultManager;
+    NSURL *bundlePath = NSBundle.mainBundle.bundleURL;
+    NSURL *tmpPath = manager.temporaryDirectory;
+    
+    // Create Payload directory
+    NSURL *tmpPayloadPath = [tmpPath URLByAppendingPathComponent:@"LiveContainerRepack/Payload"];
+    [manager removeItemAtURL:tmpPayloadPath error:nil];
+    [manager createDirectoryAtURL:tmpPayloadPath withIntermediateDirectories:YES attributes:nil error:&error];
+    if (error) {
+        if (completionHandler) completionHandler(nil, error);
+        return;
+    }
+    
+    // Copy LiveContainer.app
+    NSURL *appBundlePath = [tmpPayloadPath URLByAppendingPathComponent:bundlePath.lastPathComponent];
+    [manager copyItemAtURL:bundlePath toURL:appBundlePath error:&error];
+    if (error) {
+        if (completionHandler) completionHandler(nil, error);
+        return;
+    }
+    
+    // Read the current team ID to strip from SideStore duplication
+    NSString *teamIdSuffix = nil;
+    NSString *primaryTeamId = [LCSharedUtils teamIdentifier];
+    if (primaryTeamId.length > 0) {
+        teamIdSuffix = [NSString stringWithFormat:@".%@", primaryTeamId];
+    }
+    
+    // Recursively find and fix all Info.plist files (Main App + Plugins)
+    NSDirectoryEnumerator *enumerator = [manager enumeratorAtURL:appBundlePath includingPropertiesForKeys:nil options:0 errorHandler:nil];
+    for (NSURL *fileURL in enumerator) {
+        if ([fileURL.lastPathComponent isEqualToString:@"Info.plist"]) {
+            NSMutableDictionary *infoDict = [NSMutableDictionary dictionaryWithContentsOfURL:fileURL];
+            if (infoDict && infoDict[@"CFBundleIdentifier"]) {
+                NSString *bundleId = infoDict[@"CFBundleIdentifier"];
+                if (teamIdSuffix && [bundleId containsString:teamIdSuffix]) {
+                    infoDict[@"CFBundleIdentifier"] = [bundleId stringByReplacingOccurrencesOfString:teamIdSuffix withString:@""];
+                }
+                
+                // If this is the main app Info.plist, inject the custom schemes
+                if ([fileURL.URLByDeletingLastPathComponent.lastPathComponent isEqualToString:appBundlePath.lastPathComponent]) {
+                    // 1. Add to CFBundleURLTypes
+                    NSMutableArray *urlTypes = [infoDict[@"CFBundleURLTypes"] mutableCopy] ?: [NSMutableArray array];
+                    for (int i = 0; i < urlTypes.count; i++) {
+                        if ([urlTypes[i][@"CFBundleURLName"] isEqualToString:@"com.kdt.livecontainer.custom"]) {
+                            [urlTypes removeObjectAtIndex:i];
+                            break;
+                        }
+                    }
+                    if (customSchemes.count > 0) {
+                        [urlTypes addObject:@{
+                            @"CFBundleURLName": @"com.kdt.livecontainer.custom",
+                            @"CFBundleURLSchemes": customSchemes
+                        }];
+                    }
+                    infoDict[@"CFBundleURLTypes"] = urlTypes;
+                    
+                    // 2. Add to LSApplicationQueriesSchemes
+                    NSMutableArray *querySchemes = [infoDict[@"LSApplicationQueriesSchemes"] mutableCopy] ?: [NSMutableArray array];
+                    for (NSString *scheme in customSchemes) {
+                        if (![querySchemes containsObject:scheme]) {
+                            [querySchemes addObject:scheme];
+                        }
+                    }
+                    infoDict[@"LSApplicationQueriesSchemes"] = querySchemes;
+                }
+                
+                [infoDict writeToURL:fileURL error:nil];
+            }
+        }
+        
+        // Remove code signature files so SideStore treats it as unsigned/clean
+        if ([fileURL.lastPathComponent isEqualToString:@"_CodeSignature"]) {
+            [manager removeItemAtURL:fileURL error:nil];
+        } else if ([fileURL.lastPathComponent isEqualToString:@"embedded.mobileprovision"]) {
+            [manager removeItemAtURL:fileURL error:nil];
+        }
+    }
+    
+    // Archive to IPA (No ZSign Needed, SideStore does it natively)
+    dlopen("/System/Library/PrivateFrameworks/PassKitCore.framework/PassKitCore", RTLD_GLOBAL);
+    NSData *zipData = [[NSClassFromString(@"PKZipArchiver") new] zippedDataForURL:tmpPayloadPath.URLByDeletingLastPathComponent];
+    if (!zipData) {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            if (completionHandler) completionHandler(nil, [NSError errorWithDomain:@"repackage" code:-1 userInfo:@{NSLocalizedDescriptionKey:@"PKZipArchiver failed to zip payload"}]);
+        });
+        return;
+    }
+    
+    NSURL *tmpIPAPath = [tmpPath URLByAppendingPathComponent:@"LiveContainer_repack.ipa"];
+    [manager removeItemAtURL:tmpIPAPath error:nil];
+    NSError *writeError;
+    [zipData writeToURL:tmpIPAPath options:0 error:&writeError];
+    
+    [manager removeItemAtURL:tmpPayloadPath.URLByDeletingLastPathComponent error:nil];
+    
+    dispatch_async(dispatch_get_main_queue(), ^{
+        if (completionHandler) completionHandler(tmpIPAPath, writeError);
+    });
 }
 
 + (NSProgress *)signAppBundleWithZSign:(NSURL *)path completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
@@ -294,6 +399,7 @@
     while([infoDict[@"CFBundleURLTypes"] count] > 1) {
         [infoDict[@"CFBundleURLTypes"] removeLastObject];
     }
+    
     [infoDict removeObjectForKey:@"UTExportedTypeDeclarations"];
     infoDict[@"CFBundleIconName"] = @"AppIconGrey";
     if (infoDict[@"CFBundleIcons"][@"CFBundlePrimaryIcon"][@"CFBundleIconName"]) {
@@ -307,7 +413,7 @@
     infoDict[@"CFBundleIcons~ipad"][@"CFBundlePrimaryIcon"][@"CFBundleIconFiles"][0] = @"AppIconGrey60x60";
     infoDict[@"CFBundleIcons~ipad"][@"CFBundlePrimaryIcon"][@"CFBundleIconFiles"][1] = @"AppIconGrey76x76";
     [infoDict addEntriesFromDictionary:extraInfoDict];
-    
+
     // reset a executable name so they don't look the same on the log
     NSURL* appBundlePath = [tmpPayloadPath URLByAppendingPathComponent:@"App.app"];
     
@@ -430,6 +536,59 @@
 
 + (NSData*)bookmarkForURL:(NSURL*) url {
     return [url bookmarkDataWithOptions:(1<<11) includingResourceValuesForKeys:0 relativeToURL:0 error:0];
+}
+
+// Runtime code-sign diagnostics for sideload vs TrollStore testing.
++ (int)runtimeCSFlagsValue {
+    int flags = 0;
+    if (csops(getpid(), CS_OPS_STATUS, &flags, sizeof(flags)) != 0) {
+        return -1;
+    }
+    return flags;
+}
+
++ (BOOL)runtimeHasCSFlag:(int)flag {
+    int flags = [self runtimeCSFlagsValue];
+    if (flags < 0) {
+        return NO;
+    }
+    return (flags & flag) != 0;
+}
+
++ (NSString *)runtimeCSFlagsHex {
+    int flags = [self runtimeCSFlagsValue];
+    if (flags < 0) {
+        return @"unavailable";
+    }
+    return [NSString stringWithFormat:@"0x%08X", (uint32_t)flags];
+}
+
++ (BOOL)runtimeCSFlagInstaller {
+    return [self runtimeHasCSFlag:CS_INSTALLER];
+}
+
++ (BOOL)runtimeCSFlagPlatformBinary {
+    return [self runtimeHasCSFlag:CS_PLATFORM_BINARY];
+}
+
++ (BOOL)runtimeCSFlagGetTaskAllow {
+    return [self runtimeHasCSFlag:CS_GET_TASK_ALLOW];
+}
+
++ (BOOL)runtimeHasAppStoreReceipt {
+    NSURL *receiptURL = NSBundle.mainBundle.appStoreReceiptURL;
+    return (receiptURL.path.length > 0 &&
+            [NSFileManager.defaultManager fileExistsAtPath:receiptURL.path]);
+}
+
++ (BOOL)runtimeHasTrollStoreMarker {
+    NSString *tsPath = [NSString stringWithFormat:@"%@/../_TrollStore", NSBundle.mainBundle.bundlePath];
+    return access(tsPath.fileSystemRepresentation, F_OK) == 0;
+}
+
++ (BOOL)runtimeCanQueryPmapCustomTrust {
+    // PMAP custom trust (e.g., PMAP_CS_APP_STORE) is not exposed via public app-space APIs.
+    return NO;
 }
 
 
