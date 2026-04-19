@@ -326,7 +326,7 @@ public struct DownloadTrayView: View {
             .padding(.vertical, 9)
             .background(
                 Capsule()
-                    .fill(Color(uiColor: UIColor.systemGray))
+                    .fill(Color.accentColor)
                     .shadow(color: .black.opacity(0.22), radius: 6, x: 0, y: 3)
             )
         }
@@ -440,7 +440,7 @@ private struct DownloadItemRow: View {
                     ZStack(alignment: .leading) {
                         Capsule().fill(Color.secondary.opacity(0.2)).frame(height: 4)
                         Capsule()
-                            .fill(Color(uiColor: UIColor.systemGray))
+                            .fill(Color.accentColor)
                             .frame(width: geo.size.width * CGFloat(item.progress), height: 4)
                             .animation(.linear(duration: 0.1), value: item.progress)
                     }

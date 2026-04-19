@@ -398,71 +398,78 @@ func setMode(_ mode: AppLaunchMode) {
                     }
                 }
 
-                // ── Trailing: one ToolbarItemGroup so iOS never collapses buttons ──
-                ToolbarItemGroup(placement: .topBarTrailing) {
+                // ── Trailing: link button (hidden during multi-select) ──
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !isMultiSelectMode {
+                        Button("lc.appList.openLink".loc, systemImage: "link", action: {
+                            Task { await onOpenWebViewTapped() }
+                        })
+                    }
+                }
+
+                // ── Trailing: delete-data toggle (only in multi-select) ──
+                ToolbarItem(placement: .topBarTrailing) {
                     if isMultiSelectMode {
-                        // Delete-data toggle
                         Button {
-                            deleteAppData.toggle()
+                            withAnimation { deleteAppData.toggle() }
                         } label: {
-                            Image(systemName: deleteAppData
-                                  ? "externaldrive.fill.badge.minus"
-                                  : "externaldrive.badge.minus")
+                            Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
                                 .foregroundColor(deleteAppData ? .red : .secondary)
                         }
                         .disabled(isDeleting)
+                    }
+                }
 
-                        // Lock + hide selected apps
+                // ── Trailing: multi-lock/hide button (only in multi-select) ──
+                ToolbarItem(placement: .topBarTrailing) {
+                    if isMultiSelectMode {
                         Button {
                             Task { await lockAndHideSelectedApps() }
                         } label: {
                             Image(systemName: "lock.shield")
-                                .foregroundColor(
-                                    selectedAppsForDeletion.isEmpty || isDeleting
-                                    ? .secondary : .orange)
+                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
                         }
                         .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+                    }
+                }
 
-                        // Delete selected apps
+                // ── Trailing: trash button (only in multi-select) ──
+                ToolbarItem(placement: .topBarTrailing) {
+                    if isMultiSelectMode {
                         Button {
                             Task { await deleteSelectedApps() }
                         } label: {
                             Image(systemName: "trash")
-                                .foregroundColor(
-                                    selectedAppsForDeletion.isEmpty || isDeleting
-                                    ? .secondary : .red)
+                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
                         }
                         .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+                    }
+                }
 
-                        // Cancel multiselect
-                        Button {
-                            isMultiSelectMode = false
-                            selectedAppsForDeletion.removeAll()
-                            deleteAppData = false
-                            sharedModel.isMultiSelectMode = false
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.red)
-                                .font(.system(size: 18, weight: .semibold))
+                // ── Trailing: select / cancel toggle ──
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        var t = Transaction()
+                        t.disablesAnimations = true
+                        withTransaction(t) {
+                            isMultiSelectMode.toggle()
+                            if !isMultiSelectMode {
+                                selectedAppsForDeletion.removeAll()
+                                deleteAppData = false
+                            }
+                            sharedModel.isMultiSelectMode = isMultiSelectMode
                         }
-                        .disabled(isDeleting)
-                    } else {
-                        // Open link
-                        Button("lc.appList.openLink".loc, systemImage: "link") {
-                            Task { await onOpenWebViewTapped() }
-                        }
+                    } label: {
+                        Image(systemName: isMultiSelectMode ? "xmark.circle.fill" : "checkmark.circle")
+                            .foregroundColor(isMultiSelectMode ? .red : .green)
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+                    .disabled(isDeleting)
+                }
 
-                        // Enter multiselect
-                        Button {
-                            isMultiSelectMode = true
-                            sharedModel.isMultiSelectMode = true
-                        } label: {
-                            Image(systemName: "checkmark.circle")
-                                .foregroundColor(.green)
-                                .font(.system(size: 18, weight: .semibold))
-                        }
-
-                        // Sort menu
+                // ── Trailing: sort menu (hidden during multi-select) ──
+                ToolbarItem(placement: .topBarTrailing) {
+                    if !isMultiSelectMode {
                         Menu {
                             Picker("Sort by", selection: $sharedAppSortManager.appSortType) {
                                 ForEach(AppSortType.allCases, id: \.self) { sortType in
@@ -480,13 +487,11 @@ func setMode(_ mode: AppLaunchMode) {
                                 Button {
                                     customSortViewPresent = true
                                 } label: {
-                                    Label("lc.appList.sort.customManage".loc,
-                                          systemImage: "slider.horizontal.3")
+                                    Label("lc.appList.sort.customManage".loc, systemImage: "slider.horizontal.3")
                                 }
                             }
                         } label: {
-                            Label("lc.appList.sort".loc,
-                                  systemImage: "line.3.horizontal.decrease.circle")
+                            Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
                         }
                     }
                 }
@@ -1268,12 +1273,14 @@ func setMode(_ mode: AppLaunchMode) {
             guard !(downloadHelper.items.first(where: { $0.id == itemID })?.isCancelled ?? false)
             else { return }
 
-            // Download done — switch to Apps tab so the install progress bar is visible
-            await MainActor.run {
-                withAnimation { DataManager.shared.model.selectedTab = .apps }
+            // If this was an update, switch to apps tab so per-app sign progress is visible
+            if wasUpdate {
+                await MainActor.run {
+                    withAnimation { DataManager.shared.model.selectedTab = .apps }
+                }
             }
 
-            // Start install/sign phase (shows nav bar progress)
+            // Download done — start install/sign phase (shows nav bar progress)
             self.installprogressVisible = true
             self.installProgressPercentage = 0.0
             try await installIpaFile(destinationURL, wasUpdate: wasUpdate)
@@ -1734,8 +1741,6 @@ func setMode(_ mode: AppLaunchMode) {
             sharedModel.isMultiSelectMode = false
         }
     }
-
-}
 
 extension View {
     func apply<V: View>(@ViewBuilder _ block: (Self) -> V) -> V { block(self) }

@@ -30683,26 +30683,6 @@
           }
         }
       }
-    },
-    "lc.appList.sort": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Sort"
-          }
-        }
-      }
-    },
-    "lc.settings.showExitButtonDesc": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shows a floating button on top of running apps to quickly return to AppNest."
-          }
-        }
-      }
     }
   },
   "version": "1.0"

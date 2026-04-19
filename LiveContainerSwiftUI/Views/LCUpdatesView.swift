@@ -253,13 +253,12 @@ struct LCUpdatesView: View {
         }
 
         let downloadURL = entry.newVersion.downloadURL
-        // Post notification immediately — onReceive in LCAppListView fires from any tab.
-        // The tab switch to Apps happens inside installFromUrl after download completes.
         NotificationCenter.default.post(
             name: NSNotification.InstallAppNotification,
             object: [
                 "url":     downloadURL,
                 "appName": entry.app.appInfo.displayName() as Any,
+                // Signal that this is an update so installFromUrl marks wasUpdate=true
                 "isUpdate": true
             ]
         )

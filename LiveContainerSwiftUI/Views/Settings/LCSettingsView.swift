@@ -236,15 +236,6 @@ struct LCSettingsView: View {
                             Text("lc.settings.darkModeIcon".loc)
                         }
                     }
-                    Toggle(isOn: $showExitButton) {
-                        Text("lc.settings.showExitButton".loc)
-                    }
-                    if showExitButton {
-                        Picker("lc.settings.exitButtonPosition".loc, selection: $exitButtonOnRight) {
-                            Text("lc.settings.exitButtonPosition.left".loc).tag(false)
-                            Text("lc.settings.exitButtonPosition.right".loc).tag(true)
-                        }
-                    }
                     // Tint color picker
                     HStack {
                         Text("lc.settings.tintColor".loc)
@@ -306,9 +297,26 @@ struct LCSettingsView: View {
                 } header: {
                     Text("lc.settings.interface".loc)
                 } footer: {
-                    Text("lc.settings.showExitButtonDesc".loc)
+                    Text("lc.settings.dynamicColors.desc".loc)
                 }
-
+                Section{
+                    Toggle(isOn: $frameShortIcon) {
+                        Text("lc.settings.FrameIcon".loc)
+                    }
+                    Toggle(isOn: $showExitButton) {
+                        Text("lc.settings.showExitButton".loc)
+                    }
+                    if showExitButton {
+                        Picker("lc.settings.exitButtonPosition".loc, selection: $exitButtonOnRight) {
+                            Text("lc.settings.exitButtonPosition.left".loc).tag(false)
+                            Text("lc.settings.exitButtonPosition.right".loc).tag(true)
+                        }
+                    }
+                } header: {
+                    Text("lc.common.miscellaneous".loc)
+                } footer: {
+                    Text("lc.settings.FrameIconDesc".loc)
+                }
                 
                 Section {
                     Toggle(isOn: $silentSwitchApp) {

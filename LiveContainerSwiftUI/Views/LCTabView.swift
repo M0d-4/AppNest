@@ -68,20 +68,6 @@ struct LCTabView: View {
     @State var shouldToggleMainWindowOpen = false
     @Environment(\.scenePhase) var scenePhase
     let pub = NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)
-    
-    @AppStorage("LCTintColorHex", store: LCUtils.appGroupUserDefault) var tintColorHex: String = ""
-    @AppStorage("LCTintEnabled", store: LCUtils.appGroupUserDefault) var tintEnabled: Bool = false
-    
-    private var appTintColor: Color {
-        guard tintEnabled, !tintColorHex.isEmpty else { return .accentColor }
-        var hex = tintColorHex.trimmingCharacters(in: .whitespacesAndNewlines)
-        if hex.hasPrefix("#") { hex = String(hex.dropFirst()) }
-        guard hex.count == 6, let value = UInt64(hex, radix: 16) else { return .accentColor }
-        let r = Double((value >> 16) & 0xFF) / 255
-        let g = Double((value >> 8) & 0xFF) / 255
-        let b = Double(value & 0xFF) / 255
-        return Color(red: r, green: g, blue: b)
-    }
 
     
     var body: some View {
@@ -245,7 +231,6 @@ struct LCTabView: View {
         TabBarInteractionBlocker(isBlocked: sharedModel.isMultiSelectMode)
             .frame(width: 0, height: 0)
         } // end ZStack
-        .tint(appTintColor)
     }
     
     func dispatchURL(url: URL) {
