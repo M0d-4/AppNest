@@ -1741,6 +1741,7 @@ func setMode(_ mode: AppLaunchMode) {
             sharedModel.isMultiSelectMode = false
         }
     }
+}
 
 extension View {
     func apply<V: View>(@ViewBuilder _ block: (Self) -> V) -> V { block(self) }
