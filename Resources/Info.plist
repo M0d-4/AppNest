@@ -5,7 +5,7 @@
 	<key>CADisableMinimumFrameDurationOnPhone</key>
 	<true/>
 	<key>CFBundleDisplayName</key>
-	<string>AppNest</string>
+	<string>LiveContainer</string>
 	<key>CFBundleDocumentTypes</key>
 	<array>
 		<dict>
@@ -25,31 +25,6 @@
 	<string>AppIcon</string>
 	<key>CFBundleIconUsesAutomaticDarkModeVariant</key>
 	<true/>
-	<key>CFBundleIcons</key>
-	<dict>
-		<key>CFBundlePrimaryIcon</key>
-		<dict>
-			<key>CFBundleIconFiles</key>
-			<array>
-				<string>AppIconGrey60x60</string>
-			</array>
-			<key>CFBundleIconName</key>
-			<string>AppIcon</string>
-		</dict>
-	</dict>
-	<key>CFBundleIcons~ipad</key>
-	<dict>
-		<key>CFBundlePrimaryIcon</key>
-		<dict>
-			<key>CFBundleIconFiles</key>
-			<array>
-				<string>AppIconGrey60x60</string>
-				<string>AppIconGrey76x76</string>
-			</array>
-			<key>CFBundleIconName</key>
-			<string>AppIcon</string>
-		</dict>
-	</dict>
 	<key>CFBundleIdentifier</key>
 	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
 	<key>CFBundleInfoDictionaryVersion</key>
@@ -59,7 +34,7 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>4.0.0</string>
+	<string>3.7.5</string>
 	<key>CFBundleSignature</key>
 	<string>????</string>
 	<key>CFBundleURLTypes</key>
@@ -74,7 +49,7 @@
 		</dict>
 	</array>
 	<key>CFBundleVersion</key>
-	<string>4.0.0</string>
+	<string>3.7.5</string>
 	<key>GCSupportedGameControllers</key>
 	<array>
 		<dict>
@@ -182,26 +157,10 @@
 	<string>The guest app is requesting for this permission.</string>
 	<key>SBAppUsesLocalNotifications</key>
 	<integer>1</integer>
-	<key>UIApplicationExitsOnSuspend</key>
-	<false/>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<true/>
-		<key>UISceneConfigurations</key>
-		<dict>
-			<key>UIWindowSceneSessionRoleApplication</key>
-			<array>
-				<dict>
-					<key>UISceneConfigurationName</key>
-					<string>Default Configuration</string>
-					<key>UISceneDelegateClassName</key>
-					<string>SceneDelegate</string>
-					<key>UISceneStoryboardFile</key>
-					<string>LaunchScreen</string>
-				</dict>
-			</array>
-		</dict>
 	</dict>
 	<key>UIBackgroundModes</key>
 	<array>

@@ -24,7 +24,7 @@ struct LaunchAppExtension: AppIntent {
     static var ext: NSExtension? = nil
 
     func forEachInstalledLC(isFree: Bool, block: (String, inout Bool) -> Void) {
-        for scheme in [launchURL.scheme].compactMap({ $0 }) + LCSharedUtils.lcUrlSchemes() {
+        for scheme in LCSharedUtils.lcUrlSchemes() {
             // Check if the app is installed
             guard let url = URL(string: "\(scheme)://"),
                   lsApplicationWorkspaceCanOpenURL(url) else {
@@ -66,7 +66,7 @@ struct LaunchAppExtension: AppIntent {
     
     func perform() async throws -> some IntentResult {
         // sanitize url
-        guard let s = launchURL.scheme, (LCSharedUtils.lcUrlSchemes() + ["sidestore"]).contains(s) else {    
+        if launchURL.scheme != "livecontainer" && launchURL.scheme != "sidestore" {
             throw LaunchAppExtensionError("Not a livecontainer URL!")
         }
         

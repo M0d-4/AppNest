@@ -158,7 +158,6 @@ extension LCUtils {
         }
         
         // move signed files back and rebuild TweakInfo.plist
-        let disabledTweaks = tweakSignInfo["disabledItems"]
         tweakSignInfo.removeAllObjects()
         var fileInodes = [String:NSNumber]()
         for tmpFile in tmpPaths {
@@ -176,9 +175,6 @@ extension LCUtils {
         try fm.removeItem(at: tmpDir)
 
         tweakSignInfo["files"] = fileInodes
-        if let disabledTweaks {
-            tweakSignInfo["disabledItems"] = disabledTweaks
-        }
         try tweakSignInfo.write(to: tweakFolderUrl.appendingPathComponent("TweakInfo.plist"))
         
     }
@@ -315,7 +311,6 @@ extension LCUtils {
             return false
         }
         
-        
         if(jitEnabler == .SideJITServer){
             guard
                   let sideJITServerAddress = groupUserDefaults.string(forKey: "LCSideJITServerAddress"),
@@ -350,7 +345,7 @@ extension LCUtils {
             onServerMessage?("Please make sure the VPN is connected if the server is not in your local network.")
             
             do {
-
+                
                 onServerMessage?("Contacting JitStreamer-EB server at \(JITStresmerEBAddress)...")
                 
                 let session = URLSession.shared
@@ -384,19 +379,18 @@ extension LCUtils {
                 }
                 return false
                 
-
+                
             } catch {
                 onServerMessage?("Failed to contact JitStreamer-EB server: \(error)")
             }
         } else if jitEnabler == .StosDebug || jitEnabler == .StosDebugLC {
             guard let appName else { onServerMessage?("Unable to get App Name, Please try again."); return false }
             var launchURLStr = "stosdebug://enableJIT?bundleId=\(Bundle.main.bundleIdentifier!)&appName=\(appName)"
-
+            
             if let script = script, !script.isEmpty {
                 launchURLStr += "&script=\(script)"
             }
-
-
+            
             if jitEnabler == .StosDebugLC {
                 let encodedStr = Data(launchURLStr.utf8).base64EncodedString()
 

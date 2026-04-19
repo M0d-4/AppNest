@@ -42,58 +42,24 @@ bool ZArchO::Init(uint8_t* pBase, uint32_t uLength)
 	m_b64Bit = (MH_MAGIC_64 == m_pHeader->magic || MH_CIGAM_64 == m_pHeader->magic) ? true : false;
 	m_bBigEndian = (MH_CIGAM == m_pHeader->magic || MH_CIGAM_64 == m_pHeader->magic) ? true : false;
 	m_uHeaderSize = m_b64Bit ? sizeof(mach_header_64) : sizeof(mach_header);
-	if (m_uHeaderSize > m_uLength) {
-		return false;
-	}
-
-	uint32_t nCmds = BO(m_pHeader->ncmds);
-	uint32_t sizeOfCmds = BO(m_pHeader->sizeofcmds);
-	if (sizeOfCmds > (m_uLength - m_uHeaderSize)) {
-		return false;
-	}
 
 	uint8_t* pLoadCommand = m_pBase + m_uHeaderSize;
-	uint8_t* pLoadCommandsEnd = pLoadCommand + sizeOfCmds;
-	for (uint32_t i = 0; i < nCmds; i++) {
-		if ((pLoadCommand + sizeof(load_command)) > pLoadCommandsEnd) {
-			ZLog::ErrorV(">>> Invalid mach-o load command header at index %u\n", i);
-			return false;
-		}
-
+	for (uint32_t i = 0; i < BO(m_pHeader->ncmds); i++) {
 		load_command* plc = (load_command*)pLoadCommand;
-		uint32_t uCmd = BO(plc->cmd);
-		uint32_t uCmdSize = BO(plc->cmdsize);
-		if (uCmdSize < sizeof(load_command) || (pLoadCommand + uCmdSize) > pLoadCommandsEnd) {
-			ZLog::ErrorV(">>> Invalid mach-o load command size at index %u\n", i);
-			return false;
-		}
-
-		switch (uCmd) {
+		switch (BO(plc->cmd)) {
 		case LC_SEGMENT:
 		{
-			if (uCmdSize < sizeof(segment_command)) {
-				return false;
-			}
 			segment_command* seglc = (segment_command*)pLoadCommand;
-			uint32_t nsects = BO(seglc->nsects);
-			uint64_t sectionBytes = (uint64_t)sizeof(segment_command) + (uint64_t)nsects * sizeof(section);
-			if (sectionBytes > uCmdSize) {
-				return false;
-			}
 			if (0 == strcmp("__TEXT", seglc->segname)) {
 				s_uExecSegLimit = seglc->vmsize;
-				for (uint32_t j = 0; j < nsects; j++) {
+				for (uint32_t j = 0; j < BO(seglc->nsects); j++) {
 					section* sect = (section*)((pLoadCommand + sizeof(segment_command)) + sizeof(section) * j);
-					uint32_t sectOffset = BO(sect->offset);
-					uint32_t sectSize = BO(sect->size);
 					if (0 == strcmp("__text", sect->sectname)) {
-						if (sectOffset > (sizeOfCmds + m_uHeaderSize)) {
-							m_uLoadCommandsFreeSpace = sectOffset - sizeOfCmds - m_uHeaderSize;
+						if (BO(sect->offset) > (BO(m_pHeader->sizeofcmds) + m_uHeaderSize)) {
+							m_uLoadCommandsFreeSpace = BO(sect->offset) - BO(m_pHeader->sizeofcmds) - m_uHeaderSize;
 						}
 					} else if (0 == strcmp("__info_plist", sect->sectname)) {
-						if (sectOffset < m_uLength && sectSize <= (m_uLength - sectOffset)) {
-							m_strInfoPlist.append((const char*)m_pBase + sectOffset, sectSize);
-						}
+						m_strInfoPlist.append((const char*)m_pBase + BO(sect->offset), BO(sect->size));
 					}
 				}
 			} else if (0 == strcmp("__LINKEDIT", seglc->segname)) {
@@ -103,29 +69,17 @@ bool ZArchO::Init(uint8_t* pBase, uint32_t uLength)
 		break;
 		case LC_SEGMENT_64:
 		{
-			if (uCmdSize < sizeof(segment_command_64)) {
-				return false;
-			}
 			segment_command_64* seglc = (segment_command_64*)pLoadCommand;
-			uint32_t nsects = BO(seglc->nsects);
-			uint64_t sectionBytes = (uint64_t)sizeof(segment_command_64) + (uint64_t)nsects * sizeof(section_64);
-			if (sectionBytes > uCmdSize) {
-				return false;
-			}
 			if (0 == strcmp("__TEXT", seglc->segname)) {
 				s_uExecSegLimit = seglc->vmsize;
-				for (uint32_t j = 0; j < nsects; j++) {
+				for (uint32_t j = 0; j < BO(seglc->nsects); j++) {
 					section_64* sect = (section_64*)((pLoadCommand + sizeof(segment_command_64)) + sizeof(section_64) * j);
-					uint32_t sectOffset = BO(sect->offset);
-					uint32_t sectSize = BO((uint32_t)sect->size);
 					if (0 == strcmp("__text", sect->sectname)) {
-						if (sectOffset > (sizeOfCmds + m_uHeaderSize)) {
-							m_uLoadCommandsFreeSpace = sectOffset - sizeOfCmds - m_uHeaderSize;
+						if (BO(sect->offset) > (BO(m_pHeader->sizeofcmds) + m_uHeaderSize)) {
+							m_uLoadCommandsFreeSpace = BO(sect->offset) - BO(m_pHeader->sizeofcmds) - m_uHeaderSize;
 						}
 					} else if (0 == strcmp("__info_plist", sect->sectname)) {
-						if (sectOffset < m_uLength && sectSize <= (m_uLength - sectOffset)) {
-							m_strInfoPlist.append((const char*)m_pBase + sectOffset, sectSize);
-						}
+						m_strInfoPlist.append((const char*)m_pBase + BO(sect->offset), BO((uint32_t)sect->size));
 					}
 				}
 			} else if (0 == strcmp("__LINKEDIT", seglc->segname)) {
@@ -134,22 +88,9 @@ bool ZArchO::Init(uint8_t* pBase, uint32_t uLength)
 		}
 		break;
 		case LC_ENCRYPTION_INFO:
-		{
-			if (uCmdSize < sizeof(encryption_info_command)) {
-				return false;
-			}
-			encryption_info_command* crypt_cmd = (encryption_info_command*)pLoadCommand;
-			if (BO(crypt_cmd->cryptid) >= 1) {
-				m_bEncrypted = true;
-			}
-		}
-		break;
 		case LC_ENCRYPTION_INFO_64:
 		{
-			if (uCmdSize < sizeof(encryption_info_command_64)) {
-				return false;
-			}
-			encryption_info_command_64* crypt_cmd = (encryption_info_command_64*)pLoadCommand;
+			encryption_info_command* crypt_cmd = (encryption_info_command*)pLoadCommand;
 			if (BO(crypt_cmd->cryptid) >= 1) {
 				m_bEncrypted = true;
 			}
@@ -157,36 +98,16 @@ bool ZArchO::Init(uint8_t* pBase, uint32_t uLength)
 		break;
 		case LC_CODE_SIGNATURE:
 		{
-			if (uCmdSize < sizeof(codesignature_command)) {
-				return false;
-			}
 			codesignature_command* pcslc = (codesignature_command*)pLoadCommand;
 			m_pCodeSignSegment = pLoadCommand;
-			uint32_t codeSignOffset = BO(pcslc->dataoff);
-			uint32_t codeSignSize = BO(pcslc->datasize);
-			if (codeSignOffset >= m_uLength) {
-				ZLog::WarnV(">>> Skip invalid LC_CODE_SIGNATURE offset: %u\n", codeSignOffset);
-				m_pSignBase = NULL;
-				m_uSignLength = 0;
-				break;
-			}
-
-			m_uCodeLength = codeSignOffset;
-			m_pSignBase = m_pBase + codeSignOffset;
-
-			uint32_t maxSignLength = m_uLength - codeSignOffset;
-			if (codeSignSize > 0 && codeSignSize < maxSignLength) {
-				maxSignLength = codeSignSize;
-			}
-			m_uSignLength = ZSign::GetCodeSignatureLength(m_pSignBase, maxSignLength);
-			if (m_uSignLength == 0 && codeSignSize > 0) {
-				ZLog::WarnV(">>> Skip invalid CodeSignature blob (offset=%u, size=%u)\n", codeSignOffset, maxSignLength);
-			}
+			m_uCodeLength = BO(pcslc->dataoff);
+			m_pSignBase = m_pBase + m_uCodeLength;
+			m_uSignLength = ZSign::GetCodeSignatureLength(m_pSignBase);
 		}
 		break;
 		}
 
-		pLoadCommand += uCmdSize;
+		pLoadCommand += BO(plc->cmdsize);
 	}
 
 	return true;
@@ -386,7 +307,7 @@ void ZArchO::PrintInfo()
 	if (NULL == m_pSignBase || m_uSignLength <= 0) {
 		ZLog::Warn(">>> Can't find CodeSignature segment!\n");
 	} else {
-		ZSign::ParseCodeSignature(m_pSignBase, m_uSignLength);
+		ZSign::ParseCodeSignature(m_pSignBase);
 	}
 
 	ZLog::Print("------------------------------------------------------------------\n");
@@ -442,7 +363,7 @@ bool ZArchO::BuildCodeSignature(ZSignAsset* pSignAsset,
 	uint32_t uCodeSlots1DataLength = 0;
 	uint32_t uCodeSlots256DataLength = 0;
 	if (!bForce) {
-		ZSign::GetCodeSignatureExistsCodeSlotsData(m_pSignBase, m_uSignLength, pCodeSlots1Data, uCodeSlots1DataLength, pCodeSlots256Data, uCodeSlots256DataLength);
+		ZSign::GetCodeSignatureExistsCodeSlotsData(m_pSignBase, pCodeSlots1Data, uCodeSlots1DataLength, pCodeSlots256Data, uCodeSlots256DataLength);
 	}
 
 	uint64_t uExecSegFlags = 0;

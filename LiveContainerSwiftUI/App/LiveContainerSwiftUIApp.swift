@@ -58,32 +58,26 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
                     }
                 }
             }
-            // load document folders — use lightweight stat-only scan
+            // load document folders
             try fm.createDirectory(at: LCPath.dataPath, withIntermediateDirectories: true)
-            let dataDirs = try fm.contentsOfDirectory(
-                at: LCPath.dataPath,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            )
-            for dataDirUrl in dataDirs {
-                let isDir = (try? dataDirUrl.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
-                if isDir {
-                    tempAppDataFolderNames.append(dataDirUrl.lastPathComponent)
+            let dataDirs = try fm.contentsOfDirectory(atPath: LCPath.dataPath.path)
+            for dataDir in dataDirs {
+                let dataDirUrl = LCPath.dataPath.appendingPathComponent(dataDir)
+                if !dataDirUrl.hasDirectoryPath {
+                    continue
                 }
+                tempAppDataFolderNames.append(dataDir)
             }
             
             // load tweak folders
             try fm.createDirectory(at: LCPath.tweakPath, withIntermediateDirectories: true)
-            let tweakDirs = try fm.contentsOfDirectory(
-                at: LCPath.tweakPath,
-                includingPropertiesForKeys: [.isDirectoryKey],
-                options: [.skipsHiddenFiles]
-            )
-            for tweakDirUrl in tweakDirs {
-                let isDir = (try? tweakDirUrl.resourceValues(forKeys: [.isDirectoryKey]))?.isDirectory ?? false
-                if isDir {
-                    tempTweakFolderNames.append(tweakDirUrl.lastPathComponent)
+            let tweakDirs = try fm.contentsOfDirectory(atPath: LCPath.tweakPath.path)
+            for tweakDir in tweakDirs {
+                let tweakDirUrl = LCPath.tweakPath.appendingPathComponent(tweakDir)
+                if !tweakDirUrl.hasDirectoryPath {
+                    continue
                 }
+                tempTweakFolderNames.append(tweakDir)
             }
         } catch {
             NSLog("[LC] error:\(error)")

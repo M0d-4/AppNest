@@ -228,10 +228,6 @@ private struct NavigationBarProgressView: UIViewControllerRepresentable {
         }
 
         func updateProgress(_ hidden: Bool, _ progress: Float) {
-            // Re-inject if the navigation bar was replaced (e.g. after navRefreshID UUID change)
-            if progressView == nil || progressView?.window == nil {
-                injectProgressView()
-            }
             progressView?.setProgress(progress, animated: false)
             progressView?.isHidden = hidden
         }

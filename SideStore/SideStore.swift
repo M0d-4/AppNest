@@ -58,7 +58,7 @@ public struct RefreshAllAppsIntent: AppIntent, CustomIntentMigratedAppIntent, Pr
 }
 
 
-final class RefreshHandler: NSObject, RefreshServer, @unchecked Sendable {
+class RefreshHandler: NSObject, RefreshServer {
     var c: UnsafeContinuation<(), any Error>? = nil
     var launchContinuation: UnsafeContinuation<(), any Error>? = nil
     var progress: Progress? = nil
@@ -77,13 +77,6 @@ final class RefreshHandler: NSObject, RefreshServer, @unchecked Sendable {
                 return _shared!
             }
         }
-    }
-    
-    private func terminateSideStoreIfNeeded() {
-        guard sideStorePid > 0 else {
-            return
-        }
-        kill(sideStorePid, SIGKILL)
     }
     
     
@@ -156,7 +149,7 @@ final class RefreshHandler: NSObject, RefreshServer, @unchecked Sendable {
                     if let c = self.launchContinuation {
                         c.resume(throwing: NSError(domain: "SideStore", code: 1, userInfo: [NSLocalizedDescriptionKey: "Built-in SideStore failed to start in reasonable time"]))
                         self.launchContinuation = nil
-                        self.terminateSideStoreIfNeeded()
+                        ext._kill(9)
                     }
                 }
             }
@@ -194,4 +187,5 @@ final class RefreshHandler: NSObject, RefreshServer, @unchecked Sendable {
     }
     
 }
+
 

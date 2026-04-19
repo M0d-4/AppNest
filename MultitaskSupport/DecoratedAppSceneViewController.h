@@ -1,4 +1,3 @@
-#pragma once
 #import "FoundationPrivate.h"
 #import "AppSceneViewController.h"
 
@@ -14,10 +13,6 @@ API_AVAILABLE(ios(16.0))
 @property(nonatomic) BOOL isMaximized;
 @property(nonatomic) CGFloat scaleRatio;
 - (instancetype)initWindowName:(NSString*)windowName bundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID rootVC:(UIViewController*)rootVC;
-//⭐️⭐️⭐️⤵️
-- (void)closeWindow;
-- (void)maximizeWindow;
-//⭐️⭐️⭐️⤴️
 - (void)minimizeWindow;
 - (void)minimizeWindowPiP;
 - (void)unminimizeWindowPiP;

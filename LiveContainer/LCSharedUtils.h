@@ -1,5 +1,4 @@
 @import Foundation;
-@import MachO;
 
 @interface LCSharedUtils : NSObject
 + (NSString*) teamIdentifier;

@@ -17,7 +17,7 @@ enum JITEnablerType : Int, CaseIterable, Identifiable {
     case SideStore = 4
     case StosDebug = 5
     case StosDebugLC = 6
-
+    
     var displayName: String {
         switch self {
         case .StikJIT: "StikDebug"
@@ -51,11 +51,9 @@ struct LCSettingsView: View {
     @AppStorage("LCSwitchAppWithoutAsking") var silentSwitchApp = false
     @AppStorage("LCOpenWebPageWithoutAsking") var silentOpenWebPage = false
     @AppStorage("LCDontSignApp", store: LCUtils.appGroupUserDefault) var dontSignApp = false
+    @AppStorage("LCStrictHiding", store: LCUtils.appGroupUserDefault) var strictHiding = false
     @AppStorage("dynamicColors", store: LCUtils.appGroupUserDefault) var dynamicColors = true
     @AppStorage("darkModeIcon", store: LCUtils.appGroupUserDefault) var darkModeIcon = false
-    @AppStorage("LCTintColorHex", store: LCUtils.appGroupUserDefault) var tintColorHex: String = ""
-    @State private var showingIconPicker = false
-    @State private var customIconPreview: UIImage? = nil
     
     @AppStorage("LCSideJITServerAddress", store: LCUtils.appGroupUserDefault) var sideJITServerAddress : String = ""
     @AppStorage("LCDeviceUDID", store: LCUtils.appGroupUserDefault) var deviceUDID: String = ""
@@ -69,8 +67,6 @@ struct LCSettingsView: View {
     @AppStorage("selected32BitLayer") var liveExec32Path : String = ""
     #endif
     @AppStorage("LCKeepSelectedWhenQuit") var keepSelectedWhenQuit = false
-    @AppStorage("LCShowExitButton") var showExitButton = true
-    @AppStorage("LCExitButtonPosition") var exitButtonOnRight = false
     @AppStorage("LCWaitForDebugger") var waitForDebugger = false
     @AppStorage("LCSharePrivateDataWithLiveProcess") var sharePrivateDataWithLiveProcess = false
     @AppStorage("BKNoWatchdogs") var disableLiveProcessWatchdog = false
@@ -100,7 +96,6 @@ struct LCSettingsView: View {
                                 Text("lc.settings.importCertificate".loc)
                             }
                         } else {
-                            // SideStore/AltStore import option
                             Button {
                                 Task{ await removeCertificate() }
                             } label: {
@@ -117,24 +112,6 @@ struct LCSettingsView: View {
                                     Text("lc.settings.importCertificateFromStore %@".localizeWithFormat(storeName))
                                 }
                             }
-                            
-                            // Manual certificate import option (always show)
-                            Button {
-                                Task{ await importCertificate() }
-                            } label: {
-                                Text("lc.settings.importCertificate".loc)
-                            }
-                            
-                            // Remove certificate option (only if certificate exists)
-                            if certificateDataFound {
-                                Button {
-                                    Task{ await removeCertificate() }
-                                } label: {
-                                    Text("lc.settings.removeCertificate".loc)
-                                }
-                                .foregroundColor(.red)
-                            }
-                        
                         }
                         
                         NavigationLink {
@@ -211,15 +188,6 @@ struct LCSettingsView: View {
                     } label: {
                         Text("lc.settings.jitEnabler".loc)
                     }
-                    
-                    // DEBUGGER STATUS INDICATOR
-                    HStack {
-                        Text("Debugger Attached")
-                        Spacer()
-                        Circle()
-                            .fill(isDebuggerAttached() ? Color.green : Color.red)
-                            .frame(width: 12, height: 12)
-                    }
 
                 } header: {
                     Text("JIT")
@@ -236,64 +204,7 @@ struct LCSettingsView: View {
                             Text("lc.settings.darkModeIcon".loc)
                         }
                     }
-                    // Tint color picker
-                    HStack {
-                        Text("lc.settings.tintColor".loc)
-                        Spacer()
-                        ColorPicker("", selection: Binding(
-                            get: {
-                                guard !tintColorHex.isEmpty,
-                                      let uiColor = UIColor(hex: tintColorHex) else {
-                                    return Color.accentColor
-                                }
-                                return Color(uiColor)
-                            },
-                            set: { newColor in
-                                let uiColor = UIColor(newColor)
-                                var r: CGFloat = 0; var g: CGFloat = 0
-                                var b: CGFloat = 0; var a: CGFloat = 0
-                                uiColor.getRed(&r, green: &g, blue: &b, alpha: &a)
-                                tintColorHex = String(format: "#%02X%02X%02X",
-                                    Int(r * 255), Int(g * 255), Int(b * 255))
-                            }
-                        ), supportsOpacity: false)
-                        .labelsHidden()
-                        if !tintColorHex.isEmpty {
-                            Button {
-                                tintColorHex = ""
-                            } label: {
-                                Image(systemName: "arrow.uturn.backward.circle.fill")
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                        }
-                    }
-                    // Custom AppNest icon (PNG)
-                    Button {
-                        showingIconPicker = true
-                    } label: {
-                        HStack {
-                            Text("lc.settings.customAppIcon".loc)
-                            Spacer()
-                            if let preview = customIconPreview {
-                                Image(uiImage: preview)
-                                    .resizable()
-                                    .frame(width: 28, height: 28)
-                                    .clipShape(RoundedRectangle(cornerRadius: 6))
-                            } else {
-                                Image(systemName: "app.badge")
-                                    .foregroundColor(.secondary)
-                            }
-                        }
-                    }
-                    if customIconPreview != nil {
-                        Button(role: .destructive) {
-                            customIconPreview = nil
-                            LCSettingsView.clearCustomAppIcon()
-                        } label: {
-                            Text("lc.settings.removeCustomAppIcon".loc)
-                        }
-                    }
+                    
                 } header: {
                     Text("lc.settings.interface".loc)
                 } footer: {
@@ -302,15 +213,6 @@ struct LCSettingsView: View {
                 Section{
                     Toggle(isOn: $frameShortIcon) {
                         Text("lc.settings.FrameIcon".loc)
-                    }
-                    Toggle(isOn: $showExitButton) {
-                        Text("lc.settings.showExitButton".loc)
-                    }
-                    if showExitButton {
-                        Picker("lc.settings.exitButtonPosition".loc, selection: $exitButtonOnRight) {
-                            Text("lc.settings.exitButtonPosition.left".loc).tag(false)
-                            Text("lc.settings.exitButtonPosition.right".loc).tag(true)
-                        }
                     }
                 } header: {
                     Text("lc.common.miscellaneous".loc)
@@ -333,7 +235,17 @@ struct LCSettingsView: View {
                 } footer: {
                     Text("lc.settings.silentOpenWebPageDesc".loc)
                 }
-
+                
+                if sharedModel.isHiddenAppUnlocked {
+                    Section {
+                        Toggle(isOn: $strictHiding) {
+                            Text("lc.settings.strictHiding".loc)
+                        }
+                    } footer: {
+                        Text("lc.settings.strictHidingDesc".loc)
+                    }
+                }
+                
                 Section {
                     Toggle(isOn: $dontSignApp) {
                         Text("lc.settings.dontSign".loc)
@@ -343,6 +255,13 @@ struct LCSettingsView: View {
                 }
                     
                 Section {
+                    if sharedModel.multiLCStatus != 2 {
+                        NavigationLink {
+                            LCStorageManagementView()
+                        } label: {
+                            Text("lc.settings.storageManagement".loc)
+                        }
+                    }
                     NavigationLink {
                         LCDataManagementView(appDataFolderNames: $appDataFolderNames)
                     } label: {
@@ -371,29 +290,15 @@ struct LCSettingsView: View {
                     }
                 } header: {
                     Text("lc.settings.about".loc)
-                }
-                Section {
-                    HStack {
-                        Image("GitHub")
-                        Button("M0d-4") {
-                            openForkOwnerGitHub()
-                        }
-                    }
-                    HStack {
-                        Image("GitHub")
-                        Button("M0d-4/LiveContainer") {
-                            openForkedRepo()
-                        }
-                    }
-                } header: {
-                    Text("About Fork and the Fork's Owner")
+                } footer: {
+                    Text("lc.settings.warning".loc)
                 }
                 
                 VStack{
                     Text(LCUtils.getVersionInfo())
                         .foregroundStyle(.gray)
                         .onTapGesture(count: 5) {
-                            sharedModel.developerMode.toggle()
+                            sharedModel.developerMode = true
                         }
                 }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -533,13 +438,7 @@ struct LCSettingsView: View {
             )
         }
         .navigationViewStyle(StackNavigationViewStyle())
-        .sheet(isPresented: $showingIconPicker) {
-            AppIconPickerView { image in
-                applyCustomAppIcon(image)
-            }
-        }
         .onAppear() {
-            loadCustomIconPreviewIfNeeded()
             if !isViewAppeared {
                 guard sharedModel.selectedTab == .settings, let link = sharedModel.deepLink else { return }
                 sharedModel.deepLink = nil
@@ -565,40 +464,6 @@ struct LCSettingsView: View {
     func openTwitter() {
         UIApplication.shared.open(URL(string: "https://twitter.com/khanhduytran0")!)
     }
-    func openForkOwnerGitHub() {
-        UIApplication.shared.open(URL(string: "https://github.com/M0d-4")!)
-    }
-
-    func openForkedRepo() {
-        UIApplication.shared.open(URL(string: "https://github.com/M0d-4/LiveContainer")!)
-    }
-
-    func isDebuggerAttached() -> Bool {
-        // Method 1: Check P_TRACED flag (works for lldb, etc)
-        var info = kinfo_proc()
-        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
-        var size = MemoryLayout<kinfo_proc>.stride
-
-        let result = sysctl(&mib, UInt32(mib.count), &info, &size, nil, 0)
-
-        if result == 0 && (info.kp_proc.p_flag & P_TRACED) != 0 {
-            return true
-        }
-
-        // Method 2: Check for JIT-enabled memory (works for StikDebug)
-        // If we can allocate executable memory, JIT is enabled
-        let testSize = 1024
-        let ptr = mmap(nil, testSize, PROT_READ | PROT_WRITE | PROT_EXEC, 
-                      MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0)
-
-        if ptr != MAP_FAILED {
-            munmap(ptr, testSize)
-            return true
-        }
-
-        return false
-    }
-
     
     func export() {
         let fileManager = FileManager.default
@@ -810,82 +675,6 @@ struct LCSettingsView: View {
                 onSideStoreCertificateCallback(certificateData: certData, password: password)
                 
             }
-        }
-    }
-
-    static func clearCustomAppIcon() {
-        UIApplication.shared.setAlternateIconName(nil)
-    }
-
-    func applyCustomAppIcon(_ image: UIImage) {
-        // Save the PNG to the app's documents for persistence
-        let fm = FileManager.default
-        if let data = image.pngData(),
-           let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first {
-            let dest = docs.appendingPathComponent("LCCustomAppIcon.png")
-            try? data.write(to: dest)
-        }
-        customIconPreview = image
-        successInfo = "lc.settings.customAppIconApplied".loc
-        successShow = true
-    }
-
-    func loadCustomIconPreviewIfNeeded() {
-        guard customIconPreview == nil else { return }
-        let fm = FileManager.default
-        if let docs = fm.urls(for: .documentDirectory, in: .userDomainMask).first {
-            let src = docs.appendingPathComponent("LCCustomAppIcon.png")
-            if fm.fileExists(atPath: src.path),
-               let img = UIImage(contentsOfFile: src.path) {
-                customIconPreview = img
-            }
-        }
-    }
-}
-
-// MARK: - UIColor hex helper
-extension UIColor {
-    convenience init?(hex: String) {
-        var cleaned = hex.trimmingCharacters(in: .whitespacesAndNewlines)
-        if cleaned.hasPrefix("#") { cleaned = String(cleaned.dropFirst()) }
-        guard cleaned.count == 6, let value = UInt64(cleaned, radix: 16) else { return nil }
-        let r = CGFloat((value >> 16) & 0xFF) / 255
-        let g = CGFloat((value >> 8) & 0xFF) / 255
-        let b = CGFloat(value & 0xFF) / 255
-        self.init(red: r, green: g, blue: b, alpha: 1)
-    }
-}
-
-// MARK: - Icon picker sheet wrapper (iOS image picker)
-struct AppIconPickerView: UIViewControllerRepresentable {
-    let onPick: (UIImage) -> Void
-    @Environment(\.dismiss) private var dismiss
-
-    func makeCoordinator() -> Coordinator { Coordinator(self) }
-
-    func makeUIViewController(context: Context) -> UIImagePickerController {
-        let picker = UIImagePickerController()
-        picker.sourceType = .photoLibrary
-        picker.allowsEditing = true
-        picker.delegate = context.coordinator
-        return picker
-    }
-
-    func updateUIViewController(_ uiViewController: UIImagePickerController, context: Context) {}
-
-    class Coordinator: NSObject, UIImagePickerControllerDelegate, UINavigationControllerDelegate {
-        let parent: AppIconPickerView
-        init(_ parent: AppIconPickerView) { self.parent = parent }
-
-        func imagePickerController(_ picker: UIImagePickerController,
-                                   didFinishPickingMediaWithInfo info: [UIImagePickerController.InfoKey: Any]) {
-            let img = (info[.editedImage] ?? info[.originalImage]) as? UIImage
-            picker.dismiss(animated: true)
-            if let img { parent.onPick(img) }
-        }
-
-        func imagePickerControllerDidCancel(_ picker: UIImagePickerController) {
-            picker.dismiss(animated: true)
         }
     }
 }

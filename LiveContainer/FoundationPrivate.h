@@ -1,6 +1,4 @@
 #include <Foundation/Foundation.h>
-#import "Intents/Intents.h"
-#import "CloudKit/CloudKit.h"
 
 @interface NSBundle(private)
 - (id)_cfBundle;

@@ -34,22 +34,21 @@ struct LCAppBanner : View {
     
     @State private var errorShow = false
     @State private var errorInfo = ""
-    let updateAction: (() -> Void)?
     
     @AppStorage("dynamicColors", store: LCUtils.appGroupUserDefault) var dynamicColors = true
     @AppStorage("darkModeIcon", store: LCUtils.appGroupUserDefault) var darkModeIcon = false
+
     @State private var mainColor : Color
     @State private var icon: UIImage
     
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject private var sharedModel : SharedModel
     
-    init(appModel: LCAppModel, delegate: LCAppBannerDelegate, appDataFolders: Binding<[String]>, tweakFolders: Binding<[String]>, updateAction: (() -> Void)? = nil) {
+    init(appModel: LCAppModel, delegate: LCAppBannerDelegate, appDataFolders: Binding<[String]>, tweakFolders: Binding<[String]>) {
         _appInfo = State(initialValue: appModel.appInfo)
         _appDataFolders = appDataFolders
         _tweakFolders = tweakFolders
         self.delegate = delegate
-        self.updateAction = updateAction
         
         _model = ObservedObject(wrappedValue: appModel)
         _mainColor = State(initialValue: Color.clear)
@@ -110,188 +109,74 @@ struct LCAppBanner : View {
                                     Capsule().fill(Color("BadgeColor"))
                                 )
                         }
-                        if model.uiSpoofCamera {
-                            Image(systemName: "camera.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.red)
-                                    // .frame(width: 16, height: 16)
-                            // Image(systemName: "camera.fill")
-                            //     .font(.system(size: 10, weight: .bold))
-                            //     .foregroundColor(.red)
-                            //     .frame(width: 16, height:16)
-                            //     .background(
-                            //         Capsule().fill(Color.red)
-                            //     )
-                        }
-                        if model.uiDeviceSpoofingEnabled {
-                            Image(systemName: "iphone.gen3")
-                                .font(.system(size: 16))
-                                .foregroundColor(.red)
-                        }
                     }
-                    
-                    HStack {
-                        Text("\(appInfo.version() ?? "") - \(appInfo.bundleIdentifier()!)")
-                            .font(.system(size: 12))
-                            .foregroundColor(.gray)
-                        Spacer()
+
+                    Text("\(model.version) - \(model.bundleIdentifier)").font(.system(size: 12)).foregroundColor(textColor)
+                    if !model.uiRemark.isEmpty {
+                        Text(model.uiRemark)
+                            .font(.system(size: 10))
+                            .foregroundColor(textColor.opacity(0.8))
+                            .lineLimit(1)
                     }
-                    
-                    // Container name
-                    if let selectedContainer = model.uiSelectedContainer {
-                        HStack {
-                            Text(selectedContainer.name)
-                                .font(.system(size: 12))
-                                .foregroundColor(.blue)
-                            Spacer()
-                        }
-                        
-                        // GPS Location display
-                        if model.uiSpoofGPS {
-                            HStack {
-                                Image(systemName: "location.fill")
-                                    .font(.system(size: 16))
-                                    .foregroundColor(.red)
-                                
-                                Text(locationDisplayText)
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.red)
-                                appContentView
-                                
-                                Spacer()
-                            }
-                        }
-                    }
+                    Text(model.uiSelectedContainer?.name ?? "lc.appBanner.noDataFolder".loc).font(.system(size: 8)).foregroundColor(textColor)
                 })
             }
             .allowsHitTesting(false)
             Spacer()
-            if let updateAction {
-                HStack(spacing: 0) {
-                    Button {
-                        updateAction()
-                    } label: {
-                        Text("Update").bold().foregroundColor(.white)
-                            .lineLimit(1)
-                            .padding(.horizontal, 12)
-                            .frame(height: 32)
-                            .minimumScaleFactor(0.1)
-                    }
-                    .buttonStyle(.plain)
-
-                    Divider()
-                        .frame(width: 1, height: 24)
-                        .background(Color.white.opacity(0.6))
-                        .padding(.vertical, 4)
-
-                    Button {
-                        if #available(iOS 16.0, *) {
-                             if let currentDataFolder = model.uiSelectedContainer?.folderName,
-                                MultitaskManager.isUsing(container: currentDataFolder) {
-                                 var found = false
-                                 if #available(iOS 16.1, *) {
-                                     found = MultitaskWindowManager.openExistingAppWindow(dataUUID: currentDataFolder)
-                                 }
-                                 if !found {
-                                     found = MultitaskDockManager.shared.bringMultitaskViewToFront(uuid: currentDataFolder)
-                                 }
-                                 if found {
-                                     return
-                                 }
-                             }
-
-                            Task{ await runApp() }
-                        } else {
-                            Task{ await runApp() }
-                        }
-                    } label: {
-                        if !model.isSigningInProgress {
-                            Text("lc.appBanner.run".loc).bold().foregroundColor(.white)
-                                .lineLimit(1)
-                                .padding(.horizontal, 12)
-                                .frame(height: 32)
-                                .minimumScaleFactor(0.1)
-                        } else {
-                            ProgressView().progressViewStyle(.circular)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 4)
-                .frame(height: 32)
-                .background(GeometryReader { g in
-                    if !model.isSigningInProgress {
-                        Capsule().fill(dynamicColors ? mainColor : Color("FontColor"))
-                    } else {
-                        let w = g.size.width
-                        let h = g.size.height
-                        Capsule()
-                            .fill(dynamicColors ? mainColor : Color("FontColor")).opacity(0.2)
-                        Circle()
-                            .fill(dynamicColors ? mainColor : Color("FontColor"))
-                            .frame(width: w * 2, height: w * 2)
-                            .offset(x: (model.signProgress - 2) * w, y: h/2-w)
-                    }
-                })
-                .clipShape(Capsule())
-                .contentShape(Capsule())
-                .disabled(model.isAppRunning)
-            } else {
-                Button {
-                    if #available(iOS 16.0, *) {
-                         if let currentDataFolder = model.uiSelectedContainer?.folderName,
-                            MultitaskManager.isUsing(container: currentDataFolder) {
-                             var found = false
-                             if #available(iOS 16.1, *) {
-                                 found = MultitaskWindowManager.openExistingAppWindow(dataUUID: currentDataFolder)
-                             }
-                             if !found {
-                                 found = MultitaskDockManager.shared.bringMultitaskViewToFront(uuid: currentDataFolder)
-                             }
-                             if found {
-                                 return
-                             }
+            Button {
+                if #available(iOS 16.0, *) {
+                     if let currentDataFolder = model.uiSelectedContainer?.folderName,
+                        MultitaskManager.isUsing(container: currentDataFolder) {
+                         var found = false
+                         if #available(iOS 16.1, *) {
+                             found = MultitaskWindowManager.openExistingAppWindow(dataUUID: currentDataFolder)
                          }
-
-                        Task{ await runApp() }
-                    } else {
-                        Task{ await runApp() }
-                    }
-                } label: {
-                    if !model.isSigningInProgress {
-                        Text("lc.appBanner.run".loc).bold().foregroundColor(.white)
-                            .lineLimit(1)
-                            .frame(height:32)
-                            .minimumScaleFactor(0.1)
-                    } else {
-                        ProgressView().progressViewStyle(.circular)
-                    }
+                         if !found {
+                             found = MultitaskDockManager.shared.bringMultitaskViewToFront(uuid: currentDataFolder)
+                         }
+                         if found {
+                             return
+                         }
+                     }
+                     
+                    Task{ await runApp() }
+                } else {
+                    Task{ await runApp() }
                 }
-                .buttonStyle(BasicButtonStyle())
-                .padding()
-                .frame(idealWidth: 70)
-                .frame(height: 32)
-                .fixedSize()
-                .background(GeometryReader { g in
-                    if !model.isSigningInProgress {
-                        Capsule().fill(dynamicColors ? mainColor : Color("FontColor"))
-                    } else {
-                        let w = g.size.width
-                        let h = g.size.height
-                        Capsule()
-                            .fill(dynamicColors ? mainColor : Color("FontColor")).opacity(0.2)
-                        Circle()
-                            .fill(dynamicColors ? mainColor : Color("FontColor"))
-                            .frame(width: w * 2, height: w * 2)
-                            .offset(x: (model.signProgress - 2) * w, y: h/2-w)
-                    }
-                })
-                .clipShape(Capsule())
-                .contentShape(Capsule())
-                .disabled(model.isAppRunning)
-            }
+            } label: {
+                if !model.isSigningInProgress {
+                    Text("lc.appBanner.run".loc).bold().foregroundColor(.white)
+                        .lineLimit(1)
+                        .frame(height:32)
+                        .minimumScaleFactor(0.1)
+                } else {
+                    ProgressView().progressViewStyle(.circular)
+                }
 
+            }
+            .buttonStyle(BasicButtonStyle())
+            .padding()
+            .frame(idealWidth: 70)
+            .frame(height: 32)
+            .fixedSize()
+            .background(GeometryReader { g in
+                if !model.isSigningInProgress {
+                    Capsule().fill(dynamicColors ? mainColor : Color("FontColor"))
+                } else {
+                    let w = g.size.width
+                    let h = g.size.height
+                    Capsule()
+                        .fill(dynamicColors ? mainColor : Color("FontColor")).opacity(0.2)
+                    Circle()
+                        .fill(dynamicColors ? mainColor : Color("FontColor"))
+                        .frame(width: w * 2, height: w * 2)
+                        .offset(x: (model.signProgress - 2) * w, y: h/2-w)
+                }
+
+            })
+            .clipShape(Capsule())
+            .contentShape(Capsule())
+            .disabled(model.isAppRunning)
         }
         .padding()
         .frame(height: 88)
@@ -301,9 +186,6 @@ struct LCAppBanner : View {
                     openSettings()
                 }
         }
-
-
-
         .fileExporter(
             isPresented: $saveIconExporterShow,
             document: saveIconFile,
@@ -352,82 +234,7 @@ struct LCAppBanner : View {
             mainColor = extractMainHueColor()
         }
     }
-
-    // MARK: - Computed Properties
-
-    private var currentColor: Color {
-        dynamicColors ? mainColor : Color("FontColor")
-    }
-
-    private var currentTextColor: Color {
-        let color = currentColor
-        return colorScheme == .dark ? color.readableTextColor() : color.readableTextColor()
-    }
-
-    @ViewBuilder
-    private var appContentView: some View {
-        // App name and badges
-        appNameRow(textColor: currentTextColor)
-
-        // Version and bundle ID
-        Text("\(appInfo.version() ?? "?") - \(appInfo.bundleIdentifier() ?? "?")")
-            .font(.system(size: 12))
-            .foregroundColor(currentTextColor)
-
-        // Remark if exists
-        if !model.uiRemark.isEmpty {
-            Text(model.uiRemark)
-                .font(.system(size: 10))
-                .foregroundColor(currentTextColor.opacity(0.8))
-                .lineLimit(1)
-        }
-
-        // Container name
-        Text(model.uiSelectedContainer?.name ?? "lc.appBanner.noDataFolder".loc)
-            .font(.system(size: 8))
-            .foregroundColor(currentTextColor)
-
-        // Storage size
-        Text("Uses \(appInfo.bundleSize()) of storage")
-            .font(.system(size: 8))
-            .foregroundColor(currentTextColor.opacity(0.7))
-    }
-
-    // MARK: - Helper Views
-
-    @ViewBuilder
-    private func appNameRow(textColor: Color) -> some View {
-        HStack {
-            Text(appInfo.displayName()).font(.system(size: 16)).bold()
-            if model.uiIsShared {
-                badgeView(systemName: "arrowshape.turn.up.left.fill", color: "BadgeColor")
-            }
-            if model.uiIsJITNeeded {
-                badgeView(systemName: "bolt.fill", color: "JITBadgeColor")
-            }
-#if is32BitSupported
-            if model.uiIs32bit {
-                Text("32")
-                    .font(.system(size: 8))
-                    .foregroundColor(.white)
-                    .frame(width: 16, height:16)
-                    .background(Capsule().fill(Color("32BitBadgeColor")))
-            }
-#endif
-            if model.uiIsLocked && !model.uiIsHidden {
-                badgeView(systemName: "lock.fill", color: "BadgeColor")
-            }
-        }
-    }
-
-    private func badgeView(systemName: String, color: String) -> some View {
-        Image(systemName: systemName)
-            .font(.system(size: 8))
-            .foregroundColor(.white)
-            .frame(width: 16, height:16)
-            .background(Capsule().fill(Color(color)))
-    }
-
+    
     func makeContextMenu() -> UIMenu {
         var menuChildren: [UIMenuElement] = []
 
@@ -459,7 +266,7 @@ struct LCAppBanner : View {
         if #available(iOS 16.0, *) {
             let runTitle = model.shouldLaunchInMultitaskMode ? "lc.appBanner.run".loc : "lc.appBanner.multitask".loc
             let runImage = model.shouldLaunchInMultitaskMode ? "play.fill" : "macwindow.badge.plus"
-
+            
             let multitaskAction = UIAction(title: runTitle, image: UIImage(systemName: runImage)) { _ in
                 Task { await runApp(multitask: !model.shouldLaunchInMultitaskMode) }
             }
@@ -483,27 +290,6 @@ struct LCAppBanner : View {
                                    children: subMenuActions)
         sectionChildren.append(addToHomeMenu)
 
-        let exportMenu = UIMenu(
-            title: "Export as IPA",
-            image: UIImage(systemName: "archivebox"),
-            children: [
-                UIAction(
-                    title: "Export IPA (App Only)",
-                    image: UIImage(systemName: "square.and.arrow.up")
-                ) { _ in
-                    Task { await exportIPA(includeData: false) }
-                },
-                UIAction(
-                    title: "Export IPA + Data",
-                    image: UIImage(systemName: "square.and.arrow.up.on.square")
-                ) { _ in
-                    Task { await exportIPA(includeData: true) }
-                }
-            ]
-        )
-
-    sectionChildren.append(exportMenu)
-
         // Settings
         let settingsAction = UIAction(title: "lc.tabView.settings".loc, image: UIImage(systemName: "gear")) { _ in
             openSettings()
@@ -526,8 +312,6 @@ struct LCAppBanner : View {
 
         return UIMenu(title: "", children: menuChildren)
     }
-
-    // MARK: - Functions
     
     func runApp(multitask: Bool? = nil) async {
         if appInfo.isLocked && !sharedModel.isHiddenAppUnlocked {
@@ -584,10 +368,8 @@ struct LCAppBanner : View {
             if doRemoveAppFolder {
                 for container in containers {
                     let dataUUID = container.folderName
-                    let dataFolderPath = container.containerURL
-                    if fm.fileExists(atPath: dataFolderPath.path) {
-                        try fm.removeItem(at: dataFolderPath)
-                    }
+                    let dataFolderPath = LCPath.dataPath.appendingPathComponent(dataUUID)
+                    try fm.removeItem(at: dataFolderPath)
                     LCUtils.removeAppKeychain(dataUUID: dataUUID)
                     
                     DispatchQueue.main.async {
@@ -693,109 +475,6 @@ struct LCAppBanner : View {
     
     func copyError() {
         UIPasteboard.general.string = errorInfo
-    }
-
-
-
-    // MARK: - Export IPA Functions
-
-    func exportIPA(includeData: Bool) async {
-        do {
-            let exportURL = try await createExportIPA(includeData: includeData)
-
-            // Show share sheet
-            await MainActor.run {
-                let activityVC = UIActivityViewController(
-                    activityItems: [exportURL],
-                    applicationActivities: nil
-                )
-
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let rootVC = windowScene.windows.first?.rootViewController {
-                    activityVC.popoverPresentationController?.sourceView = rootVC.view
-                    rootVC.present(activityVC, animated: true)
-                }
-            }
-        } catch {
-            errorInfo = error.localizedDescription
-            errorShow = true
-        }
-    }
-
-    func createExportIPA(includeData: Bool) async throws -> URL {
-        let fm = FileManager.default
-        let tmpDir = fm.temporaryDirectory.appendingPathComponent("IPAExport-\(UUID().uuidString)")
-        try fm.createDirectory(at: tmpDir, withIntermediateDirectories: true)
-
-        let payloadDir = tmpDir.appendingPathComponent("Payload")
-        try fm.createDirectory(at: payloadDir, withIntermediateDirectories: true)
-
-        let appBundlePath = URL(fileURLWithPath: appInfo.bundlePath()!)
-        let destAppPath = payloadDir.appendingPathComponent(appBundlePath.lastPathComponent)
-
-        // Copy app bundle
-        try fm.copyItem(at: appBundlePath, to: destAppPath)
-
-        if includeData, let containerFolder = model.uiSelectedContainer?.folderName {
-            // Create data folder inside app bundle
-            let dataPath = LCPath.dataPath.appendingPathComponent(containerFolder)
-            let destDataPath = destAppPath.appendingPathComponent("LCUserData")
-
-            if fm.fileExists(atPath: dataPath.path) {
-                try fm.copyItem(at: dataPath, to: destDataPath)
-            }
-        }
-
-        // Zip it
-        let ipaName = "\(appInfo.displayName()!)-\(includeData ? "WithData" : "AppOnly").ipa"
-        let ipaPath = fm.temporaryDirectory.appendingPathComponent(ipaName)
-
-        // Remove old IPA if exists
-        try? fm.removeItem(at: ipaPath)
-
-        // Create ZIP using NSFileCoordinator
-        try await zipDirectory(sourceURL: tmpDir, destinationURL: ipaPath)
-
-        // Cleanup
-        try? fm.removeItem(at: tmpDir)
-
-        return ipaPath
-    }
-
-    func zipDirectory(sourceURL: URL, destinationURL: URL) async throws {
-        return try await withCheckedThrowingContinuation { continuation in
-            let coordinator = NSFileCoordinator()
-            var error: NSError?
-
-            coordinator.coordinate(readingItemAt: sourceURL, options: [.forUploading], error: &error) { zippedURL in
-                do {
-                    // Remove old destination if exists
-                    if FileManager.default.fileExists(atPath: destinationURL.path) {
-                        try FileManager.default.removeItem(at: destinationURL)
-                    }
-
-                    // Copy the zip to final destination
-                    try FileManager.default.copyItem(at: zippedURL, to: destinationURL)
-                    continuation.resume()
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-
-            if let error = error {
-                continuation.resume(throwing: error)
-            }
-        }
-    }
-
-
-    
-    private var locationDisplayText: String {
-        if !model.uiSpoofLocationName.isEmpty && model.uiSpoofLocationName != "Unknown Location" {
-            return model.uiSpoofLocationName
-        } else {
-            return String(format: "%.4f, %.4f", model.uiSpoofLatitude, model.uiSpoofLongitude)
-        }
     }
 
 }

@@ -6,29 +6,18 @@
 //
 #import "AppSceneViewController.h"
 #import "DecoratedAppSceneViewController.h"
-#import <sys/sysctl.h>
-
+#import "LiveContainerSwiftUI-Swift.h"
+#import "../LiveContainerSwiftUI/Utilities/LCUtils.h"
 #import "PiPManager.h"
 #import "Localization.h"
 #import "LCSharedUtils.h"
 #import "utils.h"
-#import "../LiveContainerSwiftUI/Utilities/LCUtils.h"
-
-
-#import "FoundationPrivate.h"
-#import "UIKitPrivate+MultitaskSupport.h"
-
-
-#import "LiveContainerSwiftUI-Swift.h"
-
 
 @interface AppSceneViewController()
 @property int resizeDebounceToken;
 @property CGPoint normalizedOrigin;
 @property bool isNativeWindow;
 @property NSUUID* identifier;
-@property(nonatomic, strong) NSMutableArray *childProcessAssertions;
-@property(nonatomic, strong) NSTimer *childProcessMonitorTimer;
 @end
 
 @interface AppSceneViewController()
@@ -37,26 +26,6 @@
 @property(nonatomic) NSExtension* extension;
 @property(nonatomic) bool isAppTerminationCleanUpCalled;
 @end
-
-static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
-    UIWindowScene *windowScene = view.window.windowScene;
-    if (!windowScene) {
-        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-            if (![scene isKindOfClass:UIWindowScene.class]) {
-                continue;
-            }
-            UIWindowScene *candidateScene = (UIWindowScene *)scene;
-            if (candidateScene.activationState == UISceneActivationStateForegroundActive) {
-                windowScene = candidateScene;
-                break;
-            }
-            if (!windowScene) {
-                windowScene = candidateScene;
-            }
-        }
-    }
-    return windowScene ? windowScene.interfaceOrientation : UIInterfaceOrientationPortrait;
-}
 
 @implementation AppSceneViewController
 
@@ -141,7 +110,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 
     return self;
 }
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
+
 - (void)setUpAppPresenter {
     RBSProcessPredicate* predicate = [PrivClass(RBSProcessPredicate) predicateMatchingIdentifier:@(self.pid)];
     
@@ -165,27 +134,15 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     settings.foreground = YES;
     
     settings.deviceOrientation = UIDevice.currentDevice.orientation;
-    settings.interfaceOrientation = LCInterfaceOrientationForView(self.view);
-    {
-        // Scene frame always starts at (0,0). Centering is done by contentView.frame
-        // in viewWillLayoutSubviews / DecoratedAppSceneViewController. The scene's
-        // own coordinate space does not need an offset — that would shift the guest
-        // app's coordinate system rather than centering the visual.
-        CGFloat vW = self.view.frame.size.width;
-        CGFloat vH = self.view.frame.size.height;
-        CGFloat fW = vW, fH = vH;
-        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-            fW = MIN(vH * (9.0 / 16.0), vW);
-        }
-        if (UIInterfaceOrientationIsLandscape(settings.interfaceOrientation)) {
-            settings.frame = CGRectMake(0, 0, fH, fW);
-        } else {
-            settings.frame = CGRectMake(0, 0, fW, fH);
-        }
+    settings.interfaceOrientation = UIApplication.sharedApplication.statusBarOrientation;
+    if(UIInterfaceOrientationIsLandscape(settings.interfaceOrientation)) {
+        settings.frame = CGRectMake(0, 0, self.view.frame.size.height, self.view.frame.size.width);
+    } else {
+        settings.frame = CGRectMake(0, 0, self.view.frame.size.width, self.view.frame.size.height);
     }
     //settings.interruptionPolicy = 2; // reconnect
     settings.level = 1;
-    settings.persistenceIdentifier = nil;
+    settings.persistenceIdentifier = self.dataUUID;
     if(self.isNativeWindow) {
         UIEdgeInsets defaultInsets = self.view.window.safeAreaInsets;
         settings.peripheryInsets = defaultInsets;
@@ -223,41 +180,10 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     }];
     
     [self.contentView addSubview:self.presenter.presentationView];
-    self.presenter.presentationView.autoresizingMask = UIViewAutoresizingNone;
-    self.presenter.presentationView.translatesAutoresizingMaskIntoConstraints = YES;
-
-    // Size and center contentView immediately so the guest scene renders in the
-    // right place from the very first frame. viewWillLayoutSubviews keeps it
-    // updated whenever the parent view changes size.
-    dispatch_async(dispatch_get_main_queue(), ^{
-        [self.view setNeedsLayout];
-        [self.view layoutIfNeeded];
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)),
-                       dispatch_get_main_queue(), ^{
-            [self updateFrameWithSettingsBlock:nil];
-        });
-    });
-
-
-
-//if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-    //CGFloat viewW = self.view.bounds.size.width;
-    //CGFloat viewH = self.view.bounds.size.height;
-    //CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
-    //CGFloat offsetX = (viewW - targetW) / 2.0;
-    //self.contentView.layer.position = CGPointMake(offsetX, 0);
-    //self.contentView.bounds = CGRectMake(0, 0, targetW, viewH);
-//}
-
-
+    self.contentView.layer.anchorPoint = CGPointMake(0, 0);
+    self.contentView.layer.position = CGPointMake(0, 0);
+    
     [self.view.window.windowScene _registerSettingsDiffActionArray:@[self] forKey:self.sceneID];
-
-    // Disable background notifications so WebKit doesn't pause media in multitasking
-    [self setBackgroundNotificationEnabled:false];
-
-    // Acquire foreground assertions for WebKit child processes (WebContent, GPU)
-    // to prevent iOS 17+ from throttling their display link / rendering pipeline
-    [self acquireForegroundAssertionForChildProcesses];
 }
 
 - (void)terminate {
@@ -268,7 +194,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
         });
     }    
 }
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
+
 - (void)_performActionsForUIScene:(UIScene *)scene withUpdatedFBSScene:(id)fbsScene settingsDiff:(FBSSceneSettingsDiff *)diff fromSettings:(UIApplicationSceneSettings *)settings transitionContext:(id)context lifecycleActionType:(uint32_t)actionType {
     if(!self.isAppRunning) {
         [self appTerminationCleanUp];
@@ -279,39 +205,19 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     UIApplicationSceneTransitionContext *newContext = [context copy];
     newContext.actions = nil;
     if(self.isNativeWindow) {
+        // directly update the settings
         baseSettings.interruptionPolicy = 0;
         baseSettings.peripheryInsets = self.view.window.safeAreaInsets;
         [self.presenter.scene updateSettings:baseSettings withTransitionContext:newContext completion:nil];
-   } else {
+    } else {
         [self.delegate appSceneVC:self didUpdateFromSettings:baseSettings transitionContext:newContext];
-
-}
-}
-
-
-
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
-- (void)viewWillLayoutSubviews {
-    [super viewWillLayoutSubviews];
-    CGFloat viewW = self.view.bounds.size.width;
-    CGFloat viewH = self.view.bounds.size.height;
-    if (self.presenter.presentationView) {
-        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-            CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
-            CGFloat offsetX = (viewW - targetW) / 2.0;
-            self.contentView.autoresizingMask = UIViewAutoresizingNone;
-            self.contentView.frame = CGRectMake(offsetX, 0, targetW, viewH);
-        } else {
-            self.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-            self.contentView.frame = CGRectMake(0, 0, viewW, viewH);
-        }
     }
+}
+
+- (void)viewWillLayoutSubviews {
     [self updateFrameWithSettingsBlock:self.nextUpdateSettingsBlock];
     self.nextUpdateSettingsBlock = nil;
 }
-
-
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
 - (void)updateFrameWithSettingsBlock:(void (^)(UIMutableApplicationSceneSettings *settings))block {
     __block int currentDebounceToken = self.resizeDebounceToken + 1;
     _resizeDebounceToken = currentDebounceToken;
@@ -320,28 +226,12 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
         if(currentDebounceToken != self.resizeDebounceToken) {
             return;
         }
-        CGFloat w = self.view.frame.size.width / self.scaleRatio;
-        CGFloat h = self.view.frame.size.height / self.scaleRatio;
-        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-            CGFloat targetW = MIN(h * (9.0 / 16.0), w);
-            // In native-window (fullscreen) mode the scene frame is in screen
-            // coordinates, so we offset to center. In virtual-window (windowed)
-            // mode the frame origin is always (0,0) — centering is purely a
-            // contentView.frame concern handled by viewWillLayoutSubviews and
-            // DecoratedAppSceneViewController.
-            if (self.isNativeWindow) {
-                // no-op: native window uses full-screen coords — center offset
-                // is not needed here because the scene fills the whole display.
-            }
-            w = targetW;
-        }
-        CGRect frame = CGRectMake(0, 0, w, h);
-
+        CGRect frame = CGRectMake(self.view.frame.origin.x, self.view.frame.origin.y, self.view.frame.size.width / self.scaleRatio, self.view.frame.size.height / self.scaleRatio);
         [self.presenter.scene updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
             settings.deviceOrientation = UIDevice.currentDevice.orientation;
             settings.interfaceOrientation = self.view.window.windowScene.interfaceOrientation;
             if(UIInterfaceOrientationIsLandscape(settings.interfaceOrientation)) {
-                CGRect frame2 = CGRectMake(0, 0, frame.size.height, frame.size.width);
+                CGRect frame2 = CGRectMake(frame.origin.x, frame.origin.y, frame.size.height, frame.size.width);
                 settings.frame = frame2;
             } else {
                 settings.frame = frame;
@@ -353,7 +243,6 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     });
 }
 
-
 - (BOOL)isAppRunning {
     return _pid > 0 && getpgid(_pid) > 0;
 }
@@ -363,7 +252,6 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
         return;
     }
     _isAppTerminationCleanUpCalled = true;
-    [self invalidateChildProcessAssertions];
     dispatch_async(dispatch_get_main_queue(), ^{
         if(self.sceneID) {
             [[PrivClass(FBSceneManager) sharedInstance] destroyScene:self.sceneID withTransitionContext:nil];
@@ -418,107 +306,6 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
         context.actions = [NSSet setWithObject:action];
         return context;
     }];
-}
-
-#pragma mark - WebKit child process foreground assertions (iOS 17+ media fix)
-
-- (void)acquireForegroundAssertionForChildProcesses {
-    if (@available(iOS 17.0, *)) {} else return; // Only needed on iOS 17+
-
-    self.childProcessAssertions = [NSMutableArray array];
-
-    // 1. Take a foreground assertion for the guest app process itself
-    [self acquireAssertionForPid:self.pid explanation:@"LiveContainer guest app foreground"];
-
-    // 2. Monitor for WebKit child processes (WebContent, GPU) spawned by the guest app
-    //    They appear shortly after the guest app creates a WKWebView
-    __weak typeof(self) weakSelf = self;
-    NSMutableSet *knownPids = [NSMutableSet set];
-    self.childProcessMonitorTimer = [NSTimer timerWithTimeInterval:2.0 repeats:YES block:^(NSTimer *timer) {
-        if (!weakSelf || !weakSelf.isAppRunning) {
-            [timer invalidate];
-            return;
-        }
-        NSArray *childPids = [weakSelf findChildProcessesOfPid:weakSelf.pid];
-        for (NSNumber *childPid in childPids) {
-            if (![knownPids containsObject:childPid]) {
-                [knownPids addObject:childPid];
-                NSString *explanation = [NSString stringWithFormat:@"LiveContainer WebKit child (pid %@)", childPid];
-                [weakSelf acquireAssertionForPid:childPid.intValue explanation:explanation];
-                NSLog(@"[LiveContainer] Acquired foreground assertion for child process %@", childPid);
-            }
-        }
-    }];
-    [[NSRunLoop mainRunLoop] addTimer:self.childProcessMonitorTimer forMode:NSRunLoopCommonModes];
-}
-
-- (void)acquireAssertionForPid:(pid_t)pid explanation:(NSString *)explanation {
-    Class RBSAssertionClass = NSClassFromString(@"RBSAssertion");
-    Class RBSDomainAttributeClass = NSClassFromString(@"RBSDomainAttribute");
-    Class RBSTargetClass = NSClassFromString(@"RBSTarget");
-    if (!RBSAssertionClass || !RBSDomainAttributeClass || !RBSTargetClass) return;
-
-    RBSTarget *target = [RBSTargetClass targetWithPid:pid];
-
-    // Request foreground visibility — this grants rendering/display link access
-    NSMutableArray *attributes = [NSMutableArray array];
-
-    // Try various domain attributes that grant rendering access
-    id fgAttr = [RBSDomainAttributeClass attributeWithDomain:@"com.apple.frontboard.visibility"
-                                                        name:@"Foreground"];
-    if (fgAttr) [attributes addObject:fgAttr];
-
-    id gpuAttr = [RBSDomainAttributeClass attributeWithDomain:@"com.apple.common"
-                                                         name:@"UserInteractiveNonFocal"];
-    if (gpuAttr) [attributes addObject:gpuAttr];
-
-    if (attributes.count == 0) return;
-
-    RBSAssertion *assertion = [[RBSAssertionClass alloc] initWithExplanation:explanation
-                                                                     target:target
-                                                                 attributes:attributes];
-    NSError *error = nil;
-    BOOL acquired = [assertion acquireWithError:&error];
-    if (acquired) {
-        [self.childProcessAssertions addObject:assertion];
-        NSLog(@"[LiveContainer] Foreground assertion acquired for pid %d", pid);
-    } else {
-        NSLog(@"[LiveContainer] Failed to acquire assertion for pid %d: %@", pid, error);
-    }
-}
-
-- (NSArray<NSNumber *> *)findChildProcessesOfPid:(pid_t)parentPid {
-    // Use sysctl to find all processes, then filter by parent pid
-    NSMutableArray *children = [NSMutableArray array];
-
-    int mib[4] = {CTL_KERN, KERN_PROC, KERN_PROC_ALL, 0};
-    size_t size = 0;
-    if (sysctl(mib, 4, NULL, &size, NULL, 0) != 0) return children;
-
-    struct kinfo_proc *procs = (struct kinfo_proc *)malloc(size);
-    if (!procs) return children;
-
-    if (sysctl(mib, 4, procs, &size, NULL, 0) == 0) {
-        int count = (int)(size / sizeof(struct kinfo_proc));
-        for (int i = 0; i < count; i++) {
-            pid_t ppid = procs[i].kp_eproc.e_ppid;
-            pid_t pid = procs[i].kp_proc.p_pid;
-            if (ppid == parentPid && pid != parentPid) {
-                [children addObject:@(pid)];
-            }
-        }
-    }
-    free(procs);
-    return children;
-}
-
-- (void)invalidateChildProcessAssertions {
-    [self.childProcessMonitorTimer invalidate];
-    self.childProcessMonitorTimer = nil;
-    for (RBSAssertion *assertion in self.childProcessAssertions) {
-        [assertion invalidate];
-    }
-    [self.childProcessAssertions removeAllObjects];
 }
 
 @end

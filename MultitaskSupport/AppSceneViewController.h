@@ -4,7 +4,6 @@
 //
 //  Created by s s on 2025/5/17.
 //
-#pragma once
 #import "UIKitPrivate+MultitaskSupport.h"
 #import "FoundationPrivate.h"
 @import UIKit;
@@ -40,6 +39,5 @@ API_AVAILABLE(ios(16.0))
 - (void)terminate;
 - (void)openURLScheme:(NSString *)urlString;
 - (void)handleStatusBarTapAction:(UIAction *)action;
-- (void)acquireForegroundAssertionForChildProcesses;
 @end
 

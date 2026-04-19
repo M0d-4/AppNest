@@ -9,13 +9,10 @@ void swizzle(Class class, SEL originalAction, SEL swizzledAction);
 bool performHookDyldApi(const char* functionName, uint32_t adrpOffset, void** origFunction, void* hookFunction);
 
 void NUDGuestHooksInit(void);
-void LCExitButtonGuestHooksInit(BOOL isLiveProcess, BOOL isSideStore);
 void SecItemGuestHooksInit(void);
 void DyldHooksInit(bool hideLiveContainer, bool hookDlopen, uint32_t spoofSDKVersion);
 void NSFMGuestHooksInit(void);
 void initDead10ccFix(void);
-// Device spoofing
-void DeviceSpoofingGuestHooksInit(void);
 
 @interface NSBundle(LiveContainer)
 - (instancetype)initWithPathForMainBundle:(NSString *)path;

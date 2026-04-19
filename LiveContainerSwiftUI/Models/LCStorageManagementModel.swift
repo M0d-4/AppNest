@@ -287,11 +287,7 @@ final class LCStorageManagementModel: ObservableObject {
         }
 
         var totalSize: Int64 = 0
-        // Collect all URLs upfront to avoid Swift 6 error:
-        // "instance method 'makeIterator' is unavailable from asynchronous contexts"
-        // NSDirectoryEnumerator's iterator is not safe to use directly in async code.
-        let allURLs = enumerator.compactMap { $0 as? URL }
-        for fileURL in allURLs {
+        for case let fileURL as URL in enumerator {
             try Task.checkCancellation()
 
             let resourceValues = try fileURL.resourceValues(forKeys: resourceKeys)

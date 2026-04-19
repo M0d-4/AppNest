@@ -47,32 +47,6 @@ NSError* makeErrorFromLog(const std::vector<std::string>& vec) {
     return [NSError errorWithDomain:@"Failed to Sign" code:-1 userInfo:userInfo];
 }
 
-NSError* makePartialSignError(const std::string& failedFiles, const std::vector<std::string>& logs) {
-    NSMutableString *result = [NSMutableString string];
-
-    if (!failedFiles.empty()) {
-        [result appendString:[NSString stringWithUTF8String:failedFiles.c_str()]];
-    }
-
-    if (!logs.empty()) {
-        if (result.length > 0) {
-            [result appendString:@"\n\n"];
-        }
-        for (size_t i = 0; i < logs.size(); ++i) {
-            NSString *str = [NSString stringWithUTF8String:logs[i].c_str()];
-            [result appendString:str];
-            if (![str hasSuffix:@"\n"] && i != logs.size() - 1) {
-                [result appendString:@"\n"];
-            }
-        }
-    }
-
-    NSDictionary* userInfo = @{
-        NSLocalizedDescriptionKey : result
-    };
-    return [NSError errorWithDomain:@"Failed to Sign" code:-1 userInfo:userInfo];
-}
-
 ZSignAsset zSignAsset;
 
 void zsign(NSString *appPath,
@@ -140,17 +114,14 @@ void zsign(NSString *appPath,
     bool bRet = bundle.StartSign(bEnableCache);
     timer.PrintResult(bRet, ">>> Signed %s!", bRet ? "OK" : "Failed");
     gtimer.Print(">>> Done.");
-    if (!bRet) {
-        completionHandler(NO, makeErrorFromLog(ZLog::logs));
-        ZLog::logs.clear();
-        return;
-    }
-
     NSError* signError = nil;
-    if (!bundle.signFailedFiles.empty()) {
-        signError = makePartialSignError(bundle.signFailedFiles, ZLog::logs);
+    if(!bundle.signFailedFiles.empty()) {
+        NSDictionary* userInfo = @{
+            NSLocalizedDescriptionKey : [NSString stringWithUTF8String:bundle.signFailedFiles.c_str()]
+        };
+        signError = [NSError errorWithDomain:@"Failed to Sign" code:-1 userInfo:userInfo];
     }
-
+    
     completionHandler(YES, signError);
     ZLog::logs.clear();
     
