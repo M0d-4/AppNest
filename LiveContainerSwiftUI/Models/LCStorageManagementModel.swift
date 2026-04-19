@@ -91,12 +91,15 @@ final class LCStorageManagementModel: ObservableObject {
         
         sizesByCategory[.appBundle] = 0
         sizesByCategory[.containers] = 0
+                
+        var sideStoreContainerSize: Int64 = 0
         for appItem in appItems {
-            if appItem.appModel.appInfo is BuiltInSideStoreAppInfo {
-                continue
+            if !(appItem.appModel.appInfo is BuiltInSideStoreAppInfo) {
+                sizesByCategory[.appBundle]! += appItem.bundleSize ?? 0
+            } else {
+                sideStoreContainerSize = appItem.containersSize
             }
             
-            sizesByCategory[.appBundle]! += appItem.bundleSize ?? 0
             for containerDetail in appItem.containerDetails {
                 if containerDetail.isExternalContainer {
                     continue
@@ -131,11 +134,13 @@ final class LCStorageManagementModel: ObservableObject {
         let appGroupSize = sizesByCategory[.appGroup] ?? 0
         let tweaksSize = sizesByCategory[.tweaks] ?? 0
         let knownRootsSize = try await calculateCombinedSize(of: knownRoots)
-        let excludedRoots = bundleRoots + containerRoots + appGroupRoots + tweakRoots
-        let looseFilesSize = try await calculateLooseFilesSize(in: knownRoots, excluding: excludedRoots)
+        var librarySize: Int64 = 0
+        if let libraryPath = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first {
+            librarySize = try await calculateSize(at: libraryPath)
+        }
         // Other is the residual after explicit categories are removed from the known storage roots, plus loose root-level files.
-        let residualOtherSize = max(0, knownRootsSize - appBundleSize - containersSize - appGroupSize - tweaksSize - looseFilesSize)
-        let otherSize = residualOtherSize + looseFilesSize
+        let residualOtherSize = max(0, knownRootsSize - appBundleSize - containersSize - appGroupSize - tweaksSize - sideStoreContainerSize)
+        let otherSize = residualOtherSize + librarySize
 
         return LCStorageBreakdown(
             totalSize: appBundleSize + containersSize + temporaryFilesSize + appGroupSize + tweaksSize + otherSize,
@@ -264,49 +269,6 @@ final class LCStorageManagementModel: ObservableObject {
         return uniqueURLs
     }
 
-    nonisolated private static func calculateLooseFilesSize(in roots: [URL], excluding excludedRoots: [URL]) async throws -> Int64 {
-        let fileManager = FileManager.default
-        let excludedPaths = Set(excludedRoots.map { $0.standardizedFileURL.path })
-        let resourceKeys: Set<URLResourceKey> = [
-            .isDirectoryKey,
-            .isRegularFileKey,
-            .totalFileAllocatedSizeKey,
-            .fileAllocatedSizeKey,
-            .fileSizeKey
-        ]
-
-        var totalSize: Int64 = 0
-
-        for root in roots {
-            let children = try fileManager.contentsOfDirectory(
-                at: root,
-                includingPropertiesForKeys: Array(resourceKeys),
-                options: []
-            )
-
-            for child in children {
-                try Task.checkCancellation()
-
-                let standardizedChildPath = child.standardizedFileURL.path
-                guard !excludedPaths.contains(standardizedChildPath) else {
-                    continue
-                }
-
-                let resourceValues = try child.resourceValues(forKeys: resourceKeys)
-                guard resourceValues.isRegularFile == true else {
-                    continue
-                }
-
-                let fileSize = resourceValues.totalFileAllocatedSize
-                    ?? resourceValues.fileAllocatedSize
-                    ?? resourceValues.fileSize
-                    ?? 0
-                totalSize += Int64(fileSize)
-            }
-        }
-
-        return totalSize
-    }
 
     nonisolated private static func calculateSize(at url: URL) async throws -> Int64 {
         let fileManager = FileManager.default
