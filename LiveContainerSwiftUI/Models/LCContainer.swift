@@ -185,7 +185,7 @@ extension LCAppInfo {
     var containers : [LCContainer] {
         get {
             if self is BuiltInSideStoreAppInfo {
-                let container = LCContainer(infoDict: ["name": "SideStore"], isShared: false)
+                let container = LCContainer(folderName: "", name: "SideStore", isShared: false)
                 container.resolvedContainerURL = LCPath.docPath.appendingPathComponent("SideStore")
                 return [container]
             }
