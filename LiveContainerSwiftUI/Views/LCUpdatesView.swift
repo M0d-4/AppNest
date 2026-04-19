@@ -253,8 +253,8 @@ struct LCUpdatesView: View {
         }
 
         let downloadURL = entry.newVersion.downloadURL
-        // Fire notification directly — do NOT switch tabs yet.
-        // installFromUrl will redirect to Apps after the download finishes.
+        // Post notification immediately — onReceive in LCAppListView fires from any tab.
+        // The tab switch to Apps happens inside installFromUrl after download completes.
         NotificationCenter.default.post(
             name: NSNotification.InstallAppNotification,
             object: [

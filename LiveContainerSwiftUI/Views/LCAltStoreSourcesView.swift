@@ -691,20 +691,16 @@ struct LCSourcesView: View {
             errorMessage = "lc.sources.error.missingDownload".loc
             return
         }
-        // Do NOT redirect to apps tab immediately — the redirect will happen
-        // automatically inside installFromUrl once the download completes.
-        // Post the notification after a short delay so LCAppListView's onReceive
-        // is live (it observes even when not the selected tab).
-        let iconURL = app.iconURL
+        // Post notification immediately — LCAppListView's onReceive fires from any tab.
+        // The redirect to Apps tab happens inside installFromUrl once download finishes.
         let appName = app.name
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
-            var payload: [String: Any] = ["url": downloadURL, "appName": appName]
-            if let iconURL { payload["iconURL"] = iconURL }
-            NotificationCenter.default.post(
-                name: NSNotification.InstallAppNotification,
-                object: payload
-            )
-        }
+        let iconURL = app.iconURL
+        var payload: [String: Any] = ["url": downloadURL, "appName": appName]
+        if let iconURL { payload["iconURL"] = iconURL }
+        NotificationCenter.default.post(
+            name: NSNotification.InstallAppNotification,
+            object: payload
+        )
     }
     
     private func toggleExpansion(for id: URL) {
