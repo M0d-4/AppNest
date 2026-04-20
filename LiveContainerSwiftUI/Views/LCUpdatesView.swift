@@ -250,15 +250,15 @@ struct LCUpdatesView: View {
             .flatMap { $0.apps }
             .first { $0.bundleIdentifier == bundleId }?
             .iconURL
-        NotificationCenter.default.post(
-            name: NSNotification.InstallAppNotification,
-            object: [
-                "url":     downloadURL,
-                "appName": entry.app.appInfo.displayName() as Any,
-                "isUpdate": true,
-                "iconURL": sourceIconURL as Any
-            ]
+        // Push to the structured queue — LCAppListView drains it fully
+        // (download → wait → switch to apps tab → install) in order.
+        let installEntry = SharedModel.PendingInstall(
+            url: downloadURL,
+            isUpdate: true,
+            appName: entry.app.appInfo.displayName(),
+            iconURL: sourceIconURL
         )
+        sharedModel.pendingInstallQueue.append(installEntry)
 
         // Monitor until this download item leaves the queue, then clear the badge.
         Task {

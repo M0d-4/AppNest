@@ -79,6 +79,17 @@ class SharedModel: ObservableObject {
     /// Push URLs here from anywhere; LCAppListView drains them one-by-one.
     @Published var pendingInstallURLs: [URL] = []
 
+    /// Structured install queue — carries isUpdate flag alongside each URL.
+    /// LCAppListView observes this and drains it, processing each entry fully
+    /// (download → wait → switch tab → install) before moving to the next.
+    struct PendingInstall {
+        let url: URL
+        let isUpdate: Bool
+        let appName: String
+        let iconURL: URL?
+    }
+    @Published var pendingInstallQueue: [PendingInstall] = []
+
     /// Shared download helper — observed by both LCAppListView and LCUpdatesView.
     let downloadHelper = DownloadHelper()
     private var downloadHelperCancellable: AnyCancellable?

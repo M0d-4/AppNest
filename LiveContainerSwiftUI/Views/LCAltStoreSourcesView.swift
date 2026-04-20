@@ -688,16 +688,15 @@ struct LCSourcesView: View {
             errorMessage = "lc.sources.error.missingDownload".loc
             return
         }
-        // Pre-set name and icon so the tray row shows them immediately.
-        sharedModel.downloadHelper._pendingLegacyName = app.name
-        sharedModel.downloadHelper._pendingIconURL = app.iconURL
-        // Post notification — LCAppListView receives it, enqueues the download,
-        // and switches to the apps tab only AFTER the download finishes.
-        NotificationCenter.default.post(
-            name: NSNotification.InstallAppNotification,
-            object: ["url": downloadURL, "appName": app.name, "iconURL": app.iconURL as Any]
+        // Push to the structured queue — LCAppListView drains it, downloading
+        // first and only switching to apps tab after the download completes.
+        let entry = SharedModel.PendingInstall(
+            url: downloadURL,
+            isUpdate: false,
+            appName: app.name,
+            iconURL: app.iconURL
         )
-        // Do NOT switch tabs here — installFromUrl switches after download completes.
+        sharedModel.pendingInstallQueue.append(entry)
     }
     
     private func toggleExpansion(for id: URL) {
