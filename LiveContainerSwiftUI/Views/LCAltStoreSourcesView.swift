@@ -691,14 +691,13 @@ struct LCSourcesView: View {
         // Pre-set name and icon so the tray row shows them immediately.
         sharedModel.downloadHelper._pendingLegacyName = app.name
         sharedModel.downloadHelper._pendingIconURL = app.iconURL
-        // Post notification — LCAppListView receives it, starts the download,
-        // and will switch to the apps tab only after the download finishes.
+        // Post notification — LCAppListView receives it, enqueues the download,
+        // and switches to the apps tab only AFTER the download finishes.
         NotificationCenter.default.post(
             name: NSNotification.InstallAppNotification,
             object: ["url": downloadURL, "appName": app.name, "iconURL": app.iconURL as Any]
         )
-        // Switch to apps tab immediately so the user can see the download tray.
-        withAnimation { DataManager.shared.model.selectedTab = .apps }
+        // Do NOT switch tabs here — installFromUrl switches after download completes.
     }
     
     private func toggleExpansion(for id: URL) {

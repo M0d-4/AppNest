@@ -166,78 +166,7 @@ struct LCAppBanner : View {
             }
             .allowsHitTesting(false)
             Spacer()
-            if let updateAction {
-                HStack(spacing: 0) {
-                    Button {
-                        updateAction()
-                    } label: {
-                        Text("Update").bold().foregroundColor(.white)
-                            .lineLimit(1)
-                            .padding(.horizontal, 12)
-                            .frame(height: 32)
-                            .minimumScaleFactor(0.1)
-                    }
-                    .buttonStyle(.plain)
-
-                    Divider()
-                        .frame(width: 1, height: 24)
-                        .background(Color.white.opacity(0.6))
-                        .padding(.vertical, 4)
-
-                    Button {
-                        if #available(iOS 16.0, *) {
-                             if let currentDataFolder = model.uiSelectedContainer?.folderName,
-                                MultitaskManager.isUsing(container: currentDataFolder) {
-                                 var found = false
-                                 if #available(iOS 16.1, *) {
-                                     found = MultitaskWindowManager.openExistingAppWindow(dataUUID: currentDataFolder)
-                                 }
-                                 if !found {
-                                     found = MultitaskDockManager.shared.bringMultitaskViewToFront(uuid: currentDataFolder)
-                                 }
-                                 if found {
-                                     return
-                                 }
-                             }
-
-                            Task{ await runApp() }
-                        } else {
-                            Task{ await runApp() }
-                        }
-                    } label: {
-                        if !model.isSigningInProgress {
-                            Text("lc.appBanner.run".loc).bold().foregroundColor(.white)
-                                .lineLimit(1)
-                                .padding(.horizontal, 12)
-                                .frame(height: 32)
-                                .minimumScaleFactor(0.1)
-                        } else {
-                            ProgressView().progressViewStyle(.circular)
-                        }
-                    }
-                    .buttonStyle(.plain)
-                }
-                .padding(.horizontal, 4)
-                .padding(.vertical, 4)
-                .frame(height: 32)
-                .background(GeometryReader { g in
-                    if !model.isSigningInProgress {
-                        Capsule().fill(dynamicColors ? mainColor : Color("FontColor"))
-                    } else {
-                        let w = g.size.width
-                        let h = g.size.height
-                        Capsule()
-                            .fill(dynamicColors ? mainColor : Color("FontColor")).opacity(0.2)
-                        Circle()
-                            .fill(dynamicColors ? mainColor : Color("FontColor"))
-                            .frame(width: w * 2, height: w * 2)
-                            .offset(x: (model.signProgress - 2) * w, y: h/2-w)
-                    }
-                })
-                .clipShape(Capsule())
-                .contentShape(Capsule())
-                .disabled(model.isAppRunning)
-            } else {
+            do {
                 Button {
                     if #available(iOS 16.0, *) {
                          if let currentDataFolder = model.uiSelectedContainer?.folderName,

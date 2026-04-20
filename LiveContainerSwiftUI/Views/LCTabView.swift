@@ -163,24 +163,12 @@ struct LCTabView: View {
         }
         .apply {
             if #available(iOS 16.0, *) {
-                // Hide tab bar during multiselect OR when inside app settings
-                let shouldHide = sharedModel.isMultiSelectMode || sharedModel.isInAppSettings
-                $0.toolbar(shouldHide ? .hidden : .visible, for: .tabBar)
+                // Only hide tab bar when inside app settings, NOT during multiselect.
+                // Hiding during multiselect causes SwiftUI to misalign toolbar button
+                // hit-test rects, making trash/lock buttons unresponsive.
+                $0.toolbar(sharedModel.isInAppSettings ? .hidden : .visible, for: .tabBar)
             } else {
                 $0
-            }
-        }
-        .onChange(of: sharedModel.isMultiSelectMode) { hiding in
-            // Fallback for iOS < 16 and for any tab bar variant not caught by the toolbar modifier
-            if let tabBar = UIApplication.shared.connectedScenes
-                .compactMap({ $0 as? UIWindowScene })
-                .flatMap({ $0.windows })
-                .compactMap({ $0.rootViewController })
-                .flatMap({ Self.allTabBars(in: $0) })
-                .first {
-                UIView.animate(withDuration: 0.25) {
-                    tabBar.alpha = hiding ? 0 : 1
-                }
             }
         }
 

@@ -240,16 +240,13 @@ struct LCSettingsView: View {
                     Toggle(isOn: $silentSwitchApp) {
                         Text("lc.settings.silentSwitchApp".loc)
                     }
-                } footer: {
-                    Text("lc.settings.silentSwitchAppDesc".loc)
-                }
-                
-                Section {
                     Toggle(isOn: $silentOpenWebPage) {
                         Text("lc.settings.silentOpenWebPage".loc)
                     }
+                } header: {
+                    Text("lc.common.miscellaneous".loc)
                 } footer: {
-                    Text("lc.settings.silentOpenWebPageDesc".loc)
+                    Text("lc.settings.silentSwitchAppDesc".loc)
                 }
 
                 Section {

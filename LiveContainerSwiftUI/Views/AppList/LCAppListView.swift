@@ -394,14 +394,79 @@ func setMode(_ mode: AppLaunchMode) {
 
                 // ── Trailing: link button (hidden during multi-select) ──
                 ToolbarItem(placement: .topBarTrailing) {
-                    if !isMultiSelectMode {
-                        Button("lc.appList.openLink".loc, systemImage: "link", action: {
-                            Task { await onOpenWebViewTapped() }
-                        })
-                    }
+                    Button("lc.appList.openLink".loc, systemImage: "link", action: {
+                        Task { await onOpenWebViewTapped() }
+                    })
+                    .opacity(isMultiSelectMode ? 0 : 1)
+                    .disabled(isMultiSelectMode)
                 }
 
-                // ── Trailing: select / cancel toggle ──
+                // ── Trailing: sort menu (hidden during multi-select) ──
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Sort by", selection: $sharedAppSortManager.appSortType) {
+                            ForEach(AppSortType.allCases, id: \.self) { sortType in
+                                Label(sortType.displayName, systemImage: sortType.systemImage)
+                                    .tag(sortType)
+                            }
+                        }
+                        .onChange(of: sharedAppSortManager.appSortType) { newValue in
+                            if sharedAppSortManager.appSortType == .custom {
+                                customSortViewPresent = true
+                            }
+                        }
+                        if sharedAppSortManager.appSortType == .custom {
+                            Divider()
+                            Button {
+                                customSortViewPresent = true
+                            } label: {
+                                Label("lc.appList.sort.customManage".loc, systemImage: "slider.horizontal.3")
+                            }
+                        }
+                    } label: {
+                        Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
+                    }
+                    .opacity(isMultiSelectMode ? 0 : 1)
+                    .disabled(isMultiSelectMode)
+                }
+
+                // ── Trailing: delete-data toggle (always present, visible only in multi-select) ──
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation { deleteAppData.toggle() }
+                    } label: {
+                        Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
+                            .foregroundColor(deleteAppData ? .red : .secondary)
+                    }
+                    .opacity(isMultiSelectMode ? 1 : 0)
+                    .disabled(!isMultiSelectMode || isDeleting)
+                }
+
+                // ── Trailing: lock-and-hide button (always present, visible only in multi-select) ──
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await lockAndHideSelectedApps() }
+                    } label: {
+                        Image(systemName: "lock.fill")
+                            .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
+                    }
+                    .opacity(isMultiSelectMode ? 1 : 0)
+                    .disabled(!isMultiSelectMode || selectedAppsForDeletion.isEmpty || isDeleting)
+                }
+
+                // ── Trailing: trash button (always present, visible only in multi-select) ──
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await deleteSelectedApps() }
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
+                    }
+                    .opacity(isMultiSelectMode ? 1 : 0)
+                    .disabled(!isMultiSelectMode || selectedAppsForDeletion.isEmpty || isDeleting)
+                }
+
+                // ── Trailing: select / cancel toggle (always present) ──
                 ToolbarItem(placement: .topBarTrailing) {
                     Button {
                         withAnimation {
@@ -419,92 +484,9 @@ func setMode(_ mode: AppLaunchMode) {
                     }
                     .disabled(isDeleting)
                 }
-
-                // ── Trailing: sort menu (hidden during multi-select) ──
-                ToolbarItem(placement: .topBarTrailing) {
-                    if !isMultiSelectMode {
-                        Menu {
-                            Picker("Sort by", selection: $sharedAppSortManager.appSortType) {
-                                ForEach(AppSortType.allCases, id: \.self) { sortType in
-                                    Label(sortType.displayName, systemImage: sortType.systemImage)
-                                        .tag(sortType)
-                                }
-                            }
-                            .onChange(of: sharedAppSortManager.appSortType) { newValue in
-                                if sharedAppSortManager.appSortType == .custom {
-                                    customSortViewPresent = true
-                                }
-                            }
-                            if sharedAppSortManager.appSortType == .custom {
-                                Divider()
-                                Button {
-                                    customSortViewPresent = true
-                                } label: {
-                                    Label("lc.appList.sort.customManage".loc, systemImage: "slider.horizontal.3")
-                                }
-                            }
-                        } label: {
-                            Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
-                        }
-                    }
-                }
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
-
-        // ── Multiselect action bar (replaces toolbar buttons to avoid hit-test issues) ──
-        if isMultiSelectMode {
-            VStack {
-                Spacer()
-                HStack(spacing: 0) {
-                    // Delete-data toggle
-                    Button {
-                        withAnimation { deleteAppData.toggle() }
-                    } label: {
-                        Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
-                            .font(.system(size: 20))
-                            .foregroundColor(deleteAppData ? .red : .primary)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                    }
-                    .disabled(isDeleting)
-
-                    Divider().frame(height: 28)
-
-                    // Trash button
-                    Button {
-                        Task { await deleteSelectedApps() }
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.system(size: 20))
-                            .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                    }
-                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-
-                    Divider().frame(height: 28)
-
-                    // Lock-and-hide button
-                    Button {
-                        Task { await lockAndHideSelectedApps() }
-                    } label: {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 20))
-                            .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 14)
-                    }
-                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-                }
-                .background(.regularMaterial)
-                .overlay(Divider(), alignment: .top)
-            }
-            .transition(.move(edge: .bottom))
-            .animation(.easeInOut(duration: 0.2), value: isMultiSelectMode)
-            .ignoresSafeArea(edges: .bottom)
-            .zIndex(100)
-        }
 
         // ── Persistent download/install tray ──
         if sharedModel.multiLCStatus != 2 && !isMultiSelectMode {
@@ -666,11 +648,9 @@ func setMode(_ mode: AppLaunchMode) {
                 if let iconURL = obj2["iconURL"] as? URL {
                     downloadHelper._pendingIconURL = iconURL
                 }
-                // Propagate the isUpdate flag so installIpaFile auto-replaces.
-                if let isUpdate = obj2["isUpdate"] as? Bool, isUpdate {
-                    downloadHelper.isUpdate = true
-                }
-                Task { await installFromUrl(urlStr: installUrl.absoluteString) }
+                // Read isUpdate from payload and pass directly — avoids shared-state race
+                let isUpdateFlag = (obj2["isUpdate"] as? Bool) == true
+                Task { await installFromUrl(urlStr: installUrl.absoluteString, isUpdate: isUpdateFlag) }
             }
         }
         // Drain the bulk-install queue one URL at a time, waiting for each to complete.
@@ -1167,7 +1147,7 @@ func setMode(_ mode: AppLaunchMode) {
         }
     }
     
-    func installFromUrl(urlStr: String) async {
+    func installFromUrl(urlStr: String, isUpdate: Bool = false) async {
         // ignore any install request if we are installing another app
         if self.installprogressVisible {
             return
@@ -1256,7 +1236,8 @@ func setMode(_ mode: AppLaunchMode) {
                 :  rawName)
             downloadHelper._pendingLegacyName = ""
 
-            let wasUpdate = downloadHelper.isUpdate
+            // Use the isUpdate parameter passed directly — more reliable than shared state
+            let wasUpdate = isUpdate || downloadHelper.isUpdate
             downloadHelper.isUpdate = false
 
             let item = DownloadItem(
@@ -1648,9 +1629,8 @@ func setMode(_ mode: AppLaunchMode) {
         while true {
             guard !sharedModel.pendingInstallURLs.isEmpty else { return }
             let url = sharedModel.pendingInstallURLs.removeFirst()
-            // Mark as update so installIpaFile auto-replaces without showing dialog
-            await MainActor.run { downloadHelper.isUpdate = true }
-            await installFromUrl(urlStr: url.absoluteString)
+            // All items from pendingInstallURLs come from Updates tab — always isUpdate=true
+            await installFromUrl(urlStr: url.absoluteString, isUpdate: true)
         }
     }
 
