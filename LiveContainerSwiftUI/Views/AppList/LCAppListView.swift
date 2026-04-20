@@ -359,7 +359,6 @@ func setMode(_ mode: AppLaunchMode) {
             
             .navigationTitle("lc.appList.myApps".loc)
             .toolbar {
-                // ── Leading: spinner or SideStore/Help button ──
                 ToolbarItemGroup(placement: .topBarLeading) {
                     if !isMultiSelectMode {
                         if installprogressVisible {
@@ -382,58 +381,11 @@ func setMode(_ mode: AppLaunchMode) {
                         }
                     }
                 }
-
-                // ── Trailing: swaps entirely between normal and multiselect mode ──
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if isMultiSelectMode {
-                        // delete-data toggle
-                        Button {
-                            withAnimation { deleteAppData.toggle() }
-                        } label: {
-                            Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
-                                .foregroundColor(deleteAppData ? .red : .secondary)
-                        }
-                        .disabled(isDeleting)
-
-                        // lock-and-hide
-                        Button {
-                            Task { await lockAndHideSelectedApps() }
-                        } label: {
-                            Image(systemName: "lock.fill")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
-                        }
-                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-
-                        // trash
-                        Button {
-                            Task { await deleteSelectedApps() }
-                        } label: {
-                            Image(systemName: "trash")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
-                        }
-                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-
-                        // cancel
-                        Button {
-                            withAnimation {
-                                isMultiSelectMode = false
-                                selectedAppsForDeletion.removeAll()
-                                deleteAppData = false
-                            }
-                            sharedModel.isMultiSelectMode = false
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.red)
-                                .font(.system(size: 18, weight: .semibold))
-                        }
-                        .disabled(isDeleting)
-                    } else {
-                        // link
+                    if !isMultiSelectMode {
                         Button("lc.appList.openLink".loc, systemImage: "link") {
                             Task { await onOpenWebViewTapped() }
                         }
-
-                        // sort menu
                         Menu {
                             Picker("Sort by", selection: $sharedAppSortManager.appSortType) {
                                 ForEach(AppSortType.allCases, id: \.self) { sortType in
@@ -457,17 +409,70 @@ func setMode(_ mode: AppLaunchMode) {
                         } label: {
                             Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
                         }
-
-                        // enter multiselect
-                        Button {
-                            withAnimation { isMultiSelectMode = true }
-                            sharedModel.isMultiSelectMode = true
-                        } label: {
-                            Image(systemName: "checkmark.circle")
-                                .foregroundColor(.green)
-                                .font(.system(size: 18, weight: .semibold))
-                        }
                     }
+                    // Select/cancel always visible
+                    Button {
+                        withAnimation {
+                            isMultiSelectMode.toggle()
+                            if !isMultiSelectMode {
+                                selectedAppsForDeletion.removeAll()
+                                deleteAppData = false
+                            }
+                        }
+                        sharedModel.isMultiSelectMode = isMultiSelectMode
+                    } label: {
+                        Image(systemName: isMultiSelectMode ? "xmark.circle.fill" : "checkmark.circle")
+                            .foregroundColor(isMultiSelectMode ? .red : .green)
+                            .font(.system(size: 18, weight: .semibold))
+                    }
+                    .disabled(isDeleting)
+                }
+            }
+            // ── Multiselect action buttons rendered as a safe-area overlay ──
+            // These are placed OUTSIDE the NavigationView toolbar so iOS cannot
+            // intercept their touches. They float at the top-trailing edge.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if isMultiSelectMode {
+                    HStack(spacing: 16) {
+                        Button {
+                            withAnimation { deleteAppData.toggle() }
+                        } label: {
+                            Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
+                                .foregroundColor(deleteAppData ? .red : .secondary)
+                                .font(.system(size: 17, weight: .semibold))
+                                .padding(8)
+                                .contentShape(Rectangle())
+                        }
+                        .disabled(isDeleting)
+
+                        Button {
+                            Task { await lockAndHideSelectedApps() }
+                        } label: {
+                            Image(systemName: "lock.fill")
+                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
+                                .font(.system(size: 17, weight: .semibold))
+                                .padding(8)
+                                .contentShape(Rectangle())
+                        }
+                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+
+                        Button {
+                            Task { await deleteSelectedApps() }
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
+                                .font(.system(size: 17, weight: .semibold))
+                                .padding(8)
+                                .contentShape(Rectangle())
+                        }
+                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+                    }
+                    .padding(.horizontal, 8)
+                    .frame(maxWidth: .infinity, alignment: .trailing)
+                    .frame(height: 44)
+                    .background(Color(UIColor.systemBackground).opacity(0.01))
+                } else {
+                    Color.clear.frame(height: 0)
                 }
             }
         }
@@ -1232,7 +1237,23 @@ func setMode(_ mode: AppLaunchMode) {
             )
             let itemID = downloadHelper.enqueue(item: item)
 
-            // Wait for this specific download to finish
+            // Phase 1: wait until the item appears in the queue AND is marked active.
+            // _start sets isActive via DispatchQueue.main.async, so we must poll.
+            var becameActive = false
+            for _ in 0..<100 { // up to 5 seconds
+                try? await Task.sleep(nanoseconds: 50_000_000)
+                if downloadHelper.items.contains(where: { $0.id == itemID && $0.isActive }) {
+                    becameActive = true
+                    break
+                }
+                // Also bail early if it was cancelled before becoming active
+                if downloadHelper.items.first(where: { $0.id == itemID })?.isCancelled == true {
+                    return
+                }
+            }
+            guard becameActive else { return } // timed out — bail silently
+
+            // Phase 2: wait until download finishes (item no longer active)
             while downloadHelper.items.contains(where: { $0.id == itemID && $0.isActive }) {
                 try? await Task.sleep(nanoseconds: 50_000_000)
             }

@@ -104,7 +104,13 @@ public final class DownloadQueueManager: ObservableObject, @unchecked Sendable {
         }
         _pendingLegacyName = ""
         _pendingIconURL = nil
-        DispatchQueue.main.async { self.items.append(m) }
+        // Append synchronously if already on main thread so callers that
+        // immediately check items.contains(...) see the item right away.
+        if Thread.isMainThread {
+            self.items.append(m)
+        } else {
+            DispatchQueue.main.async { self.items.append(m) }
+        }
         Task { await _start(id: m.id) }
         return m.id
     }
