@@ -106,6 +106,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @StateObject private var multiDeleteConfirmAlert = YesNoHelper()
     @StateObject private var multiLockHideConfirmAlert = YesNoHelper()
     @State private var isDrainingInstallQueue = false
+    @State private var isLockHideMode = false
 
  //⭐️⭐️⭐️Switch mode
    var currentLaunchMode: AppLaunchMode {
@@ -388,92 +389,98 @@ func setMode(_ mode: AppLaunchMode) {
                         }
                     }
                 }
-                // Normal mode buttons — hidden during multiselect
+                // Normal-mode trailing buttons
                 ToolbarItem(placement: .topBarTrailing) {
-                    Button("lc.appList.openLink".loc, systemImage: "link") {
-                        Task { await onOpenWebViewTapped() }
-                    }
-                    .opacity(isMultiSelectMode ? 0 : 1)
-                    .allowsHitTesting(!isMultiSelectMode)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Menu {
-                        Picker("Sort by", selection: $sharedAppSortManager.appSortType) {
-                            ForEach(AppSortType.allCases, id: \.self) { sortType in
-                                Label(sortType.displayName, systemImage: sortType.systemImage)
-                                    .tag(sortType)
+                    HStack(spacing: 4) {
+                        if !isMultiSelectMode {
+                            Button("lc.appList.openLink".loc, systemImage: "link") {
+                                Task { await onOpenWebViewTapped() }
                             }
-                        }
-                        .onChange(of: sharedAppSortManager.appSortType) { newValue in
-                            if sharedAppSortManager.appSortType == .custom {
-                                customSortViewPresent = true
-                            }
-                        }
-                        if sharedAppSortManager.appSortType == .custom {
-                            Divider()
-                            Button {
-                                customSortViewPresent = true
+                            Menu {
+                                Picker("Sort by", selection: $sharedAppSortManager.appSortType) {
+                                    ForEach(AppSortType.allCases, id: \.self) { sortType in
+                                        Label(sortType.displayName, systemImage: sortType.systemImage)
+                                            .tag(sortType)
+                                    }
+                                }
+                                .onChange(of: sharedAppSortManager.appSortType) { newValue in
+                                    if sharedAppSortManager.appSortType == .custom {
+                                        customSortViewPresent = true
+                                    }
+                                }
+                                if sharedAppSortManager.appSortType == .custom {
+                                    Divider()
+                                    Button {
+                                        customSortViewPresent = true
+                                    } label: {
+                                        Label("lc.appList.sort.customManage".loc, systemImage: "slider.horizontal.3")
+                                    }
+                                }
                             } label: {
-                                Label("lc.appList.sort.customManage".loc, systemImage: "slider.horizontal.3")
+                                Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
                             }
                         }
-                    } label: {
-                        Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
-                    }
-                    .opacity(isMultiSelectMode ? 0 : 1)
-                    .allowsHitTesting(!isMultiSelectMode)
-                }
-                // Multiselect action buttons — hidden in normal mode
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        withAnimation { deleteAppData.toggle() }
-                    } label: {
-                        Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
-                            .foregroundColor(deleteAppData ? .red : .primary)
-                    }
-                    .disabled(isDeleting)
-                    .opacity(isMultiSelectMode ? 1 : 0)
-                    .allowsHitTesting(isMultiSelectMode && !isDeleting)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await lockAndHideSelectedApps() }
-                    } label: {
-                        Image(systemName: "lock.fill")
-                            .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .orange : .secondary)
-                    }
-                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-                    .opacity(isMultiSelectMode ? 1 : 0)
-                    .allowsHitTesting(isMultiSelectMode && !selectedAppsForDeletion.isEmpty && !isDeleting)
-                }
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        Task { await deleteSelectedApps() }
-                    } label: {
-                        Image(systemName: "trash")
-                            .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .red : .secondary)
-                    }
-                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-                    .opacity(isMultiSelectMode ? 1 : 0)
-                    .allowsHitTesting(isMultiSelectMode && !selectedAppsForDeletion.isEmpty && !isDeleting)
-                }
-                // Select/cancel — always present
-                ToolbarItem(placement: .topBarTrailing) {
-                    Button {
-                        withAnimation {
-                            isMultiSelectMode.toggle()
-                            if !isMultiSelectMode {
-                                selectedAppsForDeletion.removeAll()
-                                deleteAppData = false
+                        // Select/cancel always visible
+                        Button {
+                            withAnimation {
+                                isMultiSelectMode.toggle()
+                                if !isMultiSelectMode {
+                                    selectedAppsForDeletion.removeAll()
+                                    deleteAppData = false
+                                    isLockHideMode = false
+                                }
                             }
+                            sharedModel.isMultiSelectMode = isMultiSelectMode
+                        } label: {
+                            Image(systemName: isMultiSelectMode ? "xmark.circle.fill" : "checkmark.circle")
+                                .foregroundColor(isMultiSelectMode ? .red : .green)
+                                .font(.system(size: 18, weight: .semibold))
                         }
-                        sharedModel.isMultiSelectMode = isMultiSelectMode
-                    } label: {
-                        Image(systemName: isMultiSelectMode ? "xmark.circle.fill" : "checkmark.circle")
-                            .foregroundColor(isMultiSelectMode ? .red : .green)
-                            .font(.system(size: 18, weight: .semibold))
+                        .disabled(isDeleting)
                     }
-                    .disabled(isDeleting)
+                }
+                // Multiselect actions in bottom bar — never overflows
+                ToolbarItem(placement: .bottomBar) {
+                    if isMultiSelectMode {
+                        HStack(spacing: 24) {
+                            Button {
+                                withAnimation { deleteAppData.toggle() }
+                            } label: {
+                                Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(deleteAppData ? .red : .primary)
+                            }
+                            .disabled(isDeleting)
+                            Spacer()
+                            Button {
+                                withAnimation { isLockHideMode.toggle() }
+                            } label: {
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(isLockHideMode ? .orange : .secondary)
+                            }
+                            .disabled(isDeleting)
+                            Spacer()
+                            Button {
+                                Task { await lockAndHideSelectedApps() }
+                            } label: {
+                                Image(systemName: "lock.shield.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .orange : .secondary)
+                            }
+                            .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+                            Spacer()
+                            Button {
+                                Task { await deleteSelectedApps() }
+                            } label: {
+                                Image(systemName: "trash")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .red : .secondary)
+                            }
+                            .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+                        }
+                        .padding(.horizontal)
+                    }
                 }
             }
         }
@@ -947,10 +954,10 @@ func setMode(_ mode: AppLaunchMode) {
             }
         }
 
-        // If updating an existing app: show progress on its banner, hide global bar.
-        // If installing new: keep global bar visible (no app to attach progress to).
+        // If updating an existing app: show progress bar on its banner.
+        // Set synchronously on main actor so the UI updates before file move.
         if let appToReplace {
-            DispatchQueue.main.async {
+            await MainActor.run {
                 appToReplace.isSigningInProgress = true
                 appToReplace.signProgress = 0.0
                 self.installprogressVisible = false
@@ -1605,18 +1612,24 @@ func setMode(_ mode: AppLaunchMode) {
                 .allowsHitTesting(!isMultiSelectMode && !isDeleting)
 
             if isMultiSelectMode {
-                // Hidden apps cannot be selected for lock/hide (they're already hidden).
-                // They can still be selected for deletion (isHidden == true cases).
                 let isSelected = selectedAppsForDeletion.contains(app)
-                let isBlockedForLockHide = isHidden
-                Image(systemName: isBlockedForLockHide
-                        ? "lock.slash"
-                        : (isSelected ? "checkmark.circle.fill" : "circle"))
-                    .foregroundColor(isBlockedForLockHide ? .secondary.opacity(0.4)
-                                     : (isSelected ? .green : .secondary))
-                    .font(.title2)
-                    .padding(.leading, 6)
-                    .transition(.opacity.combined(with: .move(edge: .leading)))
+                // Show lock icon only when isLockHideMode is active and app is not hidden
+                let showLockIcon = isLockHideMode && !isHidden
+                Group {
+                    if showLockIcon {
+                        Image(systemName: isSelected ? "lock.fill" : "lock.open")
+                            .foregroundColor(isSelected ? .orange : .secondary)
+                    } else if isHidden {
+                        Image(systemName: "lock.slash")
+                            .foregroundColor(.secondary.opacity(0.4))
+                    } else {
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(isSelected ? .green : .secondary)
+                    }
+                }
+                .font(.title2)
+                .padding(.leading, 6)
+                .transition(.opacity.combined(with: .move(edge: .leading)))
             }
         }
         .frame(height: 88)

@@ -280,23 +280,21 @@ public struct DownloadTrayView: View {
     }
 
     public var body: some View {
-        VStack {
-            Spacer()
-            Group {
-                if isExpanded {
-                    expandedCard
-                        .transition(.move(edge: .bottom).combined(with: .opacity))
-                } else {
-                    collapsedPill
-                        .transition(.opacity)
-                }
+        // No Spacer — the tray must only occupy the height of its content so
+        // it doesn't block taps on app banners above it in the ZStack.
+        Group {
+            if isExpanded {
+                expandedCard
+                    .transition(.move(edge: .bottom).combined(with: .opacity))
+            } else {
+                collapsedPill
+                    .transition(.opacity)
             }
-            .padding(.horizontal, 16)
-            .padding(.bottom, 20)
         }
+        .padding(.horizontal, 16)
+        .padding(.bottom, 20)
         .animation(.spring(response: 0.35, dampingFraction: 0.82), value: isExpanded)
         .animation(.easeInOut(duration: 0.2), value: manager.items.count)
-        .zIndex(9999)
     }
 
     // ── Collapsed pill ────────────────────────────────────────────────────────
