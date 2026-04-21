@@ -389,7 +389,45 @@ func setMode(_ mode: AppLaunchMode) {
                     }
                 }
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if !isMultiSelectMode {
+                    if isMultiSelectMode {
+                        Button {
+                            withAnimation { deleteAppData.toggle() }
+                        } label: {
+                            Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
+                                .foregroundColor(deleteAppData ? .red : .primary)
+                        }
+                        .disabled(isDeleting)
+
+                        Button {
+                            Task { await lockAndHideSelectedApps() }
+                        } label: {
+                            Image(systemName: "lock.fill")
+                                .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .orange : .secondary)
+                        }
+                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+
+                        Button {
+                            Task { await deleteSelectedApps() }
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .red : .secondary)
+                        }
+                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+
+                        Button {
+                            withAnimation {
+                                isMultiSelectMode = false
+                                selectedAppsForDeletion.removeAll()
+                                deleteAppData = false
+                            }
+                            sharedModel.isMultiSelectMode = false
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 18, weight: .semibold))
+                        }
+                        .disabled(isDeleting)
+                    } else {
                         Button("lc.appList.openLink".loc, systemImage: "link") {
                             Task { await onOpenWebViewTapped() }
                         }
@@ -416,23 +454,15 @@ func setMode(_ mode: AppLaunchMode) {
                         } label: {
                             Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
                         }
-                    }
-                    // Select/cancel always visible
-                    Button {
-                        withAnimation {
-                            isMultiSelectMode.toggle()
-                            if !isMultiSelectMode {
-                                selectedAppsForDeletion.removeAll()
-                                deleteAppData = false
-                            }
+                        Button {
+                            withAnimation { isMultiSelectMode = true }
+                            sharedModel.isMultiSelectMode = true
+                        } label: {
+                            Image(systemName: "checkmark.circle")
+                                .foregroundColor(.green)
+                                .font(.system(size: 18, weight: .semibold))
                         }
-                        sharedModel.isMultiSelectMode = isMultiSelectMode
-                    } label: {
-                        Image(systemName: isMultiSelectMode ? "xmark.circle.fill" : "checkmark.circle")
-                            .foregroundColor(isMultiSelectMode ? .red : .green)
-                            .font(.system(size: 18, weight: .semibold))
                     }
-                    .disabled(isDeleting)
                 }
             }
         }
@@ -445,56 +475,6 @@ func setMode(_ mode: AppLaunchMode) {
                 onInstallIPA: { choosingIPA = true },
                 onInstallURL: { Task { await startInstallFromUrl() } }
             )
-        }
-
-        // ── Multiselect action buttons — ZStack overlay above everything ──
-        // Placed here (not in toolbar) so iOS never intercepts the touches.
-        if isMultiSelectMode {
-            VStack {
-                HStack(spacing: 4) {
-                    Spacer()
-                    Button {
-                        withAnimation { deleteAppData.toggle() }
-                    } label: {
-                        Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(deleteAppData ? .red : .primary)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .disabled(isDeleting)
-
-                    Button {
-                        Task { await lockAndHideSelectedApps() }
-                    } label: {
-                        Image(systemName: "lock.fill")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-
-                    Button {
-                        Task { await deleteSelectedApps() }
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.system(size: 18, weight: .semibold))
-                            .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
-                            .frame(width: 44, height: 44)
-                            .contentShape(Rectangle())
-                    }
-                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-                }
-                .padding(.trailing, 52) // leave room for the X button in the toolbar
-                .frame(height: 44)
-                .padding(.top, UIApplication.shared.connectedScenes
-                    .compactMap { $0 as? UIWindowScene }
-                    .first?.windows.first?.safeAreaInsets.top ?? 44)
-                Spacer()
-            }
-            .allowsHitTesting(true)
-            .zIndex(200)
         }
 
         } // end ZStack
@@ -1219,10 +1199,11 @@ func setMode(_ mode: AppLaunchMode) {
         
         do {
             let fileManager = FileManager.default
-            let destinationURL = fileManager.temporaryDirectory.appendingPathComponent(installUrl.lastPathComponent)
-            if fileManager.fileExists(atPath: destinationURL.path) {
-                try fileManager.removeItem(at: destinationURL)
-            }
+            // Use a unique filename to prevent collisions between concurrent downloads
+            let ext = installUrl.pathExtension.isEmpty ? "ipa" : installUrl.pathExtension
+            let destinationURL = fileManager.temporaryDirectory
+                .appendingPathComponent(UUID().uuidString)
+                .appendingPathExtension(ext)
 
             // Build a display name for the tray.
             // If a caller pre-set _pendingLegacyName (e.g. sources view set appName,
@@ -1272,15 +1253,22 @@ func setMode(_ mode: AppLaunchMode) {
             guard !(downloadHelper.items.first(where: { $0.id == itemID })?.isCancelled ?? false)
             else { return }
 
-            // Download done — start install/sign phase (shows nav bar progress).
-            // Switch to apps tab now so the per-app sign progress bar is visible.
+            // Verify the downloaded file actually exists before proceeding
+            guard fileManager.fileExists(atPath: destinationURL.path) else {
+                errorInfo = "Download completed but file not found at destination."
+                errorShow = true
+                return
+            }
+
+            // Download done — start install/sign phase.
+            // Switch to apps tab so the per-app sign progress bar is visible.
             await MainActor.run {
                 withAnimation { DataManager.shared.model.selectedTab = .apps }
             }
             self.installprogressVisible = true
             self.installProgressPercentage = 0.0
             try await installIpaFile(destinationURL, wasUpdate: wasUpdate)
-            try fileManager.removeItem(at: destinationURL)
+            try? fileManager.removeItem(at: destinationURL)
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
