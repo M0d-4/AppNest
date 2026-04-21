@@ -105,6 +105,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @State private var isDeleting = false
     @StateObject private var multiDeleteConfirmAlert = YesNoHelper()
     @StateObject private var multiLockHideConfirmAlert = YesNoHelper()
+    @State private var isDrainingInstallQueue = false
 
  //⭐️⭐️⭐️Switch mode
    var currentLaunchMode: AppLaunchMode {
@@ -351,6 +352,12 @@ func setMode(_ mode: AppLaunchMode) {
             }
             .navigationBarProgressBar(show:$installprogressVisible, progress: $installProgressPercentage)
             .coordinateSpace(name: "scroll")
+            .safeAreaInset(edge: .bottom, spacing: 0) {
+                // Reserve space so app banners aren't hidden behind the download tray
+                if sharedModel.multiLCStatus != 2 && !isMultiSelectMode {
+                    Color.clear.frame(height: 80)
+                }
+            }
             .onAppear {
                 if !didAppear {
                     onAppear()
@@ -428,63 +435,66 @@ func setMode(_ mode: AppLaunchMode) {
                     .disabled(isDeleting)
                 }
             }
-            // ── Multiselect action buttons rendered as a safe-area overlay ──
-            // These are placed OUTSIDE the NavigationView toolbar so iOS cannot
-            // intercept their touches. They float at the top-trailing edge.
-            .safeAreaInset(edge: .top, spacing: 0) {
-                if isMultiSelectMode {
-                    HStack(spacing: 16) {
-                        Button {
-                            withAnimation { deleteAppData.toggle() }
-                        } label: {
-                            Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
-                                .foregroundColor(deleteAppData ? .red : .secondary)
-                                .font(.system(size: 17, weight: .semibold))
-                                .padding(8)
-                                .contentShape(Rectangle())
-                        }
-                        .disabled(isDeleting)
-
-                        Button {
-                            Task { await lockAndHideSelectedApps() }
-                        } label: {
-                            Image(systemName: "lock.fill")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
-                                .font(.system(size: 17, weight: .semibold))
-                                .padding(8)
-                                .contentShape(Rectangle())
-                        }
-                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-
-                        Button {
-                            Task { await deleteSelectedApps() }
-                        } label: {
-                            Image(systemName: "trash")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
-                                .font(.system(size: 17, weight: .semibold))
-                                .padding(8)
-                                .contentShape(Rectangle())
-                        }
-                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-                    }
-                    .padding(.horizontal, 8)
-                    .frame(maxWidth: .infinity, alignment: .trailing)
-                    .frame(height: 44)
-                    .background(Color(UIColor.systemBackground).opacity(0.01))
-                } else {
-                    Color.clear.frame(height: 0)
-                }
-            }
         }
         .navigationViewStyle(StackNavigationViewStyle())
 
-        // ── Persistent download/install tray ──
+        // ── Persistent download/install tray (hidden during multiselect) ──
         if sharedModel.multiLCStatus != 2 && !isMultiSelectMode {
             DownloadTrayView(
                 manager: sharedModel.downloadHelper,
                 onInstallIPA: { choosingIPA = true },
                 onInstallURL: { Task { await startInstallFromUrl() } }
             )
+        }
+
+        // ── Multiselect action buttons — ZStack overlay above everything ──
+        // Placed here (not in toolbar) so iOS never intercepts the touches.
+        if isMultiSelectMode {
+            VStack {
+                HStack(spacing: 4) {
+                    Spacer()
+                    Button {
+                        withAnimation { deleteAppData.toggle() }
+                    } label: {
+                        Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(deleteAppData ? .red : .primary)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .disabled(isDeleting)
+
+                    Button {
+                        Task { await lockAndHideSelectedApps() }
+                    } label: {
+                        Image(systemName: "lock.fill")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .orange)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+
+                    Button {
+                        Task { await deleteSelectedApps() }
+                    } label: {
+                        Image(systemName: "trash")
+                            .font(.system(size: 18, weight: .semibold))
+                            .foregroundColor(selectedAppsForDeletion.isEmpty || isDeleting ? .secondary : .red)
+                            .frame(width: 44, height: 44)
+                            .contentShape(Rectangle())
+                    }
+                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+                }
+                .padding(.trailing, 52) // leave room for the X button in the toolbar
+                .frame(height: 44)
+                .padding(.top, UIApplication.shared.connectedScenes
+                    .compactMap { $0 as? UIWindowScene }
+                    .first?.windows.first?.safeAreaInsets.top ?? 44)
+                Spacer()
+            }
+            .allowsHitTesting(true)
+            .zIndex(200)
         }
 
         } // end ZStack
@@ -1644,13 +1654,16 @@ func setMode(_ mode: AppLaunchMode) {
     /// there is no shared-state race. The full flow is: download → wait for
     /// completion → switch to apps tab → install/sign.
     func drainPendingInstallQueue() async {
-        // Only one drain loop should run at a time
+        // Only one drain loop at a time — subsequent calls exit immediately
+        guard !isDrainingInstallQueue else { return }
+        isDrainingInstallQueue = true
+        defer { isDrainingInstallQueue = false }
+
         while true {
             guard !sharedModel.pendingInstallQueue.isEmpty else { return }
             let entry = await MainActor.run {
                 sharedModel.pendingInstallQueue.removeFirst()
             }
-            // Pre-set tray display info
             await MainActor.run {
                 if !entry.appName.isEmpty {
                     downloadHelper._pendingLegacyName = entry.appName
