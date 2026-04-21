@@ -388,81 +388,92 @@ func setMode(_ mode: AppLaunchMode) {
                         }
                     }
                 }
-                ToolbarItemGroup(placement: .topBarTrailing) {
-                    if isMultiSelectMode {
-                        Button {
-                            withAnimation { deleteAppData.toggle() }
-                        } label: {
-                            Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
-                                .foregroundColor(deleteAppData ? .red : .primary)
+                // Normal mode buttons — hidden during multiselect
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button("lc.appList.openLink".loc, systemImage: "link") {
+                        Task { await onOpenWebViewTapped() }
+                    }
+                    .opacity(isMultiSelectMode ? 0 : 1)
+                    .allowsHitTesting(!isMultiSelectMode)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Menu {
+                        Picker("Sort by", selection: $sharedAppSortManager.appSortType) {
+                            ForEach(AppSortType.allCases, id: \.self) { sortType in
+                                Label(sortType.displayName, systemImage: sortType.systemImage)
+                                    .tag(sortType)
+                            }
                         }
-                        .disabled(isDeleting)
-
-                        Button {
-                            Task { await lockAndHideSelectedApps() }
-                        } label: {
-                            Image(systemName: "lock.fill")
-                                .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .orange : .secondary)
+                        .onChange(of: sharedAppSortManager.appSortType) { newValue in
+                            if sharedAppSortManager.appSortType == .custom {
+                                customSortViewPresent = true
+                            }
                         }
-                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-
-                        Button {
-                            Task { await deleteSelectedApps() }
-                        } label: {
-                            Image(systemName: "trash")
-                                .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .red : .secondary)
+                        if sharedAppSortManager.appSortType == .custom {
+                            Divider()
+                            Button {
+                                customSortViewPresent = true
+                            } label: {
+                                Label("lc.appList.sort.customManage".loc, systemImage: "slider.horizontal.3")
+                            }
                         }
-                        .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-
-                        Button {
-                            withAnimation {
-                                isMultiSelectMode = false
+                    } label: {
+                        Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
+                    }
+                    .opacity(isMultiSelectMode ? 0 : 1)
+                    .allowsHitTesting(!isMultiSelectMode)
+                }
+                // Multiselect action buttons — hidden in normal mode
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation { deleteAppData.toggle() }
+                    } label: {
+                        Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
+                            .foregroundColor(deleteAppData ? .red : .primary)
+                    }
+                    .disabled(isDeleting)
+                    .opacity(isMultiSelectMode ? 1 : 0)
+                    .allowsHitTesting(isMultiSelectMode && !isDeleting)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await lockAndHideSelectedApps() }
+                    } label: {
+                        Image(systemName: "lock.fill")
+                            .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .orange : .secondary)
+                    }
+                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+                    .opacity(isMultiSelectMode ? 1 : 0)
+                    .allowsHitTesting(isMultiSelectMode && !selectedAppsForDeletion.isEmpty && !isDeleting)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        Task { await deleteSelectedApps() }
+                    } label: {
+                        Image(systemName: "trash")
+                            .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .red : .secondary)
+                    }
+                    .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
+                    .opacity(isMultiSelectMode ? 1 : 0)
+                    .allowsHitTesting(isMultiSelectMode && !selectedAppsForDeletion.isEmpty && !isDeleting)
+                }
+                // Select/cancel — always present
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button {
+                        withAnimation {
+                            isMultiSelectMode.toggle()
+                            if !isMultiSelectMode {
                                 selectedAppsForDeletion.removeAll()
                                 deleteAppData = false
                             }
-                            sharedModel.isMultiSelectMode = false
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(.red)
-                                .font(.system(size: 18, weight: .semibold))
                         }
-                        .disabled(isDeleting)
-                    } else {
-                        Button("lc.appList.openLink".loc, systemImage: "link") {
-                            Task { await onOpenWebViewTapped() }
-                        }
-                        Menu {
-                            Picker("Sort by", selection: $sharedAppSortManager.appSortType) {
-                                ForEach(AppSortType.allCases, id: \.self) { sortType in
-                                    Label(sortType.displayName, systemImage: sortType.systemImage)
-                                        .tag(sortType)
-                                }
-                            }
-                            .onChange(of: sharedAppSortManager.appSortType) { newValue in
-                                if sharedAppSortManager.appSortType == .custom {
-                                    customSortViewPresent = true
-                                }
-                            }
-                            if sharedAppSortManager.appSortType == .custom {
-                                Divider()
-                                Button {
-                                    customSortViewPresent = true
-                                } label: {
-                                    Label("lc.appList.sort.customManage".loc, systemImage: "slider.horizontal.3")
-                                }
-                            }
-                        } label: {
-                            Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
-                        }
-                        Button {
-                            withAnimation { isMultiSelectMode = true }
-                            sharedModel.isMultiSelectMode = true
-                        } label: {
-                            Image(systemName: "checkmark.circle")
-                                .foregroundColor(.green)
-                                .font(.system(size: 18, weight: .semibold))
-                        }
+                        sharedModel.isMultiSelectMode = isMultiSelectMode
+                    } label: {
+                        Image(systemName: isMultiSelectMode ? "xmark.circle.fill" : "checkmark.circle")
+                            .foregroundColor(isMultiSelectMode ? .red : .green)
+                            .font(.system(size: 18, weight: .semibold))
                     }
+                    .disabled(isDeleting)
                 }
             }
         }

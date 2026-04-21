@@ -167,10 +167,13 @@ public final class DownloadQueueManager: ObservableObject, @unchecked Sendable {
         guard let itemIdx = items.firstIndex(where: { $0.id == id }) else { return }
         let item = items[itemIdx]
 
+        let destinationURL = item.destinationURL
+
         await withUnsafeContinuation { (c: UnsafeContinuation<(), Never>) in
             _continuations[id] = c
 
             let delegate = _DownloadDelegate(
+                destinationURL: destinationURL,
                 onProgress: { prog, dl, total in
                     DispatchQueue.main.async {
                         guard let i = self.items.firstIndex(where: { $0.id == id }) else { return }
@@ -179,25 +182,23 @@ public final class DownloadQueueManager: ObservableObject, @unchecked Sendable {
                         self.items[i].totalBytes      = total
                     }
                 },
-                onComplete: { tempURL, _ in
+                onComplete: { success in
                     DispatchQueue.main.async {
                         guard let i2 = self.items.firstIndex(where: { $0.id == id }) else {
                             self._continuations.removeValue(forKey: id)?.resume()
                             return
                         }
                         self.items[i2].isActive = false
-                        if let tempURL {
-                            try? FileManager.default.moveItem(at: tempURL,
-                                                             to: self.items[i2].destinationURL)
-                        }
                         self._tasks.removeValue(forKey: id)
                         self._continuations.removeValue(forKey: id)?.resume()
                         self._removeFinished(id: id)
                     }
                 }
             )
+            // Use a background queue so the delegate fires off the main thread,
+            // giving us time to move the file before URLSession deletes it.
             let session = URLSession(configuration: .default, delegate: delegate,
-                                     delegateQueue: .main)
+                                     delegateQueue: OperationQueue())
             let task = session.downloadTask(with: item.url)
             _tasks[id] = task
             task.resume()
@@ -216,11 +217,14 @@ public final class DownloadQueueManager: ObservableObject, @unchecked Sendable {
 // ─────────────────────────────────────────────────────────────────────────────
 
 private final class _DownloadDelegate: NSObject, URLSessionDownloadDelegate {
+    let destinationURL: URL
     let onProgress: (Float, Int64, Int64) -> Void
-    let onComplete: (URL?, Error?) -> Void
+    let onComplete: (Bool) -> Void
 
-    init(onProgress: @escaping (Float, Int64, Int64) -> Void,
-         onComplete: @escaping (URL?, Error?) -> Void) {
+    init(destinationURL: URL,
+         onProgress: @escaping (Float, Int64, Int64) -> Void,
+         onComplete: @escaping (Bool) -> Void) {
+        self.destinationURL = destinationURL
         self.onProgress = onProgress
         self.onComplete = onComplete
     }
@@ -235,20 +239,23 @@ private final class _DownloadDelegate: NSObject, URLSessionDownloadDelegate {
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask,
                     didFinishDownloadingTo location: URL) {
-        if let http = downloadTask.response as? HTTPURLResponse {
-            (200...299).contains(http.statusCode)
-                ? onComplete(location, nil)
-                : onComplete(location, NSError(domain: "", code: http.statusCode,
-                      userInfo: [NSLocalizedDescriptionKey: "HTTP \(http.statusCode)"]))
-        } else {
-            onComplete(nil, NSError(domain: "", code: -1,
-                userInfo: [NSLocalizedDescriptionKey: "Invalid response"]))
+        // Move file SYNCHRONOUSLY here — URLSession deletes `location` as soon
+        // as this method returns, so async dispatch would be too late.
+        do {
+            let fm = FileManager.default
+            if fm.fileExists(atPath: destinationURL.path) {
+                try fm.removeItem(at: destinationURL)
+            }
+            try fm.moveItem(at: location, to: destinationURL)
+            onComplete(true)
+        } catch {
+            onComplete(false)
         }
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask,
                     didCompleteWithError error: Error?) {
-        if let error { onComplete(nil, error) }
+        if error != nil { onComplete(false) }
     }
 }
 

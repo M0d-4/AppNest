@@ -688,8 +688,9 @@ struct LCSourcesView: View {
             errorMessage = "lc.sources.error.missingDownload".loc
             return
         }
-        // Push to the structured queue — LCAppListView drains it, downloading
-        // first and only switching to apps tab after the download completes.
+        // Switch to apps tab immediately so user sees the download tray
+        withAnimation { DataManager.shared.model.selectedTab = .apps }
+        // Queue the install — LCAppListView will download then install
         let entry = SharedModel.PendingInstall(
             url: downloadURL,
             isUpdate: false,
