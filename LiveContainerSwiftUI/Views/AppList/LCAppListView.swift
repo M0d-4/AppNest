@@ -42,6 +42,52 @@ struct AppReplaceOption : Hashable {
     var appToReplace: LCAppModel?
 }
 
+/// Dedicated view that observes LCAppModel so @Published isSigningInProgress
+/// and signProgress changes cause re-renders even when called from a non-observed context.
+struct AppSigningProgressBar: View {
+    @ObservedObject var model: LCAppModel
+
+    var body: some View {
+        // Wrap in a zero-height container when not signing so the VStack
+        // collapse animation pushes the banner back up cleanly.
+        VStack(spacing: 0) {
+            if model.isSigningInProgress {
+                VStack(spacing: 6) {
+                    GeometryReader { geo in
+                        ZStack(alignment: .leading) {
+                            Capsule()
+                                .fill(Color.secondary.opacity(0.2))
+                                .frame(height: 6)
+                            Capsule()
+                                .fill(Color.accentColor)
+                                .frame(width: max(0, geo.size.width * CGFloat(model.signProgress)), height: 6)
+                                .animation(.linear(duration: 0.15), value: model.signProgress)
+                        }
+                    }
+                    .frame(height: 6)
+                    Text(model.signProgress < 0.05 ? "Preparing…"
+                         : model.signProgress >= 0.99 ? "Finishing…"
+                         : "Installing \(Int(model.signProgress * 100))%")
+                        .font(.caption2)
+                        .foregroundColor(.secondary)
+                }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 10)
+                .frame(maxWidth: .infinity)
+                .background(Color(UIColor.secondarySystemBackground))
+                .clipShape(RoundedRectangle(cornerRadius: 10))
+                .padding(.horizontal, 12)
+                .padding(.bottom, 4)
+                .transition(.asymmetric(
+                    insertion: .push(from: .top).combined(with: .opacity),
+                    removal: .push(from: .bottom).combined(with: .opacity)
+                ))
+            }
+        }
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: model.isSigningInProgress)
+    }
+}
+
 struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     //⭐️⭐️⭐️Switch mode
     @AppStorage("LCNativeFullscreen") var isNative = true
@@ -391,7 +437,7 @@ func setMode(_ mode: AppLaunchMode) {
                 }
                 // Normal-mode trailing buttons
                 ToolbarItem(placement: .topBarTrailing) {
-                    HStack(spacing: 4) {
+                    HStack(spacing: 12) {
                         if !isMultiSelectMode {
                             Button("lc.appList.openLink".loc, systemImage: "link") {
                                 Task { await onOpenWebViewTapped() }
@@ -442,44 +488,50 @@ func setMode(_ mode: AppLaunchMode) {
                 // Multiselect actions in bottom bar — never overflows
                 ToolbarItem(placement: .bottomBar) {
                     if isMultiSelectMode {
-                        HStack(spacing: 24) {
+                        HStack(spacing: 0) {
                             Button {
                                 withAnimation { deleteAppData.toggle() }
                             } label: {
                                 Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
                                     .font(.system(size: 20))
                                     .foregroundColor(deleteAppData ? .red : .primary)
+                                    .frame(maxWidth: .infinity)
                             }
                             .disabled(isDeleting)
-                            Spacer()
+
                             Button {
-                                withAnimation { isLockHideMode.toggle() }
+                                withAnimation {
+                                    isLockHideMode.toggle()
+                                    selectedAppsForDeletion.removeAll()
+                                }
                             } label: {
                                 Image(systemName: "lock.fill")
                                     .font(.system(size: 20))
                                     .foregroundColor(isLockHideMode ? .orange : .secondary)
+                                    .frame(maxWidth: .infinity)
                             }
                             .disabled(isDeleting)
-                            Spacer()
+
                             Button {
                                 Task { await lockAndHideSelectedApps() }
                             } label: {
                                 Image(systemName: "lock.shield.fill")
                                     .font(.system(size: 20))
                                     .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .orange : .secondary)
+                                    .frame(maxWidth: .infinity)
                             }
                             .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
-                            Spacer()
+
                             Button {
                                 Task { await deleteSelectedApps() }
                             } label: {
                                 Image(systemName: "trash")
                                     .font(.system(size: 20))
                                     .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .red : .secondary)
+                                    .frame(maxWidth: .infinity)
                             }
                             .disabled(selectedAppsForDeletion.isEmpty || isDeleting)
                         }
-                        .padding(.horizontal)
                     }
                 }
             }
@@ -1605,7 +1657,8 @@ func setMode(_ mode: AppLaunchMode) {
     
     @ViewBuilder
     func appRow(app: LCAppModel, isHidden: Bool) -> some View {
-        ZStack(alignment: .leading) {
+        VStack(spacing: 0) {
+            ZStack(alignment: .leading) {
             LCAppBanner(appModel: app, delegate: self, appDataFolders: $appDataFolderNames, tweakFolders: $tweakFolderNames, updateAction: updateAction(for: app))
                 .padding(.leading, isMultiSelectMode ? 36 : 0)
                 .animation(.easeInOut(duration: 0.2), value: isMultiSelectMode)
@@ -1613,15 +1666,18 @@ func setMode(_ mode: AppLaunchMode) {
 
             if isMultiSelectMode {
                 let isSelected = selectedAppsForDeletion.contains(app)
-                // Show lock icon only when isLockHideMode is active and app is not hidden
-                let showLockIcon = isLockHideMode && !isHidden
+                // In lock mode: hidden apps show lock.slash (can't lock what's already hidden)
+                //               visible apps show lock icon
+                // In delete mode: all apps show circle (hidden apps are selectable for deletion)
                 Group {
-                    if showLockIcon {
-                        Image(systemName: isSelected ? "lock.fill" : "lock.open")
-                            .foregroundColor(isSelected ? .orange : .secondary)
-                    } else if isHidden {
-                        Image(systemName: "lock.slash")
-                            .foregroundColor(.secondary.opacity(0.4))
+                    if isLockHideMode {
+                        if isHidden {
+                            Image(systemName: "lock.slash")
+                                .foregroundColor(.secondary.opacity(0.4))
+                        } else {
+                            Image(systemName: isSelected ? "lock.fill" : "lock.open")
+                                .foregroundColor(isSelected ? .orange : .secondary)
+                        }
                     } else {
                         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                             .foregroundColor(isSelected ? .green : .secondary)
@@ -1632,21 +1688,25 @@ func setMode(_ mode: AppLaunchMode) {
                 .transition(.opacity.combined(with: .move(edge: .leading)))
             }
         }
-        .frame(height: 88)
-        .contentShape(Rectangle())
-        .onTapGesture {
-            guard isMultiSelectMode, !isDeleting else { return }
-            // Hidden apps cannot be selected when in multiselect mode
-            // (lock/hide applies only to visible apps; delete is handled separately)
-            guard !isHidden else { return }
-            withAnimation(.easeInOut(duration: 0.1)) {
-                if selectedAppsForDeletion.contains(app) {
-                    selectedAppsForDeletion.remove(app)
-                } else {
-                    selectedAppsForDeletion.insert(app)
+            .frame(height: 88)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                guard isMultiSelectMode, !isDeleting else { return }
+                // In lock mode: hidden apps cannot be selected (already hidden)
+                if isLockHideMode && isHidden { return }
+                withAnimation(.easeInOut(duration: 0.1)) {
+                    if selectedAppsForDeletion.contains(app) {
+                        selectedAppsForDeletion.remove(app)
+                    } else {
+                        selectedAppsForDeletion.insert(app)
+                    }
                 }
             }
-        }
+
+            // ── Per-app signing/update progress bar ──
+            // Uses a dedicated ObservedObject view so @Published changes trigger re-render.
+            AppSigningProgressBar(model: app)
+        } // end outer VStack
     }
 
     /// Installs URLs from sharedModel.pendingInstallURLs one at a time.
@@ -1689,7 +1749,13 @@ func setMode(_ mode: AppLaunchMode) {
     }
 
     func deleteSelectedApps() async {
-        guard !selectedAppsForDeletion.isEmpty else { return }
+        guard !selectedAppsForDeletion.isEmpty else {
+            await MainActor.run {
+                errorInfo = "No apps selected. Tap apps in the list to select them first."
+                errorShow = true
+            }
+            return
+        }
         guard let confirmed = await multiDeleteConfirmAlert.open(), confirmed else { return }
         
         // Snapshot the set so UI changes mid-loop don't affect iteration
@@ -1752,7 +1818,13 @@ func setMode(_ mode: AppLaunchMode) {
     }
 
     func lockAndHideSelectedApps() async {
-        guard !selectedAppsForDeletion.isEmpty else { return }
+        guard !selectedAppsForDeletion.isEmpty else {
+            await MainActor.run {
+                errorInfo = "No apps selected. Tap apps in the list to select them first."
+                errorShow = true
+            }
+            return
+        }
         guard let confirmed = await multiLockHideConfirmAlert.open(), confirmed else { return }
 
         let appsToProcess = selectedAppsForDeletion
