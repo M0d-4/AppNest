@@ -410,6 +410,7 @@ func setMode(_ mode: AppLaunchMode) {
             
             .navigationTitle("lc.appList.myApps".loc)
             .toolbar {
+                // Leading: spinner / SideStore / Help
                 ToolbarItemGroup(placement: .topBarLeading) {
                     if !isMultiSelectMode {
                         if installprogressVisible {
@@ -432,9 +433,67 @@ func setMode(_ mode: AppLaunchMode) {
                         }
                     }
                 }
-                // Trailing buttons — all in one group for proper spacing
+                // Trailing: swaps between normal and multiselect content
                 ToolbarItemGroup(placement: .topBarTrailing) {
-                    if !isMultiSelectMode {
+                    if isMultiSelectMode {
+                        // Delete-data toggle
+                        Button {
+                            withAnimation { deleteAppData.toggle() }
+                        } label: {
+                            Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
+                                .foregroundColor(deleteAppData ? .red : .primary)
+                        }
+                        .disabled(isDeleting)
+
+                        // Lock & Hide: first press activates lock mode, second press deactivates
+                        // (makes all apps selectable again), third press executes if apps selected
+                        Button {
+                            withAnimation {
+                                if !isLockHideMode {
+                                    // First press: enter lock-pick mode
+                                    isLockHideMode = true
+                                    selectedAppsForDeletion.removeAll()
+                                } else if selectedAppsForDeletion.isEmpty {
+                                    // Second press with nothing selected: exit lock mode
+                                    isLockHideMode = false
+                                } else {
+                                    // Second press with apps selected: execute
+                                    Task { await lockAndHideSelectedApps() }
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "lock.shield.fill")
+                                .foregroundColor(isLockHideMode ? .orange : .secondary)
+                        }
+                        .disabled(isDeleting)
+
+                        // Trash: always pressable
+                        Button {
+                            if !selectedAppsForDeletion.isEmpty {
+                                Task { await deleteSelectedApps() }
+                            }
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .red : .secondary)
+                        }
+                        .disabled(isDeleting)
+
+                        // Cancel multiselect
+                        Button {
+                            withAnimation {
+                                isMultiSelectMode = false
+                                selectedAppsForDeletion.removeAll()
+                                deleteAppData = false
+                                isLockHideMode = false
+                            }
+                            sharedModel.isMultiSelectMode = false
+                        } label: {
+                            Image(systemName: "xmark.circle.fill")
+                                .foregroundColor(.red)
+                                .font(.system(size: 18, weight: .semibold))
+                        }
+                        .disabled(isDeleting)
+                    } else {
                         Button("lc.appList.openLink".loc, systemImage: "link") {
                             Task { await onOpenWebViewTapped() }
                         }
@@ -461,87 +520,17 @@ func setMode(_ mode: AppLaunchMode) {
                         } label: {
                             Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
                         }
-                    }
-                    // Select/cancel always present
-                    Button {
-                        withAnimation {
-                            isMultiSelectMode.toggle()
-                            if !isMultiSelectMode {
-                                selectedAppsForDeletion.removeAll()
-                                deleteAppData = false
-                                isLockHideMode = false
-                            }
+                        Button {
+                            withAnimation { isMultiSelectMode = true }
+                            sharedModel.isMultiSelectMode = true
+                        } label: {
+                            Image(systemName: "checkmark.circle")
+                                .foregroundColor(.green)
+                                .font(.system(size: 18, weight: .semibold))
                         }
-                        sharedModel.isMultiSelectMode = isMultiSelectMode
-                    } label: {
-                        Image(systemName: isMultiSelectMode ? "xmark.circle.fill" : "checkmark.circle")
-                            .foregroundColor(isMultiSelectMode ? .red : .green)
-                            .font(.system(size: 18, weight: .semibold))
                     }
-                    .disabled(isDeleting)
                 }
                 // Bottom bar: multiselect actions — 3 buttons, always tappable
-                ToolbarItemGroup(placement: .bottomBar) {
-                    if isMultiSelectMode {
-                        // Delete-data toggle — always active
-                        Button {
-                            withAnimation { deleteAppData.toggle() }
-                        } label: {
-                            VStack(spacing: 3) {
-                                Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
-                                    .font(.system(size: 22))
-                                Text(deleteAppData ? "With Data" : "Keep Data")
-                                    .font(.caption2)
-                            }
-                            .foregroundColor(deleteAppData ? .red : .primary)
-                            .frame(maxWidth: .infinity)
-                        }
-                        .disabled(isDeleting)
-
-                        Spacer()
-
-                        // Lock-and-hide — always pressable; if no apps selected shows hint
-                        Button {
-                            if selectedAppsForDeletion.isEmpty {
-                                // activate lock mode so user knows to pick apps
-                                withAnimation { isLockHideMode = true }
-                            } else {
-                                Task { await lockAndHideSelectedApps() }
-                            }
-                        } label: {
-                            VStack(spacing: 3) {
-                                Image(systemName: "lock.shield.fill")
-                                    .font(.system(size: 22))
-                                Text("Lock & Hide")
-                                    .font(.caption2)
-                            }
-                            .foregroundColor(isDeleting ? .secondary : .orange)
-                            .frame(maxWidth: .infinity)
-                        }
-                        .disabled(isDeleting)
-
-                        Spacer()
-
-                        // Trash — always pressable; if no apps selected shows hint
-                        Button {
-                            if selectedAppsForDeletion.isEmpty {
-                                withAnimation { isLockHideMode = false }
-                            } else {
-                                Task { await deleteSelectedApps() }
-                            }
-                        } label: {
-                            VStack(spacing: 3) {
-                                Image(systemName: "trash")
-                                    .font(.system(size: 22))
-                                Text("Delete")
-                                    .font(.caption2)
-                            }
-                            .foregroundColor(isDeleting ? .secondary : .red)
-                            .frame(maxWidth: .infinity)
-                        }
-                        .disabled(isDeleting)
-                    }
-                }
             }
         }
         .navigationViewStyle(StackNavigationViewStyle())
@@ -1674,11 +1663,9 @@ func setMode(_ mode: AppLaunchMode) {
 
             if isMultiSelectMode {
                 let isSelected = selectedAppsForDeletion.contains(app)
-                // In lock mode: hidden apps show lock.slash (can't lock what's already hidden)
-                //               visible apps show lock icon
-                // In delete mode: all apps show circle (hidden apps are selectable for deletion)
                 Group {
                     if isLockHideMode {
+                        // Lock mode: hidden apps can't be locked (already hidden)
                         if isHidden {
                             Image(systemName: "lock.slash")
                                 .foregroundColor(.secondary.opacity(0.4))
@@ -1687,6 +1674,7 @@ func setMode(_ mode: AppLaunchMode) {
                                 .foregroundColor(isSelected ? .orange : .secondary)
                         }
                     } else {
+                        // Normal delete mode: all apps selectable including hidden
                         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                             .foregroundColor(isSelected ? .green : .secondary)
                     }
@@ -1700,8 +1688,9 @@ func setMode(_ mode: AppLaunchMode) {
             .contentShape(Rectangle())
             .onTapGesture {
                 guard isMultiSelectMode, !isDeleting else { return }
-                // In lock mode: hidden apps cannot be selected (already hidden)
+                // In lock mode: hidden apps cannot be selected (they're already hidden)
                 if isLockHideMode && isHidden { return }
+                // In normal delete mode: all apps including hidden are selectable
                 withAnimation(.easeInOut(duration: 0.1)) {
                     if selectedAppsForDeletion.contains(app) {
                         selectedAppsForDeletion.remove(app)
