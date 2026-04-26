@@ -9,7 +9,6 @@
 @end
 UIInterfaceOrientation LCOrientationLock = UIInterfaceOrientationUnknown;
 NSMutableArray<NSString*>* LCSupportedUrlSchemes = nil;
-NSUUID* idForVendorUUID = nil;
 //⭐️⭐️⭐️⤵️
 static void Real_UIKitGuestHooksInit(void);
 static NSString *const LCExternalURLBlockBypassDepthKey = @"LCExternalURLBlockBypassDepth";
@@ -173,16 +172,6 @@ static void Real_UIKitGuestHooksInit(void) {
             swizzle(UIWindow.class, @selector(setAutorotates:forceUpdateInterfaceOrientation:), @selector(hook_setAutorotates:forceUpdateInterfaceOrientation:));
         }
 
-    }
-    NSDictionary* guestContainerInfo = [NSUserDefaults guestContainerInfo];
-    if(guestContainerInfo[@"spoofIdentifierForVendor"]) {
-        NSString* idForVendorStr = guestContainerInfo[@"spoofedIdentifierForVendor"];
-        if([idForVendorStr isKindOfClass:NSString.class]) {
-            idForVendorUUID = [[NSUUID UUID] initWithUUIDString:idForVendorStr];
-            if(idForVendorUUID) {
-                swizzle(UIDevice.class, @selector(identifierForVendor), @selector(hook_identifierForVendor));
-            }
-        }
     }
 }
 
@@ -1087,13 +1076,4 @@ if (isReal && !isSideStore) {
         }
     }
 }
-@end
-
-
-@implementation UIDevice(hook)
-
-- (NSUUID*)hook_identifierForVendor {
-    return idForVendorUUID;
-}
-
 @end
