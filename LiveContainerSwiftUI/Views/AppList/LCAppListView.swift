@@ -150,6 +150,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @StateObject private var multiLockHideConfirmAlert = YesNoHelper()
     @State private var isDrainingInstallQueue = false
     @State private var isLockHideMode = false
+    @State private var isDeleteMode = false
 
  //⭐️⭐️⭐️Switch mode
    var currentLaunchMode: AppLaunchMode {
@@ -445,20 +446,20 @@ func setMode(_ mode: AppLaunchMode) {
                         }
                         .disabled(isDeleting)
 
-                        // Lock & Hide: first press activates lock mode, second press deactivates
-                        // (makes all apps selectable again), third press executes if apps selected
+                        // Lock & Hide / Unlock & Unhide:
+                        // First press: enter lock-pick mode, hidden apps show unlock icon
+                        // Second press with nothing selected: exit lock mode
+                        // Second press with apps selected: lock visible, unlock hidden
                         Button {
                             withAnimation {
                                 if !isLockHideMode {
-                                    // First press: enter lock-pick mode
                                     isLockHideMode = true
+                                    isDeleteMode = false
                                     selectedAppsForDeletion.removeAll()
                                 } else if selectedAppsForDeletion.isEmpty {
-                                    // Second press with nothing selected: exit lock mode
                                     isLockHideMode = false
                                 } else {
-                                    // Second press with apps selected: execute
-                                    Task { await lockAndHideSelectedApps() }
+                                    Task { await toggleLockHideSelectedApps() }
                                 }
                             }
                         } label: {
@@ -467,14 +468,24 @@ func setMode(_ mode: AppLaunchMode) {
                         }
                         .disabled(isDeleting)
 
-                        // Trash: always pressable
+                        // Trash: first press enters delete mode (turns red),
+                        // second press with apps selected shows confirmation,
+                        // second press with nothing selected exits delete mode
                         Button {
-                            if !selectedAppsForDeletion.isEmpty {
-                                Task { await deleteSelectedApps() }
+                            withAnimation {
+                                if !isDeleteMode {
+                                    isDeleteMode = true
+                                    isLockHideMode = false
+                                    selectedAppsForDeletion.removeAll()
+                                } else if selectedAppsForDeletion.isEmpty {
+                                    isDeleteMode = false
+                                } else {
+                                    Task { await deleteSelectedApps() }
+                                }
                             }
                         } label: {
                             Image(systemName: "trash")
-                                .foregroundColor(!selectedAppsForDeletion.isEmpty && !isDeleting ? .red : .secondary)
+                                .foregroundColor(isDeleteMode ? .red : .secondary)
                         }
                         .disabled(isDeleting)
 
@@ -485,6 +496,7 @@ func setMode(_ mode: AppLaunchMode) {
                                 selectedAppsForDeletion.removeAll()
                                 deleteAppData = false
                                 isLockHideMode = false
+                                isDeleteMode = false
                             }
                             sharedModel.isMultiSelectMode = false
                         } label: {
@@ -1665,16 +1677,21 @@ func setMode(_ mode: AppLaunchMode) {
                 let isSelected = selectedAppsForDeletion.contains(app)
                 Group {
                     if isLockHideMode {
-                        // Lock mode: hidden apps can't be locked (already hidden)
                         if isHidden {
-                            Image(systemName: "lock.slash")
-                                .foregroundColor(.secondary.opacity(0.4))
+                            // Hidden app in lock mode: selectable to UNHIDE/UNLOCK
+                            Image(systemName: isSelected ? "lock.open.fill" : "lock.open")
+                                .foregroundColor(isSelected ? .green : .secondary)
                         } else {
+                            // Visible app in lock mode: selectable to LOCK/HIDE
                             Image(systemName: isSelected ? "lock.fill" : "lock.open")
                                 .foregroundColor(isSelected ? .orange : .secondary)
                         }
+                    } else if isDeleteMode {
+                        // Delete mode: all apps selectable
+                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                            .foregroundColor(isSelected ? .red : .secondary)
                     } else {
-                        // Normal delete mode: all apps selectable including hidden
+                        // Default mode: circle for all
                         Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
                             .foregroundColor(isSelected ? .green : .secondary)
                     }
@@ -1688,9 +1705,9 @@ func setMode(_ mode: AppLaunchMode) {
             .contentShape(Rectangle())
             .onTapGesture {
                 guard isMultiSelectMode, !isDeleting else { return }
-                // In lock mode: hidden apps cannot be selected (they're already hidden)
-                if isLockHideMode && isHidden { return }
-                // In normal delete mode: all apps including hidden are selectable
+                // All apps are selectable in all modes:
+                // - lock mode: visible apps → lock/hide, hidden apps → unlock/unhide
+                // - delete mode: any app → delete
                 withAnimation(.easeInOut(duration: 0.1)) {
                     if selectedAppsForDeletion.contains(app) {
                         selectedAppsForDeletion.remove(app)
@@ -1808,6 +1825,7 @@ func setMode(_ mode: AppLaunchMode) {
                 selectedAppsForDeletion.removeAll()
                 isMultiSelectMode = false
                 deleteAppData = false
+                isDeleteMode = false
                 isDeleting = false
             }
             sharedModel.isMultiSelectMode = false
@@ -1815,40 +1833,62 @@ func setMode(_ mode: AppLaunchMode) {
     }
 
     func lockAndHideSelectedApps() async {
-        guard !selectedAppsForDeletion.isEmpty else {
-            await MainActor.run {
-                errorInfo = "No apps selected. Tap apps in the list to select them first."
-                errorShow = true
-            }
-            return
-        }
+        await toggleLockHideSelectedApps()
+    }
+
+    /// Handles both directions:
+    /// - Visible apps in selection → lock + hide them (turn both toggles ON)
+    /// - Hidden apps in selection → unlock + unhide them (turn both toggles OFF)
+    /// Both can be done simultaneously in one action.
+    func toggleLockHideSelectedApps() async {
+        guard !selectedAppsForDeletion.isEmpty else { return }
         guard let confirmed = await multiLockHideConfirmAlert.open(), confirmed else { return }
 
         let appsToProcess = selectedAppsForDeletion
-
         isDeleting = true
 
         await MainActor.run {
             for app in appsToProcess {
-                // Lock and mark as hidden
-                app.appInfo.isLocked = true
-                app.appInfo.isHidden = true
-                app.appInfo.save()
-                // Move from visible list to hidden list
-                sharedModel.apps.removeAll { $0 == app }
-                if !sharedModel.hiddenApps.contains(app) {
-                    sharedModel.hiddenApps.append(app)
-                }
-                // Remove URL schemes from shared list since app is now hidden
-                if let schemes = app.appInfo.urlSchemes() as? [String] {
-                    UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
-                        .removeObjects(in: schemes)
+                let currentlyHidden = app.appInfo.isHidden
+
+                if currentlyHidden {
+                    // Unhide and unlock — move from hidden list back to visible
+                    app.appInfo.isLocked = false
+                    app.appInfo.isHidden = false
+                    app.appInfo.save()
+                    sharedModel.hiddenApps.removeAll { $0 == app }
+                    if !sharedModel.apps.contains(app) {
+                        sharedModel.apps.append(app)
+                    }
+                    // Restore URL schemes
+                    if let schemes = app.appInfo.urlSchemes() as? [String] {
+                        let existing = UserDefaults.lcShared()
+                            .array(forKey: "LCGuestURLSchemes") as? [String] ?? []
+                        let toAdd = schemes.filter { !existing.contains($0) }
+                        UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
+                            .addObjects(from: toAdd)
+                    }
+                } else {
+                    // Lock and hide — move from visible to hidden
+                    app.appInfo.isLocked = true
+                    app.appInfo.isHidden = true
+                    app.appInfo.save()
+                    sharedModel.apps.removeAll { $0 == app }
+                    if !sharedModel.hiddenApps.contains(app) {
+                        sharedModel.hiddenApps.append(app)
+                    }
+                    // Remove URL schemes
+                    if let schemes = app.appInfo.urlSchemes() as? [String] {
+                        UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
+                            .removeObjects(in: schemes)
+                    }
                 }
             }
 
             withAnimation {
                 selectedAppsForDeletion.removeAll()
                 isMultiSelectMode = false
+                isLockHideMode = false
                 isDeleting = false
             }
             sharedModel.isMultiSelectMode = false
