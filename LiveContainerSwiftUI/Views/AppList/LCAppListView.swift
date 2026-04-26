@@ -635,9 +635,6 @@ func setMode(_ mode: AppLaunchMode) {
             Button { lockHideActionAlert.close(result: "lockOnly") } label: {
                 Text("Lock Only")
             }
-            Button { lockHideActionAlert.close(result: "hideOnly") } label: {
-                Text("Hide Only")
-            }
             Button("lc.common.cancel".loc, role: .cancel) { lockHideActionAlert.close(result: nil) }
         } message: {
             Text("Choose what to do with the selected \(selectedAppsForDeletion.filter { !$0.appInfo.isHidden }.count) app(s).")
@@ -1888,23 +1885,25 @@ func setMode(_ mode: AppLaunchMode) {
             // Process visible apps
             if let action = lockAction {
                 for app in visibleApps {
-                    let shouldLock = action == "lockAndHide" || action == "lockOnly"
-                    let shouldHide = action == "lockAndHide" || action == "hideOnly"
-                    app.appInfo.isLocked = shouldLock
-                    app.appInfo.isHidden = shouldHide
-                    app.appInfo.save()
-
-                    if shouldHide {
-                        // Move to hidden list
+                    if action == "lockAndHide" {
+                        // Lock switch ON + Hide switch ON → move to hidden section
+                        app.appInfo.isLocked = true
+                        app.appInfo.isHidden = true
+                        app.appInfo.save()
                         sharedModel.apps.removeAll { $0 == app }
                         if !sharedModel.hiddenApps.contains(app) {
                             sharedModel.hiddenApps.append(app)
                         }
-                        // Remove URL schemes
                         if let schemes = app.appInfo.urlSchemes() as? [String] {
                             UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
                                 .removeObjects(in: schemes)
                         }
+                    } else if action == "lockOnly" {
+                        // Lock switch ON only — hide switch stays OFF, app stays visible
+                        app.appInfo.isLocked = true
+                        app.appInfo.isHidden = false
+                        app.appInfo.save()
+                        // App stays in visible list — no list move needed
                     }
                 }
             }
@@ -1912,11 +1911,15 @@ func setMode(_ mode: AppLaunchMode) {
             // Process hidden apps
             if let action = unhideAction {
                 for app in hiddenApps {
-                    // Unhide Only: keep locked, just move back to visible
-                    // Unlock & Unhide: clear both flags
-                    let shouldUnlock = action == "unlockAndUnhide"
-                    app.appInfo.isHidden = false
-                    if shouldUnlock { app.appInfo.isLocked = false }
+                    if action == "unhideOnly" {
+                        // Hide switch OFF only — lock switch unchanged
+                        app.appInfo.isHidden = false
+                        // isLocked left as-is
+                    } else if action == "unlockAndUnhide" {
+                        // Both switches OFF
+                        app.appInfo.isHidden = false
+                        app.appInfo.isLocked = false
+                    }
                     app.appInfo.save()
 
                     // Move from hidden list back to visible
