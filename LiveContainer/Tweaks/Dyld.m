@@ -2077,7 +2077,6 @@ void* getGuestAppHeader(void) {
 #else
 #define HOOK_LOCK_1ST_ARG
 #endif
-<<<<<<< HEAD
 // Guard the temporary libdyld lock-hook patching. This patch is process-global, so keep it serialized.
 static os_unfair_lock gDlopenNoLockPatchLock = OS_UNFAIR_LOCK_INIT;
 
@@ -2098,14 +2097,6 @@ static inline void *lc_getLockPtrToIgnoreOrInit(void *observedLock) {
                                                memory_order_release,
                                                memory_order_relaxed);
         current = atomic_load_explicit(&lockPtrToIgnore, memory_order_acquire);
-=======
-static void *lockPtrToIgnore;
-static mach_port_t tidToIgnore;
-void hook_libdyld_os_unfair_recursive_lock_lock_with_options(HOOK_LOCK_1ST_ARG void* lock, uint32_t options) {
-    if(!lockPtrToIgnore) lockPtrToIgnore = lock;
-    if(lock != lockPtrToIgnore || tidToIgnore != mach_thread_self()) {
-        os_unfair_recursive_lock_lock_with_options(lock, options);
->>>>>>> upstream/main
     }
     return current;
 }
@@ -2118,20 +2109,14 @@ void hook_libdyld_os_unfair_recursive_lock_lock_with_options(HOOK_LOCK_1ST_ARG v
     os_unfair_recursive_lock_lock_with_options(lock, options);
 }
 void hook_libdyld_os_unfair_recursive_lock_unlock(HOOK_LOCK_1ST_ARG void* lock) {
-<<<<<<< HEAD
     void *ignorePtr = atomic_load_explicit(&lockPtrToIgnore, memory_order_acquire);
     if (gIgnoreDyldRecursiveLockOnThisThread && ignorePtr != NULL && lock == ignorePtr) {
         return;
-=======
-    if(lock != lockPtrToIgnore || tidToIgnore != mach_thread_self()) {
-        os_unfair_recursive_lock_unlock(lock);
->>>>>>> upstream/main
     }
     os_unfair_recursive_lock_unlock(lock);
 }
 
 void *dlopen_nolock(const char *path, int mode) {
-<<<<<<< HEAD
     if (gDlopenNoLockDepth > 0) {
         // Avoid deadlocking on the patch lock if dlopen_nolock is re-entered on the same thread.
         if (hookedDlopen) {
@@ -2146,9 +2131,6 @@ void *dlopen_nolock(const char *path, int mode) {
     void *result = NULL;
     BOOL previousIgnore = gIgnoreDyldRecursiveLockOnThisThread;
 
-=======
-    tidToIgnore = mach_thread_self();
->>>>>>> upstream/main
     const char *libdyldPath = "/usr/lib/system/libdyld.dylib";
     mach_header_u *libdyldHeader = LCGetLoadedImageHeader(0, libdyldPath);
     assert(libdyldHeader != NULL);
