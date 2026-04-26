@@ -1890,6 +1890,9 @@ func setMode(_ mode: AppLaunchMode) {
                         app.appInfo.isLocked = true
                         app.appInfo.isHidden = true
                         app.appInfo.save()
+                        // Sync published UI vars so toggles reflect new state
+                        app.uiIsLocked = true
+                        app.uiIsHidden = true
                         sharedModel.apps.removeAll { $0 == app }
                         if !sharedModel.hiddenApps.contains(app) {
                             sharedModel.hiddenApps.append(app)
@@ -1899,11 +1902,13 @@ func setMode(_ mode: AppLaunchMode) {
                                 .removeObjects(in: schemes)
                         }
                     } else if action == "lockOnly" {
-                        // Lock switch ON only — hide switch stays OFF, app stays visible
+                        // Lock switch ON, Hide switch OFF — app stays visible
                         app.appInfo.isLocked = true
                         app.appInfo.isHidden = false
                         app.appInfo.save()
-                        // App stays in visible list — no list move needed
+                        // Sync published UI vars
+                        app.uiIsLocked = true
+                        app.uiIsHidden = false
                     }
                 }
             }
@@ -1914,13 +1919,19 @@ func setMode(_ mode: AppLaunchMode) {
                     if action == "unhideOnly" {
                         // Hide switch OFF only — lock switch unchanged
                         app.appInfo.isHidden = false
-                        // isLocked left as-is
+                        app.appInfo.save()
+                        // Sync UI vars — only hide toggle switches off
+                        app.uiIsHidden = false
+                        // uiIsLocked left as-is
                     } else if action == "unlockAndUnhide" {
                         // Both switches OFF
                         app.appInfo.isHidden = false
                         app.appInfo.isLocked = false
+                        app.appInfo.save()
+                        // Sync both UI vars
+                        app.uiIsHidden = false
+                        app.uiIsLocked = false
                     }
-                    app.appInfo.save()
 
                     // Move from hidden list back to visible
                     sharedModel.hiddenApps.removeAll { $0 == app }
