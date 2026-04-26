@@ -147,7 +147,8 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @State private var deleteAppData = false
     @State private var isDeleting = false
     @StateObject private var multiDeleteConfirmAlert = YesNoHelper()
-    @StateObject private var multiLockHideConfirmAlert = YesNoHelper()
+    @StateObject private var lockHideActionAlert = AlertHelper<String>()
+    @StateObject private var unhideActionAlert = AlertHelper<String>()
     @State private var isDrainingInstallQueue = false
     @State private var isLockHideMode = false
     @State private var isDeleteMode = false
@@ -626,11 +627,32 @@ func setMode(_ mode: AppLaunchMode) {
         } message: {
             Text("lc.appList.deleteSelectedMessage %lld".localizeWithFormat(selectedAppsForDeletion.count))
         }
-        .alert("Lock & Hide Apps", isPresented: $multiLockHideConfirmAlert.show) {
-            Button(role: .destructive) { multiLockHideConfirmAlert.close(result: true) } label: { Text("Lock & Hide") }
-            Button("lc.common.cancel".loc, role: .cancel) { multiLockHideConfirmAlert.close(result: false) }
+        // Lock options alert — for visible apps
+        .alert("Lock / Hide Apps", isPresented: $lockHideActionAlert.show) {
+            Button(role: .destructive) { lockHideActionAlert.close(result: "lockAndHide") } label: {
+                Text("Lock & Hide")
+            }
+            Button { lockHideActionAlert.close(result: "lockOnly") } label: {
+                Text("Lock Only")
+            }
+            Button { lockHideActionAlert.close(result: "hideOnly") } label: {
+                Text("Hide Only")
+            }
+            Button("lc.common.cancel".loc, role: .cancel) { lockHideActionAlert.close(result: nil) }
         } message: {
-            Text("Lock and move \(selectedAppsForDeletion.count) app(s) to hidden mode? They will require authentication to access.")
+            Text("Choose what to do with the selected \(selectedAppsForDeletion.filter { !$0.appInfo.isHidden }.count) app(s).")
+        }
+        // Unhide options alert — for hidden apps
+        .alert("Unhide / Unlock Apps", isPresented: $unhideActionAlert.show) {
+            Button(role: .destructive) { unhideActionAlert.close(result: "unlockAndUnhide") } label: {
+                Text("Unlock & Unhide")
+            }
+            Button { unhideActionAlert.close(result: "unhideOnly") } label: {
+                Text("Unhide Only")
+            }
+            Button("lc.common.cancel".loc, role: .cancel) { unhideActionAlert.close(result: nil) }
+        } message: {
+            Text("Choose what to do with the selected \(selectedAppsForDeletion.filter { $0.appInfo.isHidden }.count) hidden app(s).")
         }
 
         .textFieldAlert(
@@ -1836,26 +1858,68 @@ func setMode(_ mode: AppLaunchMode) {
         await toggleLockHideSelectedApps()
     }
 
-    /// Handles both directions:
-    /// - Visible apps in selection → lock + hide them (turn both toggles ON)
-    /// - Hidden apps in selection → unlock + unhide them (turn both toggles OFF)
-    /// Both can be done simultaneously in one action.
+    /// Handles both directions with per-group action choice dialogs:
+    /// - Visible apps → show lock dialog (Lock & Hide / Lock Only / Hide Only / Cancel)
+    /// - Hidden apps  → show unhide dialog (Unlock & Unhide / Unhide Only / Cancel)
+    /// Both groups are processed simultaneously if both are selected.
     func toggleLockHideSelectedApps() async {
         guard !selectedAppsForDeletion.isEmpty else { return }
-        guard let confirmed = await multiLockHideConfirmAlert.open(), confirmed else { return }
 
-        let appsToProcess = selectedAppsForDeletion
+        let visibleApps = selectedAppsForDeletion.filter { !$0.appInfo.isHidden }
+        let hiddenApps  = selectedAppsForDeletion.filter {  $0.appInfo.isHidden }
+
+        // Ask for lock action if any visible apps are selected
+        var lockAction: String? = nil
+        if !visibleApps.isEmpty {
+            lockAction = await lockHideActionAlert.open()
+            guard lockAction != nil else { return } // cancelled
+        }
+
+        // Ask for unhide action if any hidden apps are selected
+        var unhideAction: String? = nil
+        if !hiddenApps.isEmpty {
+            unhideAction = await unhideActionAlert.open()
+            guard unhideAction != nil else { return } // cancelled
+        }
+
         isDeleting = true
 
         await MainActor.run {
-            for app in appsToProcess {
-                let currentlyHidden = app.appInfo.isHidden
-
-                if currentlyHidden {
-                    // Unhide and unlock — move from hidden list back to visible
-                    app.appInfo.isLocked = false
-                    app.appInfo.isHidden = false
+            // Process visible apps
+            if let action = lockAction {
+                for app in visibleApps {
+                    let shouldLock = action == "lockAndHide" || action == "lockOnly"
+                    let shouldHide = action == "lockAndHide" || action == "hideOnly"
+                    app.appInfo.isLocked = shouldLock
+                    app.appInfo.isHidden = shouldHide
                     app.appInfo.save()
+
+                    if shouldHide {
+                        // Move to hidden list
+                        sharedModel.apps.removeAll { $0 == app }
+                        if !sharedModel.hiddenApps.contains(app) {
+                            sharedModel.hiddenApps.append(app)
+                        }
+                        // Remove URL schemes
+                        if let schemes = app.appInfo.urlSchemes() as? [String] {
+                            UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
+                                .removeObjects(in: schemes)
+                        }
+                    }
+                }
+            }
+
+            // Process hidden apps
+            if let action = unhideAction {
+                for app in hiddenApps {
+                    // Unhide Only: keep locked, just move back to visible
+                    // Unlock & Unhide: clear both flags
+                    let shouldUnlock = action == "unlockAndUnhide"
+                    app.appInfo.isHidden = false
+                    if shouldUnlock { app.appInfo.isLocked = false }
+                    app.appInfo.save()
+
+                    // Move from hidden list back to visible
                     sharedModel.hiddenApps.removeAll { $0 == app }
                     if !sharedModel.apps.contains(app) {
                         sharedModel.apps.append(app)
@@ -1867,20 +1931,6 @@ func setMode(_ mode: AppLaunchMode) {
                         let toAdd = schemes.filter { !existing.contains($0) }
                         UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
                             .addObjects(from: toAdd)
-                    }
-                } else {
-                    // Lock and hide — move from visible to hidden
-                    app.appInfo.isLocked = true
-                    app.appInfo.isHidden = true
-                    app.appInfo.save()
-                    sharedModel.apps.removeAll { $0 == app }
-                    if !sharedModel.hiddenApps.contains(app) {
-                        sharedModel.hiddenApps.append(app)
-                    }
-                    // Remove URL schemes
-                    if let schemes = app.appInfo.urlSchemes() as? [String] {
-                        UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
-                            .removeObjects(in: schemes)
                     }
                 }
             }
