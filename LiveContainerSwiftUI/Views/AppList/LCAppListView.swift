@@ -1138,11 +1138,8 @@ func setMode(_ mode: AppLaunchMode) {
             } else {
                 let newAppModel = LCAppModel(appInfo: finalNewApp, delegate: self)
                 sharedModel.apps.append(newAppModel)
-                if let urlSchemes = finalNewApp.urlSchemes(), urlSchemes.count > 0 {
-                    UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
-                        .addObjects(from: urlSchemes as! [Any])
-                }
             }
+            self.sharedModel.syncSharedGuestURLIndex()
             self.installprogressVisible = false
         }
     }
@@ -1382,7 +1379,7 @@ func setMode(_ mode: AppLaunchMode) {
             sharedModel.hiddenApps.removeAll { now in
                 return app == now
             }
-            
+            self.sharedModel.syncSharedGuestURLIndex()
         }
     }
     
@@ -1395,8 +1392,6 @@ func setMode(_ mode: AppLaunchMode) {
                 if !sharedModel.hiddenApps.contains(app) {
                     sharedModel.hiddenApps.append(app)
                 }
-                UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
-                    .removeObjects(in: app.appInfo.urlSchemes() as! [Any])
             } else {
                 sharedModel.hiddenApps.removeAll { now in
                     return app == now
@@ -1404,14 +1399,19 @@ func setMode(_ mode: AppLaunchMode) {
                 if !sharedModel.apps.contains(app) {
                     sharedModel.apps.append(app)
                 }
-                UserDefaults.lcShared().mutableArrayValue(forKey: "LCGuestURLSchemes")
-                    .addObjects(from: app.appInfo.urlSchemes() as! [Any])
             }
-            
+
+            self.sharedModel.syncSharedGuestURLIndex()
+        }
+    }
+
+    func appLaunchAvailabilityDidChange() {
+        DispatchQueue.main.async {
+            self.sharedModel.syncSharedGuestURLIndex()
         }
     }
     
-    func launchAppWithBundleId(bundleId : String, container : String?, forceJIT: Bool? = nil) async {
+    func launchAppWithBundleId(bundleId : String, container : String?, openURL: String? = nil, forceJIT: Bool? = nil) async {
         if bundleId == "" {
             return
         }
@@ -1453,6 +1453,34 @@ func setMode(_ mode: AppLaunchMode) {
             errorShow = true
             return
         }
+
+        let targetContainer = container ?? appFound.uiDefaultDataFolder
+        if let openURL,
+           let targetContainer,
+           var runningLC = LCSharedUtils.getContainerUsingLCScheme(withFolderName: targetContainer) {
+            runningLC = (runningLC as NSString).deletingPathExtension
+            let encodedOpenURL = Data(openURL.utf8).base64EncodedString()
+            var components = URLComponents()
+            components.scheme = runningLC
+            components.host = "livecontainer-launch"
+            components.queryItems = [
+                URLQueryItem(name: "bundle-name", value: bundleId),
+                URLQueryItem(name: "container-folder-name", value: targetContainer),
+                URLQueryItem(name: "open-url", value: encodedOpenURL)
+            ]
+            if let forceJIT {
+                components.queryItems?.append(URLQueryItem(name: "jit", value: forceJIT ? "true" : "false"))
+            }
+            if let urlToOpen = components.url, UIApplication.shared.canOpenURL(urlToOpen) {
+                await UIApplication.shared.open(urlToOpen)
+                return
+            }
+        }
+
+        if let openURL {
+            UserDefaults.standard.setValue(openURL, forKey: "launchAppUrlScheme")
+        }
+
         
         let targetDataUUID = container ?? appFound.appInfo.dataUUID ?? ""
 
@@ -1650,12 +1678,16 @@ func setMode(_ mode: AppLaunchMode) {
             if let components = URLComponents(url: url, resolvingAgainstBaseURL: false) {
                 var bundleId : String? = nil
                 var containerName : String? = nil
+                var openURL : String? = nil
                 var forceJIT: Bool? = nil
                 for queryItem in components.queryItems ?? [] {
                     if queryItem.name == "bundle-name", let bundleId1 = queryItem.value {
                         bundleId = bundleId1
                     } else if queryItem.name == "container-folder-name", let containerName1 = queryItem.value {
                         containerName = containerName1
+                    } else if queryItem.name == "open-url", let encodedOpenURL = queryItem.value,
+                              let decodedData = Data(base64Encoded: encodedOpenURL) {
+                        openURL = String(data: decodedData, encoding: .utf8)
                     } else if queryItem.name == "jit", let forceJIT1 = queryItem.value {
                         if forceJIT1 == "true" {
                             forceJIT = true
@@ -1665,7 +1697,7 @@ func setMode(_ mode: AppLaunchMode) {
                     }
                 }
                 if let bundleId, bundleId != "ui"{
-                    Task { await launchAppWithBundleId(bundleId: bundleId, container: containerName, forceJIT: forceJIT) }
+                    Task { await launchAppWithBundleId(bundleId: bundleId, container: containerName, openURL: openURL, forceJIT: forceJIT) }
                 }
             }
         } else if url.host == "install" {

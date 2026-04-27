@@ -4171,7 +4171,6 @@ extension LCAppSettingsView : LCContainerViewDelegate {
             model.uiSelectedContainer = nil
             model.uiDefaultDataFolder = nil
             model.uiAddonSettingsContainerFolderName = ""
-            appInfo.dataUUID = nil
         } else {
             model.refreshAddonSettingsContainerSelection()
         }

@@ -4,6 +4,7 @@ import CoreLocation
 protocol LCAppModelDelegate {
     func closeNavigationView()
     func changeAppVisibility(app : LCAppModel)
+    func appLaunchAvailabilityDidChange()
     func jitLaunch(appName: String) async
     func jitLaunch(withScript script: String, appName: String) async
     func jitLaunch(withPID pid: Int, withScript script: String?, appName: String) async
@@ -27,7 +28,12 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
     @Published var uiIsHidden : Bool
     @Published var uiIsLocked : Bool
     @Published var uiIsShared : Bool
-    @Published var uiDefaultDataFolder : String?
+    @Published var uiDefaultDataFolder : String? {
+        didSet {
+            appInfo.dataUUID = uiDefaultDataFolder
+            delegate?.appLaunchAvailabilityDidChange()
+        }
+    }
     @Published var uiContainers : [LCContainer]
     @Published var uiSelectedContainer : LCContainer?
     @Published var uiAddonSettingsContainerFolderName : String
@@ -1419,6 +1425,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         
         if newLockState {
             appInfo.isLocked = true
+            delegate?.appLaunchAvailabilityDidChange()
         } else {
             // authenticate before cancelling locked state
             do {
@@ -1437,6 +1444,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             if appInfo.isHidden {
                 await toggleHidden()
             }
+            delegate?.appLaunchAvailabilityDidChange()
         }
     }
     

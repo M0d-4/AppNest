@@ -33,6 +33,53 @@ bool isSharedBundle = false;
 bool isSideStore = false;
 bool sideStoreExist = false;
 
+static BOOL LCDispatchUniversalLink(NSURL *url) {
+    if (!url) {
+        return NO;
+    }
+
+    NSUserActivity *activity = [[NSUserActivity alloc] initWithActivityType:NSUserActivityTypeBrowsingWeb];
+    activity.webpageURL = url;
+
+    UIApplication *application = [NSClassFromString(@"UIApplication") sharedApplication];
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in application.connectedScenes) {
+            id<UISceneDelegate> sceneDelegate = scene.delegate;
+            if ([sceneDelegate respondsToSelector:@selector(scene:continueUserActivity:)]) {
+                [sceneDelegate scene:scene continueUserActivity:activity];
+                return YES;
+            }
+        }
+    }
+
+    id<UIApplicationDelegate> appDelegate = application.delegate;
+    if ([appDelegate respondsToSelector:@selector(application:continueUserActivity:restorationHandler:)]) {
+        return [appDelegate application:application continueUserActivity:activity restorationHandler:^(__unused NSArray<id<UIUserActivityRestoring>> *restorableObjects) {}];
+    }
+
+    if (@available(iOS 13.0, *)) {
+        [application requestSceneSessionActivation:nil userActivity:activity options:nil errorHandler:nil];
+        return YES;
+    }
+
+    return NO;
+}
+
+static void LCDispatchLaunchURL(NSString *launchUrl) {
+    NSURL *url = [NSURL URLWithString:launchUrl];
+    if (!url) {
+        return;
+    }
+
+    NSString *scheme = url.scheme.lowercaseString;
+    if ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"]) {
+        LCDispatchUniversalLink(url);
+        return;
+    }
+
+    [[NSClassFromString(@"UIApplication") sharedApplication] openURL:url options:@{} completionHandler:nil];
+}
+
 static NSString *originalGuestBundleId = nil;
 static NSString *liveContainerBundleId = nil;
 static BOOL useSelectiveBundleIdSpoofing = NO;
@@ -1345,9 +1392,14 @@ int LiveContainerMain(int argc, char *argv[]) {
             if (secondsSinceDate < 0 && secondsSinceDate >= -3.0) {
                 selectedApp = selectedAppFromLaunchExtension;
                 selectedContainer = [lcSharedDefaults stringForKey:@"LCLaunchExtensionContainerName"];
+                NSString *launchUrl = [lcSharedDefaults stringForKey:@"LCLaunchExtensionOpenURL"];
+                if (launchUrl) {
+                    [lcUserDefaults setObject:launchUrl forKey:@"launchAppUrlScheme"];
+                }
             }
             [lcSharedDefaults removeObjectForKey:@"LCLaunchExtensionBundleID"];
             [lcSharedDefaults removeObjectForKey:@"LCLaunchExtensionContainerName"];
+            [lcSharedDefaults removeObjectForKey:@"LCLaunchExtensionOpenURL"];
         }
         
         if (!selectedApp && !isLiveProcess) {
@@ -1441,11 +1493,16 @@ int LiveContainerMain(int argc, char *argv[]) {
                     // Base64 encode the data
                     NSData *data = [launchUrl dataUsingEncoding:NSUTF8StringEncoding];
                     NSString *encodedUrl = [data base64EncodedStringWithOptions:0];
-                    
+
+                    NSURL *url = [NSURL URLWithString:launchUrl];
+                NSString *scheme = url.scheme.lowercaseString;
+                if ([scheme isEqualToString:@"http"] || [scheme isEqualToString:@"https"]) {
+                    LCDispatchLaunchURL(launchUrl);
+                    return;
+                }
+
                     NSString* finalUrl = [NSString stringWithFormat:@"%@://open-url?url=%@", runningLC, encodedUrl];
-                    NSURL* url = [NSURL URLWithString: finalUrl];
-                    
-                    [[NSClassFromString(@"UIApplication") sharedApplication] openURL:url options:@{} completionHandler:nil];
+                    LCDispatchLaunchURL(finalUrl);
 
                 }
             }
@@ -1468,9 +1525,7 @@ int LiveContainerMain(int argc, char *argv[]) {
                 NSString *encodedUrl = [data base64EncodedStringWithOptions:0];
                 
                 NSString* finalUrl = [NSString stringWithFormat:@"%@://open-url?url=%@", lcAppUrlScheme, encodedUrl];
-                NSURL* url = [NSURL URLWithString: finalUrl];
-                
-                [[NSClassFromString(@"UIApplication") sharedApplication] openURL:url options:@{} completionHandler:nil];
+                LCDispatchLaunchURL(finalUrl);
             });
         }
         NSSetUncaughtExceptionHandler(&exceptionHandler);
