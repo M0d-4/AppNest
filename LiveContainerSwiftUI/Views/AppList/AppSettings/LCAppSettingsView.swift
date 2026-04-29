@@ -2271,11 +2271,6 @@ struct LCAppSettingsView: View {
                     })
                     .transition(.opacity.combined(with: .slide)) 
                 }
-            } footer: {
-                if model.uiIsLocked {
-                    Text("lc.appSettings.hideAppDesc".loc)
-                        .transition(.opacity.combined(with: .slide))
-                }
             }
 
             Section(header: Label("Device Mode", systemImage: "iphone")) {
