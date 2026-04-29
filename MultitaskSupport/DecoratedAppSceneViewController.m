@@ -6,6 +6,14 @@
 #import "VirtualWindowsHostView.h"
 #import "../LiveContainer/Localization.h"
 #import "utils.h"
+
+// Let us manage BSServiceConnectionEndpointInjector on our own
+@implementation UIScenePresentationContext(LiveContainerHooks)
+- (BOOL)_isVisibilityPropagationEnabled {
+    return NO;
+}
+@end
+
 #import <objc/runtime.h> 
 #import "LiveContainerSwiftUI-Swift.h"
 
@@ -41,10 +49,6 @@ void UIKitFixesInit(void) {
     Class _UIFluidSliderInteraction = objc_getClass("_UIFluidSliderInteraction");
     if(_UIFluidSliderInteraction) {
         method_setImplementation(class_getInstanceMethod(_UIFluidSliderInteraction, @selector(_state)), (IMP)hook_return_2);
-    }
-    // Fix physical keyboard focus on iOS 17+
-    if(@available(iOS 17.0, *)) {
-        method_exchangeImplementations(class_getClassMethod(RBSTarget.class, @selector(targetWithPid:environmentIdentifier:)), class_getClassMethod(RBSTarget.class, @selector(hook_targetWithPid:environmentIdentifier:)));
     }
 }
 
@@ -90,7 +94,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     self = [super initWithNibName:nil bundle:nil];
     _scaleRatio = 1.0;
     _isMaximized = [NSUserDefaults.lcUserDefaults boolForKey:@"LCLaunchMultitaskMaximized"];
-    _appSceneVC = [[AppSceneViewController alloc] initWithBundleId:bundleId dataUUID:dataUUID delegate:self];
+    _appSceneVC = [[AppSceneViewController alloc] initWithBundleId:bundleId dataUUID:dataUUID hostScene:rootVC.view.window.windowScene delegate:self];
     [rootVC addChildViewController:self];
     [MultitaskDockManager.shared.windowHostingView addSubview:self.view];
     [self setupDecoratedView];
@@ -104,6 +108,9 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     self.navigationItem.title = windowName;
     
     NSArray *menuItems = @[
+        [UIAction actionWithTitle:@"🐞 Toggle Visibility Grant" image:[UIImage systemImageNamed:@"doc.on.doc"] identifier:nil handler:^(UIAction * _Nonnull action) {
+            [self.appSceneVC setEnableVisibility:self.appSceneVC.injector==nil];
+        }],
         [UIAction actionWithTitle:@"lc.multitask.copyPid".loc image:[UIImage systemImageNamed:@"doc.on.doc"] identifier:nil handler:^(UIAction * _Nonnull action) {
             UIPasteboard.generalPasteboard.string = @(self.appSceneVC.pid).stringValue;
         }],
@@ -126,6 +133,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
             return [UIMenu menuWithTitle:NSLocalizedString(@"lc.multitaskAppWindow.appTerminated", nil) children:@[]];
         } else {
             NSString *pidText = [NSString stringWithFormat:@"PID: %d", weakSelf.pid];
+            pidText = [pidText stringByAppendingFormat:@"\n🐞 Visibility Grant: %@", self.appSceneVC.injector!=nil ? @"ON" : @"OFF"];
             return [UIMenu menuWithTitle:pidText children:menuItems];
         }
     }];

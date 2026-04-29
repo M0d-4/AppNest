@@ -20,6 +20,7 @@
 
 
 #import "LiveContainerSwiftUI-Swift.h"
+#import "LCMultitaskXPCService.h"
 
 
 @interface AppSceneViewController()
@@ -61,7 +62,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 @implementation AppSceneViewController
 
 
-- (instancetype)initWithBundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID delegate:(id<AppSceneViewControllerDelegate>)delegate {
+- (instancetype)initWithBundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID hostScene:(UIWindowScene *)hostScene delegate:(id<AppSceneViewControllerDelegate>)delegate {
     self = [super initWithNibName:nil bundle:nil];
     self.view = [[UIView alloc] init];
     self.contentView = [[UIView alloc] init];
@@ -83,7 +84,10 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     
     NSExtensionItem *item = [NSExtensionItem new];
     NSMutableArray* bookmarks = [NSMutableArray array];
+    NSLog(@"DELEGATE %@", delegate);
     NSMutableDictionary *userInfo = @{
+        @"hostFBSIdentityToken": [@"UIScene:" stringByAppendingString:hostScene._FBSScene.identityToken.stringRepresentation],
+        @"endpoint": LCMultitaskXPCService.sharedInstance.listener.endpoint,
         @"hostUrlScheme": NSUserDefaults.lcAppUrlScheme,
         @"selected": _bundleId,
         @"selectedContainer": _dataUUID,
@@ -251,6 +255,25 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 
 
     [self.view.window.windowScene _registerSettingsDiffActionArray:@[self] forKey:self.sceneID];
+
+- (void)setEnableVisibility:(BOOL)visible {
+    if (!visible && self.injector) {
+        [self.injector invalidate];
+        self.injector = nil;
+        return;
+    }
+    // else
+    self.injector = [PrivClass(BSServiceConnectionEndpointInjector) injectorWithConfigurator:^(id<BSServiceConnectionEndpointInjectorConfiguring> config) {
+        NSString *selfEnv = [@"UIScene:" stringByAppendingString:self.presenter.scene.identityToken.stringRepresentation];
+        NSString *sourceEnv = [@"UIScene:" stringByAppendingString:self.view.window.windowScene._FBSScene.identityToken.stringRepresentation];
+        [config setTarget:[RBSTarget targetWithPid:self.pid environmentIdentifier:selfEnv]];
+        [config setInheritingEnvironment:sourceEnv];
+        [config setAdditionalAttributes:@[
+            [PrivClass(RBSHereditaryGrant) grantWithNamespace:@"com.apple.frontboard.visibility" sourceEnvironment:sourceEnv attributes:nil]
+        ]];
+    }];
+}
+
 
     // Disable background notifications so WebKit doesn't pause media in multitasking
     [self setBackgroundNotificationEnabled:false];

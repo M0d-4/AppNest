@@ -23,6 +23,7 @@ static int (*appMain)(int, char**);
 NSUserDefaults *lcUserDefaults;
 NSUserDefaults *lcSharedDefaults;
 NSString *lcAppGroupPath;
+NSString* lcAppIdentityToken;
 NSString* lcAppUrlScheme;
 NSBundle* lcMainBundle;
 NSDictionary* guestAppInfo;
@@ -315,6 +316,9 @@ static NSDictionary *LCGuestAppInfoWithMergedAddonSettings(NSDictionary *appInfo
 + (NSString *)lcAppGroupPath {
     return lcAppGroupPath;
 }
++ (NSString *)lcAppIdentityToken {
+    return lcAppIdentityToken;
+}
 + (NSString *)lcAppUrlScheme {
     return lcAppUrlScheme;
 }
@@ -567,7 +571,9 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     }
     
     if(isLiveProcess && !isSideStore) {
+        lcAppIdentityToken = [lcUserDefaults stringForKey:@"hostFBSIdentityToken"];
         lcAppUrlScheme = [lcUserDefaults stringForKey:@"hostUrlScheme"];
+        [lcUserDefaults removeObjectForKey:@"hostFBSIdentityToken"];
         [lcUserDefaults removeObjectForKey:@"hostUrlScheme"];
     }
     
