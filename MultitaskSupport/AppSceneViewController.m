@@ -255,6 +255,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 
 
     [self.view.window.windowScene _registerSettingsDiffActionArray:@[self] forKey:self.sceneID];
+}
 
 - (void)setEnableVisibility:(BOOL)visible {
     if (!visible && self.injector) {
@@ -545,4 +546,3 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 }
 
 @end
- 
