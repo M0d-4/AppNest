@@ -1,11 +1,13 @@
 @import UIKit;
 #import "LCSharedUtils.h"
 #import "UIKitPrivate.h"
-#import "../Livecontainer/utils.h"
+#import "../LiveContainer/utils.h"
 #import <LocalAuthentication/LocalAuthentication.h>
 #import "Localization.h"
 #import "../LiveProcess/LiveProcessHandler.h"
 #import "../MultitaskSupport/UIKitPrivate+MultitaskSupport.h"
+
+extern void _objc_msgForward(void);
 @interface LCRealIPhoneModeHelper : NSObject
 + (void)repositionAllWindows;
 @end
