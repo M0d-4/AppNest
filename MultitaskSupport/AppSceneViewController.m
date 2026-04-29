@@ -255,6 +255,13 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 
 
     [self.view.window.windowScene _registerSettingsDiffActionArray:@[self] forKey:self.sceneID];
+
+    // Disable background notifications so WebKit doesn't pause media in multitasking
+    [self setBackgroundNotificationEnabled:false];
+
+    // Acquire foreground assertions for WebKit child processes (WebContent, GPU)
+    // to prevent iOS 17+ from throttling their display link / rendering pipeline
+    [self acquireForegroundAssertionForChildProcesses];
 }
 
 - (void)setEnableVisibility:(BOOL)visible {
@@ -273,15 +280,6 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
             [PrivClass(RBSHereditaryGrant) grantWithNamespace:@"com.apple.frontboard.visibility" sourceEnvironment:sourceEnv attributes:nil]
         ]];
     }];
-}
-
-
-    // Disable background notifications so WebKit doesn't pause media in multitasking
-    [self setBackgroundNotificationEnabled:false];
-
-    // Acquire foreground assertions for WebKit child processes (WebContent, GPU)
-    // to prevent iOS 17+ from throttling their display link / rendering pipeline
-    [self acquireForegroundAssertionForChildProcesses];
 }
 
 - (void)terminate {
