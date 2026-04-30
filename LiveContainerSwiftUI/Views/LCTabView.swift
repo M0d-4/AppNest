@@ -22,14 +22,22 @@ struct LCTabView: View {
     @EnvironmentObject var sceneDelegate: SceneDelegate
     @State var shouldToggleMainWindowOpen = false
     @Environment(\.scenePhase) var scenePhase
+    @StateObject var downloadHelper = DownloadHelper()
+
+    private var appListView: LCAppListView {
+        LCAppListView(appDataFolderNames: $appDataFolderNames, tweakFolderNames: $tweakFolderNames)
+    }
+
+    private var sourcesView: LCSourcesView {
+        LCSourcesView()
+    }
+
     let pub = NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)
 
     
     var body: some View {
         ZStack(alignment: .bottom) {
         Group {
-            let appListView = LCAppListView(appDataFolderNames: $appDataFolderNames, tweakFolderNames: $tweakFolderNames)
-            let sourcesView = LCSourcesView()
             if #available(iOS 19.0, *), SharedModel.isLiquidGlassSearchEnabled {
                 TabView(selection: Binding(
                     get: { sharedModel.selectedTab },
@@ -103,6 +111,8 @@ struct LCTabView: View {
                 }
             }
         }
+        .downloadAlert(helper: downloadHelper)
+        .environmentObject(downloadHelper)
         .alert("lc.common.error".loc, isPresented: $errorShow){
             Button("lc.common.ok".loc, action: {
             })
