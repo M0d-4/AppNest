@@ -256,14 +256,6 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 
     [self.view.window.windowScene _registerSettingsDiffActionArray:@[self] forKey:self.sceneID];
 
-    // Disable background notifications so WebKit doesn't pause media in multitasking
-    [self setBackgroundNotificationEnabled:false];
-
-    // Acquire foreground assertions for WebKit child processes (WebContent, GPU)
-    // to prevent iOS 17+ from throttling their display link / rendering pipeline
-    [self acquireForegroundAssertionForChildProcesses];
-}
-
 - (void)setEnableVisibility:(BOOL)visible {
     if (!visible && self.injector) {
         [self.injector invalidate];
@@ -280,6 +272,15 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
             [PrivClass(RBSHereditaryGrant) grantWithNamespace:@"com.apple.frontboard.visibility" sourceEnvironment:sourceEnv attributes:nil]
         ]];
     }];
+}
+
+
+    // Disable background notifications so WebKit doesn't pause media in multitasking
+    [self setBackgroundNotificationEnabled:false];
+
+    // Acquire foreground assertions for WebKit child processes (WebContent, GPU)
+    // to prevent iOS 17+ from throttling their display link / rendering pipeline
+    [self acquireForegroundAssertionForChildProcesses];
 }
 
 - (void)terminate {
@@ -303,6 +304,18 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     if(self.isNativeWindow) {
         baseSettings.interruptionPolicy = 0;
         baseSettings.peripheryInsets = self.view.window.safeAreaInsets;
+        // Honor Real iPhone Mode: constrain the scene frame to a 9:16 portrait width
+        // so the guest app renders at iPhone dimensions rather than full-screen.
+        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
+            CGFloat w = self.view.frame.size.width / self.scaleRatio;
+            CGFloat h = self.view.frame.size.height / self.scaleRatio;
+            CGFloat targetW = MIN(h * (9.0 / 16.0), w);
+            if (UIInterfaceOrientationIsLandscape(baseSettings.interfaceOrientation)) {
+                baseSettings.frame = CGRectMake(0, 0, h, targetW);
+            } else {
+                baseSettings.frame = CGRectMake(0, 0, targetW, h);
+            }
+        }
         [self.presenter.scene updateSettings:baseSettings withTransitionContext:newContext completion:nil];
    } else {
         [self.delegate appSceneVC:self didUpdateFromSettings:baseSettings transitionContext:newContext];
