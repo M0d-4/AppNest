@@ -17,6 +17,7 @@
 #include "../MultitaskSupport/PiPManager.h"
 #include "../MultitaskSupport/VirtualWindowsHostView.h"
 #include "../LiveContainer/FoundationPrivate.h"
+#include "../codesign/CodeSigner.h"
 #include "../LiveContainer/Tweaks/CoreLocation+GuestHooks.h"
 #include "../LiveContainer/Tweaks/AVFoundation+GuestHooks.h"
 
