@@ -25,6 +25,8 @@ struct LCDataManagementView : View {
     @StateObject private var keyChainRemovalAlert = YesNoHelper()
     @StateObject private var tmpRemovalAlert = YesNoHelper()
     @StateObject private var clearIconCacheAlert = YesNoHelper()
+    @StateObject private var cacheRemovalAlert = YesNoHelper() 
+
     
     @State var errorShow = false
     @State var errorInfo = ""
@@ -90,6 +92,12 @@ struct LCDataManagementView : View {
                     Task { await clearTemporaryFiles() }
                 } label: {
                     Text("lc.settings.cleanTmp".loc)
+                }
+                
+                Button(role:.destructive) {
+                    Task { await clearCacheFiles() }
+                } label: {
+                    Text("lc.settings.cleanCaches".loc) 
                 }
 
                 Button(role:.destructive) {
@@ -186,6 +194,20 @@ struct LCDataManagementView : View {
         } message: {
             Text("lc.settings.cleanTmpConfirm".loc)
         }
+        .alert("lc.settings.cleanCaches".loc, isPresented: $cacheRemovalAlert.show) {
+    Button(role: .destructive) {
+        cacheRemovalAlert.close(result: true)
+    } label: {
+        Text("lc.common.delete".loc)
+    }
+
+    Button("lc.common.cancel".loc, role: .cancel) {
+        cacheRemovalAlert.close(result: false)
+    }
+} message: {
+    Text("lc.settings.cleanCacheConfirm".loc) 
+}
+
         .onAppear {
             onAppearFunc()
         }
@@ -365,6 +387,50 @@ struct LCDataManagementView : View {
             errorShow = true
         }
     }
+    
+    func clearCacheFiles() async {
+        guard let result = await cacheRemovalAlert.open(), result else {
+            return
+        }
+
+        let fm = FileManager.default
+
+        var allApps = sharedModel.apps + sharedModel.hiddenApps
+        if UserDefaults.sideStoreExist() {
+            allApps.append(LCAppModel(appInfo: BuiltInSideStoreAppInfo()))
+        }
+
+        var cleanedCount = 0
+
+        do {
+            for app in allApps {
+                for container in app.uiContainers {
+                    let containerPath = container.containerURL
+                    let guestCachePath = containerPath.appendingPathComponent("Library/Caches")
+
+                    if fm.fileExists(atPath: guestCachePath.path) {
+                        let cacheItems = try fm.contentsOfDirectory(at: guestCachePath, includingPropertiesForKeys: nil)
+                        for item in cacheItems {
+                            try fm.removeItem(at: item)
+                        }
+                        cleanedCount += 1
+                    }
+                }
+            }
+
+            if cleanedCount == 0 {
+                successInfo = "lc.settings.noCacheToClean".loc
+            } else {
+                successInfo = "lc.settings.cleanCacheComplete".loc
+            }
+            successShow = true
+        } catch {
+            errorInfo = error.localizedDescription
+            errorShow = true
+        }
+    }
+
+
     
     func moveDanglingFolders() async {
         let fm = FileManager()

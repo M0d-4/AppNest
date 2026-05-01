@@ -1315,10 +1315,16 @@ func setMode(_ mode: AppLaunchMode) {
             let wasUpdate = isUpdate || downloadHelper.isUpdate
             downloadHelper.isUpdate = false
 
+            // Consume pending icon URL now (before enqueue clears it) so the
+            // icon is reliably attached to the item regardless of thread timing.
+            let pendingIcon = downloadHelper._pendingIconURL
+            downloadHelper._pendingIconURL = nil
+
             let item = DownloadItem(
                 url: installUrl,
                 destinationURL: destinationURL,
                 appName: displayName,
+                iconURL: pendingIcon,
                 isUpdate: wasUpdate
             )
             let itemID = downloadHelper.enqueue(item: item)

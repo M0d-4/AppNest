@@ -48,7 +48,9 @@ body:
     id: crash-log
     attributes:
       label: Crash Log
-      description: If a crash happened, please upload the crash log in iOS settings - Privacy Security - Analytics Improvements - Analytics Data - Search LiveContainer. **Do not copy and paste.** Instead, please change .ips to .txt and upload it.
+      description: If a crash happened, please upload the crash log in iOS settings - Privacy Security - Analytics Improvements - Analytics Data - Search LiveContainer/LiveProcess. **Do not copy and paste.** Instead, please change .ips to .txt and upload it. If you are certain no crash report is produced, type "no crash report is produced".
+    validations:
+      required: true
 
   - type: textarea
     id: other-info
