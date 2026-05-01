@@ -15,7 +15,7 @@ extern void* (*msHookFunction)(void *symbol, void *hook, void **old);
 OSStatus (*orig_SecItemAdd)(CFDictionaryRef attributes, CFTypeRef *result) = SecItemAdd;
 OSStatus (*orig_SecItemCopyMatching)(CFDictionaryRef query, CFTypeRef *result) = SecItemCopyMatching;
 OSStatus (*orig_SecItemUpdate)(CFDictionaryRef query, CFDictionaryRef attributesToUpdate) = SecItemUpdate;
-OSStatus (*orig_SecItemDelete)(CFDictionaryRef query) = SecItemDelete;
+OSStatus orig_SecItemDelete(CFDictionaryRef query);  // defined below; installed as SecItemDelete hook via litehook
 static OSStatus (*real_SecItemDelete)(CFDictionaryRef query) = SecItemDelete;
 SecKeyRef (*orig_SecKeyCreateRandomKey)(CFDictionaryRef parameters, CFErrorRef *error) = SecKeyCreateRandomKey;
 SecKeyRef (*orig_SecKeyCreateWithData)(CFDataRef keyData, CFDictionaryRef parameters, CFErrorRef *error) = SecKeyCreateWithData;
