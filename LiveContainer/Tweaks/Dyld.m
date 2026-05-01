@@ -2086,6 +2086,8 @@ static __thread int gDlopenNoLockDepth = 0;
 
 // The lock pointer we ignore (initialized once, thread-safely).
 static _Atomic(void *) lockPtrToIgnore = NULL;
+// The thread that first acquired the lock (initialized alongside lockPtrToIgnore).
+static _Atomic(mach_port_t) tidToIgnore = 0;
 
 static inline void *lc_getLockPtrToIgnoreOrInit(void *observedLock) {
     void *current = atomic_load_explicit(&lockPtrToIgnore, memory_order_acquire);
