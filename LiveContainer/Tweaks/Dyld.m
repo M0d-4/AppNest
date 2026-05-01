@@ -2115,6 +2115,24 @@ void hook_libdyld_os_unfair_recursive_lock_unlock(HOOK_LOCK_1ST_ARG void* lock) 
     }
     os_unfair_recursive_lock_unlock(lock);
 }
+bool hook_libdyld_os_unfair_recursive_lock_trylock(HOOK_LOCK_1ST_ARG void* lock) {
+    if(!lockPtrToIgnore) lockPtrToIgnore = lock;
+    if(lock != lockPtrToIgnore || tidToIgnore != mach_thread_self()) {
+        return os_unfair_recursive_lock_trylock(lock);
+    }
+    return true;
+}
+
+// return index of that function in vtable
+int searchVtable(void** vtable, void *func) {
+    for(int i = 0; i < 100; ++i) {
+        if(vtable[i] == func) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 
 void *dlopen_nolock(const char *path, int mode) {
     if (gDlopenNoLockDepth > 0) {
@@ -2135,35 +2153,75 @@ void *dlopen_nolock(const char *path, int mode) {
     mach_header_u *libdyldHeader = LCGetLoadedImageHeader(0, libdyldPath);
     assert(libdyldHeader != NULL);
 #if !TARGET_OS_SIMULATOR
-    NSString *lockUnlockPtrName = @"dyld4::LibSystemHelpers::os_unfair_recursive_lock_lock_with_options";
-    void **lockUnlockPtr = getCachedSymbol(lockUnlockPtrName, libdyldHeader);
-    if(!lockUnlockPtr) {
-        void **vtableLibSystemHelpers = litehook_find_dsc_symbol(libdyldPath, "__ZTVN5dyld416LibSystemHelpersE");
-        void *lockFunc = litehook_find_dsc_symbol(libdyldPath, "__ZNK5dyld416LibSystemHelpers42os_unfair_recursive_lock_lock_with_optionsEP26os_unfair_recursive_lock_s24os_unfair_lock_options_t");
-        void *unlockFunc = litehook_find_dsc_symbol(libdyldPath, "__ZNK5dyld416LibSystemHelpers31os_unfair_recursive_lock_unlockEP26os_unfair_recursive_lock_s");
+    NSString *lockPtrName = @"dyld4::LibSystemHelpers::os_unfair_recursive_lock_lock_with_options";
+    NSString *unlockPtrName = @"dyld4::LibSystemHelpers::os_unfair_recursive_lock_unlock_with_options";
+    NSString *tryLockPtrName = @"dyld4::LibSystemHelpers::os_unfair_recursive_lock_trylock";
+    void **lockPtr = getCachedSymbol(lockPtrName, libdyldHeader);
+    void **unlockPtr = getCachedSymbol(unlockPtrName, libdyldHeader);
+    void **trylockPtr = 0;
+    bool shouldPatchTrylock = false;
+    if(@available(iOS 26.5, *)) {
+        shouldPatchTrylock = true;
+        trylockPtr = getCachedSymbol(tryLockPtrName, libdyldHeader);
+    }
 
-        // Find the pointers in vtable storing the lock and unlock functions, they must be there or this loop will hit unreadable memory region and crash
-        while(!lockUnlockPtr) {
-            if(vtableLibSystemHelpers[0] == lockFunc) {
-                lockUnlockPtr = vtableLibSystemHelpers;
-                // unlockPtr stands next to lockPtr in vtable
-                NSCAssert(vtableLibSystemHelpers[1] == unlockFunc, @"dyld has changed: lock and unlock functions are not next to each other");
-                break;
-            }
-            vtableLibSystemHelpers++;
+    if(!unlockPtr || !lockPtr || (shouldPatchTrylock && !trylockPtr)) {
+        void **vtableLibSystemHelpers = litehook_find_dsc_symbol(libdyldPath, "__ZTVN5dyld416LibSystemHelpersE");
+
+        if(!lockPtr) {
+            void *lockFunc = litehook_find_dsc_symbol(libdyldPath, "__ZNK5dyld416LibSystemHelpers42os_unfair_recursive_lock_lock_with_optionsEP26os_unfair_recursive_lock_s24os_unfair_lock_options_t");
+            int lockOffset = searchVtable(vtableLibSystemHelpers, lockFunc);
+            NSCAssert(lockOffset != -1, @"dyld has changed: lockOffset not found in vtable");
+            lockPtr = vtableLibSystemHelpers + lockOffset;
+            saveCachedSymbol(lockPtrName, libdyldHeader, (uintptr_t)lockPtr - (uintptr_t)libdyldHeader);
         }
-        saveCachedSymbol(lockUnlockPtrName, libdyldHeader, (uintptr_t)lockUnlockPtr - (uintptr_t)libdyldHeader);
+
+        if(!unlockPtr) {
+            void *unlockFunc = litehook_find_dsc_symbol(libdyldPath, "__ZNK5dyld416LibSystemHelpers31os_unfair_recursive_lock_unlockEP26os_unfair_recursive_lock_s");
+            int unlockOffset = searchVtable(vtableLibSystemHelpers, unlockFunc);
+            NSCAssert(unlockOffset != -1, @"dyld has changed: unlockOffset not found in vtable");
+            unlockPtr = vtableLibSystemHelpers + unlockOffset;
+            saveCachedSymbol(unlockPtrName, libdyldHeader, (uintptr_t)unlockPtr - (uintptr_t)libdyldHeader);
+        }
+
+        if(shouldPatchTrylock && !trylockPtr) {
+            // after 26.5b2 dyld4::RuntimeLocks::couldDlopenLock is added and called when dlopen is called with RTLD_NO_LOAD,
+            // which calls os_unfair_recursive_lock_trylock, so we should also hook that
+            void *tryLockFunc = litehook_find_dsc_symbol(libdyldPath, "__ZNK5dyld416LibSystemHelpers32os_unfair_recursive_lock_trylockEP26os_unfair_recursive_lock_s");
+            int trylockOffset = searchVtable(vtableLibSystemHelpers, tryLockFunc);
+            // in case people use b1, we don't use NSCAssert here
+            if(trylockOffset != -1) {
+                trylockPtr = vtableLibSystemHelpers + trylockOffset;
+                saveCachedSymbol(tryLockPtrName, libdyldHeader, (uintptr_t)trylockPtr - (uintptr_t)libdyldHeader);
+            } else {
+                NSLog(@"dyld has changed: trylockOffset not found in vtable");
+                shouldPatchTrylock = false;
+            }
+        }
     }
 
     kern_return_t ret;
-    ret = builtin_vm_protect(mach_task_self(), (mach_vm_address_t)lockUnlockPtr, sizeof(uintptr_t[2]), false, PROT_READ | PROT_WRITE | VM_PROT_COPY);
+    mach_vm_address_t vtablePageStart = (mach_vm_address_t)((uint64_t)lockPtr & ~(16384 - 1));
+
+    ret = builtin_vm_protect(mach_task_self(), vtablePageStart, 16384, false, PROT_READ | PROT_WRITE | VM_PROT_COPY);
     if(ret != KERN_SUCCESS) {
         assert(os_tpro_is_supported());
         os_thread_self_restrict_tpro_to_rw();
     }
-    void *origLockPtr = lockUnlockPtr[0], *origUnlockPtr = lockUnlockPtr[1];
-    lockUnlockPtr[0] = hook_libdyld_os_unfair_recursive_lock_lock_with_options;
-    lockUnlockPtr[1] = hook_libdyld_os_unfair_recursive_lock_unlock;
+    void *origLockPtr = *lockPtr, *origUnlockPtr = *unlockPtr, *origTryLockPtr = 0;
+    *lockPtr = hook_libdyld_os_unfair_recursive_lock_lock_with_options;
+    *unlockPtr = hook_libdyld_os_unfair_recursive_lock_unlock;
+    if(shouldPatchTrylock) {
+        origTryLockPtr = *trylockPtr;
+        *trylockPtr = hook_libdyld_os_unfair_recursive_lock_trylock;
+    }
+
+    ret = builtin_vm_protect(mach_task_self(), vtablePageStart, 16384, false, PROT_READ);
+    if(ret != KERN_SUCCESS) {
+        assert(os_tpro_is_supported());
+        os_thread_self_restrict_tpro_to_rw();
+    }
+    
     gIgnoreDyldRecursiveLockOnThisThread = YES;
     if(hookedDlopen) {
         result = jitless_hook_dlopen(path, mode);
@@ -2172,15 +2230,18 @@ void *dlopen_nolock(const char *path, int mode) {
     }
     gIgnoreDyldRecursiveLockOnThisThread = previousIgnore;
 
-    ret = builtin_vm_protect(mach_task_self(), (mach_vm_address_t)lockUnlockPtr, sizeof(uintptr_t[2]), false, PROT_READ | PROT_WRITE);
+    ret = builtin_vm_protect(mach_task_self(), vtablePageStart, 16384, false, PROT_READ | PROT_WRITE);
     if(ret != KERN_SUCCESS) {
         assert(os_tpro_is_supported());
         os_thread_self_restrict_tpro_to_rw();
     }
-    lockUnlockPtr[0] = origLockPtr;
-    lockUnlockPtr[1] = origUnlockPtr;
+    *lockPtr = origLockPtr;
+    *unlockPtr = origUnlockPtr;
+    if(shouldPatchTrylock) {
+        *trylockPtr = origTryLockPtr;
+    }
 
-    ret = builtin_vm_protect(mach_task_self(), (mach_vm_address_t)lockUnlockPtr, sizeof(uintptr_t[2]), false, PROT_READ);
+    ret = builtin_vm_protect(mach_task_self(), vtablePageStart, 16384, false, PROT_READ);
     if(ret != KERN_SUCCESS) {
         assert(os_tpro_is_supported());
         os_thread_self_restrict_tpro_to_rw();

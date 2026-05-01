@@ -273,7 +273,7 @@ OSStatus new_SecItemUpdate(CFDictionaryRef query, CFDictionaryRef attributesToUp
     return status;
 }
 
-OSStatus new_SecItemDelete(CFDictionaryRef query){
+OSStatus orig_SecItemDelete(CFDictionaryRef query){
     NSMutableDictionary *scopedQuery = LCCreateScopedDictionary(query, YES, NO, LCSecItemDictionaryKindQuery);
     OSStatus status = orig_SecItemDelete((__bridge CFDictionaryRef)scopedQuery);
     if (status == errSecItemNotFound || status == errSecParam) {
@@ -398,7 +398,7 @@ void SecItemGuestHooksInit(void)  {
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecItemAdd, new_SecItemAdd, nil);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecItemCopyMatching, new_SecItemCopyMatching, nil);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecItemUpdate, new_SecItemUpdate, nil);
-    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecItemDelete, new_SecItemDelete, nil);
+    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecItemDelete, orig_SecItemDelete, nil);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecKeyCreateRandomKey, new_SecKeyCreateRandomKey, nil);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecKeyCreateWithData, new_SecKeyCreateWithData, nil);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecKeyGeneratePair, new_SecKeyGeneratePair, nil);
