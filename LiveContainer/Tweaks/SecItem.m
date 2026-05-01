@@ -15,7 +15,7 @@ extern void* (*msHookFunction)(void *symbol, void *hook, void **old);
 OSStatus (*orig_SecItemAdd)(CFDictionaryRef attributes, CFTypeRef *result) = SecItemAdd;
 OSStatus (*orig_SecItemCopyMatching)(CFDictionaryRef query, CFTypeRef *result) = SecItemCopyMatching;
 OSStatus (*orig_SecItemUpdate)(CFDictionaryRef query, CFDictionaryRef attributesToUpdate) = SecItemUpdate;
-OSStatus (*orig_SecItemDelete)(CFDictionaryRef query) = SecItemDelete;
+OSStatus orig_SecItemDelete(CFDictionaryRef query);  // defined below; replaces SecItemDelete via litehook
 SecKeyRef (*orig_SecKeyCreateRandomKey)(CFDictionaryRef parameters, CFErrorRef *error) = SecKeyCreateRandomKey;
 SecKeyRef (*orig_SecKeyCreateWithData)(CFDataRef keyData, CFDictionaryRef parameters, CFErrorRef *error) = SecKeyCreateWithData;
 #pragma clang diagnostic push
@@ -273,7 +273,7 @@ OSStatus new_SecItemUpdate(CFDictionaryRef query, CFDictionaryRef attributesToUp
     return status;
 }
 
-OSStatus new_SecItemDelete(CFDictionaryRef query){
+OSStatus orig_SecItemDelete(CFDictionaryRef query){
     NSMutableDictionary *scopedQuery = LCCreateScopedDictionary(query, YES, NO, LCSecItemDictionaryKindQuery);
     OSStatus status = orig_SecItemDelete((__bridge CFDictionaryRef)scopedQuery);
     if (status == errSecItemNotFound || status == errSecParam) {
@@ -398,7 +398,7 @@ void SecItemGuestHooksInit(void)  {
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecItemAdd, new_SecItemAdd, nil);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecItemCopyMatching, new_SecItemCopyMatching, nil);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecItemUpdate, new_SecItemUpdate, nil);
-    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecItemDelete, new_SecItemDelete, nil);
+    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecItemDelete, orig_SecItemDelete, nil);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecKeyCreateRandomKey, new_SecKeyCreateRandomKey, nil);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecKeyCreateWithData, new_SecKeyCreateWithData, nil);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, SecKeyGeneratePair, new_SecKeyGeneratePair, nil);
