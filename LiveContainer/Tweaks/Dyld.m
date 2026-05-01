@@ -2225,11 +2225,13 @@ void *dlopen_nolock(const char *path, int mode) {
     }
     
     gIgnoreDyldRecursiveLockOnThisThread = YES;
+    atomic_store_explicit(&tidToIgnore, mach_thread_self(), memory_order_release);
     if(hookedDlopen) {
         result = jitless_hook_dlopen(path, mode);
     } else {
         result = dlopen(path, mode);
     }
+    atomic_store_explicit(&tidToIgnore, 0, memory_order_release);
     gIgnoreDyldRecursiveLockOnThisThread = previousIgnore;
 
     ret = builtin_vm_protect(mach_task_self(), vtablePageStart, 16384, false, PROT_READ | PROT_WRITE);
@@ -2252,11 +2254,13 @@ void *dlopen_nolock(const char *path, int mode) {
     litehook_rebind_symbol(libdyldHeader, os_unfair_recursive_lock_lock_with_options, hook_libdyld_os_unfair_recursive_lock_lock_with_options, nil);
     litehook_rebind_symbol(libdyldHeader, os_unfair_recursive_lock_unlock, hook_libdyld_os_unfair_recursive_lock_unlock, nil);
     gIgnoreDyldRecursiveLockOnThisThread = YES;
+    atomic_store_explicit(&tidToIgnore, mach_thread_self(), memory_order_release);
     if (hookedDlopen) {
         result = jitless_hook_dlopen(path, mode);
     } else {
         result = dlopen(path, mode);
     }
+    atomic_store_explicit(&tidToIgnore, 0, memory_order_release);
     gIgnoreDyldRecursiveLockOnThisThread = previousIgnore;
     litehook_rebind_symbol(libdyldHeader, hook_libdyld_os_unfair_recursive_lock_lock_with_options, os_unfair_recursive_lock_lock_with_options, nil);
     litehook_rebind_symbol(libdyldHeader, hook_libdyld_os_unfair_recursive_lock_unlock, os_unfair_recursive_lock_unlock, nil);
