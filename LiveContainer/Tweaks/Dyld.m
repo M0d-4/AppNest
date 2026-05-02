@@ -2275,8 +2275,52 @@ void *dlopen_nolock(const char *path, int mode) {
 #pragma mark - Workaround `file system sandbox blocked mmap()`
 // when using multitask app in private container, we need to temporarily hook dyld's mmap
 mach_port_t excPort;
-void *exception_handler(void *unused) {
-    mach_msg_server(mach_exc_server, sizeof(union __RequestUnion__catch_mach_exc_subsystem), excPort, MACH_MSG_OPTION_NONE);
+// Custom mach message dispatch that calls our renamed handlers,
+// avoiding conflict with ElleKitJITLessHook's catch_mach_exception_raise* symbols.
+static boolean_t dyld_bypass_mach_exc_server(mach_msg_header_t *request, mach_msg_header_t *reply) {
+    // msgh_id for mach_exception_raise_state is 2407 (MACH_EXCEPTION_CODES | EXC_STATE)
+    if (request->msgh_id == 2407) {
+        typedef struct {
+            mach_msg_header_t Head;
+            NDR_record_t NDR;
+            exception_type_t exception;
+            mach_msg_type_number_t codeCnt;
+            int64_t code[2];
+            int flavor;
+            mach_msg_type_number_t old_stateCnt;
+            natural_t old_state[144];
+        } __Request;
+        typedef struct {
+            mach_msg_header_t Head;
+            NDR_record_t NDR;
+            kern_return_t RetCode;
+            int flavor;
+            mach_msg_type_number_t new_stateCnt;
+            natural_t new_state[144];
+        } __Reply;
+        __Request *req = (__Request *)request;
+        __Reply *rep = (__Reply *)reply;
+        rep->Head = req->Head;
+        rep->NDR = req->NDR;
+        rep->flavor = req->flavor;
+        rep->new_stateCnt = req->old_stateCnt;
+        memcpy(rep->new_state, req->old_state, req->old_stateCnt * sizeof(natural_t));
+        rep->RetCode = dyld_bypass_catch_mach_exception_raise_state(
+            req->Head.msgh_local_port,
+            req->exception,
+            (const mach_exception_data_t)req->code, req->codeCnt,
+            &rep->flavor,
+            (const thread_state_t)req->old_state, req->old_stateCnt,
+            (thread_state_t)rep->new_state, &rep->new_stateCnt);
+        rep->Head.msgh_size = sizeof(*rep);
+        rep->Head.msgh_bits = MACH_MSGH_BITS(MACH_MSG_TYPE_MOVE_SEND_ONCE, 0);
+        return TRUE;
+    }
+    return mach_exc_server(request, reply);
+}
+
+static void *dyld_bypass_exception_handler(void *unused) {
+    mach_msg_server(dyld_bypass_mach_exc_server, sizeof(union __RequestUnion__catch_mach_exc_subsystem), excPort, MACH_MSG_OPTION_NONE);
     abort();
 }
 
@@ -2286,7 +2330,7 @@ void *jitless_hook_dlopen(const char *path, int mode) {
         mach_port_allocate(mach_task_self(), MACH_PORT_RIGHT_RECEIVE, &excPort);
         mach_port_insert_right(mach_task_self(), excPort, excPort, MACH_MSG_TYPE_MAKE_SEND);
         pthread_t thread;
-        pthread_create(&thread, NULL, exception_handler, NULL);
+        pthread_create(&thread, NULL, dyld_bypass_exception_handler, NULL);
     }
 
     // save old thread states
@@ -2344,7 +2388,7 @@ void* jitless_hook_mmap(void *addr, size_t len, int prot, int flags, int fd, off
     return map;
 }
 
-kern_return_t catch_mach_exception_raise_state( mach_port_t exception_port, exception_type_t exception, const mach_exception_data_t code, mach_msg_type_number_t codeCnt, int *flavor, const thread_state_t old_state, mach_msg_type_number_t old_stateCnt, thread_state_t new_state, mach_msg_type_number_t *new_stateCnt) {
+kern_return_t dyld_bypass_catch_mach_exception_raise_state( mach_port_t exception_port, exception_type_t exception, const mach_exception_data_t code, mach_msg_type_number_t codeCnt, int *flavor, const thread_state_t old_state, mach_msg_type_number_t old_stateCnt, thread_state_t new_state, mach_msg_type_number_t *new_stateCnt) {
     arm_thread_state64_t *old = (arm_thread_state64_t *)old_state;
     arm_thread_state64_t *new = (arm_thread_state64_t *)new_state;
     uint64_t pc = arm_thread_state64_get_pc(*old);
@@ -2359,10 +2403,10 @@ kern_return_t catch_mach_exception_raise_state( mach_port_t exception_port, exce
     return KERN_FAILURE;
 }
 
-kern_return_t catch_mach_exception_raise(mach_port_t exception_port, mach_port_t thread, mach_port_t task, exception_type_t exception, mach_exception_data_t code, mach_msg_type_number_t codeCnt) {
+kern_return_t dyld_bypass_catch_mach_exception_raise(mach_port_t exception_port, mach_port_t thread, mach_port_t task, exception_type_t exception, mach_exception_data_t code, mach_msg_type_number_t codeCnt) {
     abort();
 }
 
-kern_return_t catch_mach_exception_raise_state_identity(mach_port_t exception_port, mach_port_t thread, mach_port_t task, exception_type_t exception, mach_exception_data_t code, mach_msg_type_number_t codeCnt, int *flavor, thread_state_t old_state, mach_msg_type_number_t old_stateCnt, thread_state_t new_state, mach_msg_type_number_t *new_stateCnt) {
+kern_return_t dyld_bypass_catch_mach_exception_raise_state_identity(mach_port_t exception_port, mach_port_t thread, mach_port_t task, exception_type_t exception, mach_exception_data_t code, mach_msg_type_number_t codeCnt, int *flavor, thread_state_t old_state, mach_msg_type_number_t old_stateCnt, thread_state_t new_state, mach_msg_type_number_t *new_stateCnt) {
     abort();
 }
