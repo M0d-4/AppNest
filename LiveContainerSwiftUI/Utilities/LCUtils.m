@@ -8,7 +8,7 @@
 #import "../../LiveContainer/LCSharedUtils.h"
 #import "LCAppInfo.h"
 #import "../../MultitaskSupport/DecoratedAppSceneViewController.h"
-#import "../codesign/CodeSigner.h"
+#import "../../codesign/CodeSigner.h"
 #import "LiveContainerSwiftUI-Swift.h"
 #import <objc/runtime.h>
 
