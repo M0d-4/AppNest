@@ -619,6 +619,8 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
     // Sign app if JIT-less is set up
     NSURL *appPathURL = [NSURL fileURLWithPath:appPath];
 
+    void (^signCompletionHandler)(BOOL success, NSError *error) = ^(BOOL success, NSError *_Nullable error) {
+        dispatch_async(dispatch_get_main_queue(), ^{
             [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
             if(!success) {
                 completetionHandler(NO, error.localizedDescription);
@@ -630,7 +632,6 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
                     completetionHandler(NO, @"lc.signer.latestCertificateInvalidErr");
                 }
             }
-            
         });
     };
 
