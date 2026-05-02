@@ -133,7 +133,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
-		9A9F521A918643CABC84F2DF /* ElleKitJITLessHook.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ElleKitJITLessHook.m; sourceTree = "<group>"; };
+		9A9F521A918643CABC84F2DF /* ElleKitJITLessHook.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ElleKitJITLessHook.m; sourceTree = SOURCE_ROOT; };
 		172CA8542D9D721700CF6989 /* dyld_bypass_validation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = dyld_bypass_validation.m; sourceTree = "<group>"; };
 		172CA8552D9D721700CF6989 /* FoundationPrivate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FoundationPrivate.h; sourceTree = "<group>"; };
 		172CA8562D9D721700CF6989 /* LCSharedUtils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LCSharedUtils.h; sourceTree = "<group>"; };
