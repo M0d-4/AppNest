@@ -14,10 +14,21 @@
 #include <sys/syscall.h>
 
 #include "dyld_bypass_validation.h"
-#include "litehook.h"
 #include "utils.h"
 
-static int (*orig_fcntl)(int fildes, int cmd, void *param) = 0;
+extern void EKJITLessHook(void* _target, void* _replacement, void** orig);
+
+#define ASM(...) __asm__(#__VA_ARGS__)
+// ldr x8, value; br x8; value: .ascii "\x41\x42\x43\x44\x45\x46\x47\x48"
+//static char patch[] = {0x88,0x00,0x00,0x58,0x00,0x01,0x1f,0xd6,0x1f,0x20,0x03,0xd5,0x1f,0x20,0x03,0xd5,0x41,0x41,0x41,0x41,0x41,0x41,0x41,0x41};
+
+typedef int (*fcntl_p)(int fildes, int cmd, void* param);
+typedef void* (*mmap_p)(void *addr, size_t len, int prot, int flags, int fd, off_t offset);
+
+static fcntl_p orig_fcntl = 0;
+
+extern void* __mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset);
+extern int __fcntl(int fildes, int cmd, void* param);
 
 // Originated from _kernelrpc_mach_vm_protect_trap
 ASM(
@@ -28,21 +39,20 @@ _builtin_vm_protect:     \n
     ret
 );
 
-static bool redirectFunction(char *name, void *patchAddr, void *target) {
-    kern_return_t kr = litehook_hook_function(patchAddr, target);
-    if (kr == KERN_SUCCESS) {
-        NSLog(@"[DyldLVBypass] hook %s succeed!", name);
-    } else {
-        NSLog(@"[DyldLVBypass] hook %s failed: %d", name, kr);
-    }
-    return kr == KERN_SUCCESS;
+static bool redirectFunction(char *name, void *patchAddr, void *target, void **orig) {
+    EKJITLessHook(patchAddr, target, orig);
+
+    NSLog(@"[DyldLVBypass] hook %s succeed!", name);
+    return TRUE;
 }
 
-static void* hooked_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
-    void *map = __mmap(addr, len, prot, flags, fd, offset);
+// mmap
+
+static void* common_hooked_mmap(mmap_p orig, void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
+    void *map = orig(addr, len, prot, flags, fd, offset);
     if (map == MAP_FAILED && fd && (prot & PROT_EXEC)) {
-        map = __mmap(addr, len, PROT_READ | PROT_WRITE, flags | MAP_PRIVATE | MAP_ANON, 0, 0);
-        void *memoryLoadedFile = __mmap(NULL, len, PROT_READ, MAP_PRIVATE, fd, offset);
+        map = orig(addr, len, PROT_READ | PROT_WRITE, flags | MAP_PRIVATE | MAP_ANON, 0, 0);
+        void *memoryLoadedFile = orig(NULL, len, PROT_READ, MAP_PRIVATE, fd, offset);
         memcpy(map, memoryLoadedFile, len);
         munmap(memoryLoadedFile, len);
         mprotect(map, len, prot);
@@ -50,28 +60,41 @@ static void* hooked_mmap(void *addr, size_t len, int prot, int flags, int fd, of
     return map;
 }
 
-static int hooked___fcntl(int fildes, int cmd, void *param) {
+static void* hooked_dyld_mmap(void *addr, size_t len, int prot, int flags, int fd, off_t offset) {
+    return common_hooked_mmap(__mmap, addr, len, prot, flags, fd, offset);
+}
+
+// fcntl
+
+static int common_hooked_fcntl(fcntl_p orig, int fildes, int cmd, void *param) {
     if (cmd == F_ADDFILESIGS_RETURN) {
-#if !(TARGET_OS_MACCATALYST || TARGET_OS_SIMULATOR)
-        // attempt to attach code signature on iOS only as the binaries may have been signed
-        // on macOS, attaching on unsigned binaries without CS_DEBUGGED will crash
-        orig_fcntl(fildes, cmd, param);
-#endif
-        fsignatures_t *fsig = (fsignatures_t*)param;
-        // called to check that cert covers file.. so we'll make it cover everything ;)
-        fsig->fs_file_start = 0xFFFFFFFF;
-        return 0;
+        char filePath[PATH_MAX];
+        bzero(filePath, PATH_MAX);
+
+        // Check if the file is our "in-memory" file
+        if (orig(fildes, F_GETPATH, filePath) != -1) {
+            const char *homeDir = getenv("LC_HOME_PATH") ?: getenv("HOME");
+            if (!strncmp(filePath, homeDir, strlen(homeDir))) {
+                fsignatures_t *fsig = (fsignatures_t*)param;
+                // called to check that cert covers file.. so we'll make it cover everything ;)
+                fsig->fs_file_start = 0xFFFFFFFF;
+                return 0;
+            }
+        }
     }
 
     // Signature sanity check by dyld
     else if (cmd == F_CHECK_LV) {
-        //orig_fcntl(fildes, cmd, param);
         // Just say everything is fine
         return 0;
     }
-    
+
     // If for another command or file, we pass through
-    return orig_fcntl(fildes, cmd, param);
+    return orig(fildes, cmd, param);
+}
+
+static int hooked_dyld_fcntl(int fildes, int cmd, void *param) {
+    return common_hooked_fcntl(orig_fcntl ? orig_fcntl : __fcntl, fildes, cmd, param);
 }
 
 char *searchDyldFunction(char *base, char *signature, int length) {
@@ -91,28 +114,24 @@ void init_bypassDyldLibValidation(void) {
     bypassed = YES;
 
     NSLog(@"[DyldLVBypass] init");
-    
+
     // Modifying exec page during execution may cause SIGBUS, so ignore it now
     // Only comment this out if only one thread (main) is running
     //signal(SIGBUS, SIG_IGN);
-    
-    orig_fcntl = __fcntl;
-    //redirectFunction("mmap", mmap, hooked_mmap);
-    //redirectFunction("fcntl", fcntl, hooked_fcntl);
-    
+
     searchDyldFunctions();
-    redirectFunction("dyld_fcntl", orig_dyld_fcntl, hooked___fcntl);
-    redirectFunction("dyld_mmap", orig_dyld_mmap, hooked_mmap);
+    redirectFunction("dyld_fcntl", orig_dyld_fcntl, hooked_dyld_fcntl, NULL);
+    redirectFunction("dyld_mmap", orig_dyld_mmap, hooked_dyld_mmap, NULL);
 }
 
 void searchDyldFunctions(void) {
     if(orig_dyld_fcntl && orig_dyld_mmap) return;
-    
+
     // TODO: cache offset and litehook_find_dsc_symbol
     char *dyldBase = (char *)_alt_dyld_get_all_image_infos()->dyldImageLoadAddress;
     orig_dyld_fcntl = (void *)searchDyldFunction(dyldBase, fcntlSig, sizeof(fcntlSig));
     orig_dyld_mmap = (void *)searchDyldFunction(dyldBase, mmapSig, sizeof(mmapSig));
-    
+
     // dopamine already hooked it, try to find its hook instead
     if(!orig_dyld_fcntl) {
         char* fcntlAddr = 0;
@@ -127,7 +146,7 @@ void searchDyldFunctions(void) {
                 }
             }
         }
-        
+
         if(fcntlAddr) {
             uint32_t* inst = (uint32_t*)fcntlAddr;
             int32_t offset = ((int32_t)((*inst)<<6))>>4;

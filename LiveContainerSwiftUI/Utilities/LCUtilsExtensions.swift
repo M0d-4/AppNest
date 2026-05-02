@@ -27,7 +27,7 @@ extension LCUtils {
             return nil
         }
         LCPatchAppBundleFixupARM64eSlice(url)
-        await withUnsafeContinuation { c in
+        await withUnsafeContinuation { (c: UnsafeContinuation<Void, Never>) in
             func compeletionHandler(success: Bool, error: Error?){
                 do {
                     if let error = error {
@@ -47,7 +47,7 @@ extension LCUtils {
                 }
                 c.resume()
             }
-            let progress = LCUtils.signAppBundle(withZSign: url, completionHandler: compeletionHandler)
+            let progress = LCUtils.signAppBundle(with: url, completionHandler: compeletionHandler)
             
             guard let progress = progress else {
                 ans = "lc.utils.initSigningError".loc
