@@ -29,6 +29,7 @@ API_AVAILABLE(ios(16.0))
 @property(nonatomic) int pid;
 @property(nonatomic) id<AppSceneViewControllerDelegate> delegate;
 @property(nonatomic) BOOL isAppRunning;
+@property(nonatomic) BOOL presenterReady;
 @property(nonatomic) CGFloat scaleRatio;
 @property(nonatomic) UIView* contentView;
 @property(nonatomic) _UIScenePresenter *presenter;
@@ -44,4 +45,3 @@ API_AVAILABLE(ios(16.0))
 - (void)setEnableVisibility:(BOOL)visible;
 - (void)acquireForegroundAssertionForChildProcesses;
 @end
-
