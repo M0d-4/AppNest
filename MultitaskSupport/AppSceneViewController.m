@@ -72,6 +72,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     self.bundleId = bundleId;
     self.scaleRatio = 1.0;
     self.isAppTerminationCleanUpCalled = false;
+    self.presenterReady = false;
     self.settings = [UIMutableApplicationSceneSettings new];
     // init extension
     NSError* error = nil;
@@ -262,6 +263,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     // Acquire foreground assertions for WebKit child processes (WebContent, GPU)
     // to prevent iOS 17+ from throttling their display link / rendering pipeline
     [self acquireForegroundAssertionForChildProcesses];
+    self.presenterReady = true;
 }
 
 - (void)setEnableVisibility:(BOOL)visible {
@@ -292,7 +294,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 }
 //⭐️⭐️⭐️Real iPhone mode + multitask mode
 - (void)_performActionsForUIScene:(UIScene *)scene withUpdatedFBSScene:(id)fbsScene settingsDiff:(FBSSceneSettingsDiff *)diff fromSettings:(UIApplicationSceneSettings *)settings transitionContext:(id)context lifecycleActionType:(uint32_t)actionType {
-    if(!self.isAppRunning) {
+    if(self.presenterReady && !self.isAppRunning) {
         [self appTerminationCleanUp];
     }
     if(!diff) return;
