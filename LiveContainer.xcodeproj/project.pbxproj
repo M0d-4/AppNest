@@ -20,6 +20,7 @@
 		E1292AF32DCA3A660065E12D /* LiveProcess.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E1292AE52DCA3A660065E12D /* LiveProcess.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E1292BEC2DCA3B670065E12D /* LiveContainerShared.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		E1292C052DCA3EF00065E12D /* LiveContainerShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */; };
+		577F7CD105274F738FD25188 /* ElleKitJITLessHook.m in Sources */ = {isa = PBXBuildFile; fileRef = 9A9F521A918643CABC84F2DF /* ElleKitJITLessHook.m */; };
 		E1292C072DCA434C0065E12D /* dyld_bypass_validation.m in Sources */ = {isa = PBXBuildFile; fileRef = 172CA8542D9D721700CF6989 /* dyld_bypass_validation.m */; };
 		E1292C082DCA434F0065E12D /* LCSharedUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = 172CA8572D9D721700CF6989 /* LCSharedUtils.m */; };
 		E1292C092DCA43510065E12D /* Localization.m in Sources */ = {isa = PBXBuildFile; fileRef = 172CA8592D9D721700CF6989 /* Localization.m */; };
@@ -132,6 +133,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		9A9F521A918643CABC84F2DF /* ElleKitJITLessHook.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = ElleKitJITLessHook.m; sourceTree = "<group>"; };
 		172CA8542D9D721700CF6989 /* dyld_bypass_validation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = dyld_bypass_validation.m; sourceTree = "<group>"; };
 		172CA8552D9D721700CF6989 /* FoundationPrivate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FoundationPrivate.h; sourceTree = "<group>"; };
 		172CA8562D9D721700CF6989 /* LCSharedUtils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LCSharedUtils.h; sourceTree = "<group>"; };
@@ -454,6 +456,7 @@
 				E1292C032DCA3C160065E12D /* main.c */,
 				E1292C1A2DCA48F00065E12D /* Tweaks */,
 				E11884B82EF7A15F009C6FA6 /* dyld_bypass_validation.h */,
+				9A9F521A918643CABC84F2DF /* ElleKitJITLessHook.m */,
 				172CA8542D9D721700CF6989 /* dyld_bypass_validation.m */,
 				172CA8552D9D721700CF6989 /* FoundationPrivate.h */,
 				E16D94DE2E1CC8200068EB63 /* LCMachOUtils.m */,
@@ -1048,6 +1051,7 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				577F7CD105274F738FD25188 /* ElleKitJITLessHook.m in Sources */,
 				E1292C072DCA434C0065E12D /* dyld_bypass_validation.m in Sources */,
 				E1292C092DCA43510065E12D /* Localization.m in Sources */,
 				E16D95742E1CD2980068EB63 /* LCMachOUtils.m in Sources */,
