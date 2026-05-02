@@ -6609,7 +6609,7 @@
         }
       }
     },
-    "lc.appSettings.hideAppNest": {
+    "lc.appSettings.hideLiveContainer": {
       "extractionState": "manual",
       "localizations": {
         "ar": {
@@ -6704,7 +6704,7 @@
         }
       }
     },
-    "lc.appSettings.hideAppNestDesc": {
+    "lc.appSettings.hideLiveContainerDesc": {
       "extractionState": "manual",
       "localizations": {
         "ar": {
@@ -6795,101 +6795,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "可能有助於繞過一些應用程式的注入檢測。"
-          }
-        }
-      }
-    },
-    "lc.appSettings.hideLiveContainer": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "إخفاء LiveContainer"
-          }
-        },
-        "de": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LiveContainer verbergen"
-          }
-        },
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hide LiveContainer"
-          }
-        },
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Masquer LiveContainer"
-          }
-        },
-        "it": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nascondi LiveContainer"
-          }
-        },
-        "ja": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LiveContainerを隠す"
-          }
-        },
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LiveContainer 숨기기"
-          }
-        },
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ukryj LiveContainer"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ocultar LiveContainer"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Скрыть LiveContainer"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Dölj LiveContainer"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "LiveContainer'ı Gizle"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ẩn LiveContainer"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "隐藏 LiveContainer"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "隱藏 LiveContainer"
           }
         }
       }
