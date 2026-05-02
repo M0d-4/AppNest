@@ -442,7 +442,7 @@ struct LCJITLessDiagnoseView : View {
         
         Task {
             do {
-                let certWrapper = try LCCertWrapper.initWithCertData(LCUtils.certificateData(), password: LCUtils.certificatePassword())
+                let certWrapper = try LCCertWrapper.initWithCertData(LCUtils.certificateData(), password: LCSharedUtils.certificatePassword())
                 if let date = certWrapper.notValidAfter {
                     let formatter1 = DateFormatter()
                     formatter1.dateStyle = .short
