@@ -2275,6 +2275,8 @@ void *dlopen_nolock(const char *path, int mode) {
 #pragma mark - Workaround `file system sandbox blocked mmap()`
 // when using multitask app in private container, we need to temporarily hook dyld's mmap
 mach_port_t excPort;
+// Forward declaration — defined below after jitless_hook_mmap.
+kern_return_t dyld_bypass_catch_mach_exception_raise_state(mach_port_t exception_port, exception_type_t exception, const mach_exception_data_t code, mach_msg_type_number_t codeCnt, int *flavor, const thread_state_t old_state, mach_msg_type_number_t old_stateCnt, thread_state_t new_state, mach_msg_type_number_t *new_stateCnt);
 // Custom mach message dispatch that calls our renamed handlers,
 // avoiding conflict with ElleKitJITLessHook's catch_mach_exception_raise* symbols.
 static boolean_t dyld_bypass_mach_exc_server(mach_msg_header_t *request, mach_msg_header_t *reply) {
