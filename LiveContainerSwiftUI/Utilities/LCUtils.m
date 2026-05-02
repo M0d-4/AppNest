@@ -216,7 +216,7 @@
 
     NSLog(@"[LC] starting signing...");
     
-    NSProgress* ans = [SecuritySigner signWithAppURL:path key: self.certificateData pass:self.certificatePassword completionHandler:completionHandler];
+    NSProgress* ans = [SecuritySigner signWithAppURL:path key:[LCUtils certificateData] pass:[LCSharedUtils certificatePassword] completionHandler:completionHandler];
     
     return ans;
 }
