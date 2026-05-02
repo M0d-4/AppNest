@@ -50,6 +50,7 @@ struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
     @Binding var show: Bool
     let bundleId: String
     let dataUUID: String
+    let sceneKey: String
     let initSize: CGSize
     let hostScene: UIWindowScene?
     let onAppInitialize: (Int32, Error?) -> Void
@@ -75,12 +76,11 @@ struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
     }
     
     func makeCoordinator() -> Coordinator {
-        Coordinator(onAppInitialize: onAppInitialize, onExit: {
+        let capturedSceneKey = sceneKey
+        return Coordinator(onAppInitialize: onAppInitialize, onExit: {
             show = false
             // Remove the stale appDict entry so the next launch always creates a fresh scene
-            if let uuid = appInfo?.dataUUID {
-                MultitaskWindowManager.appDict.removeValue(forKey: uuid)
-            }
+            MultitaskWindowManager.appDict.removeValue(forKey: capturedSceneKey)
         })
     }
     
@@ -111,7 +111,9 @@ struct MultitaskAppWindow: View {
     @AppStorage("LCSkipTerminatedScreen", store: LCUtils.appGroupUserDefault) var skipTerminatedScreen = false
     @AppStorage("LCRealIPhoneMode", store: LCUtils.appGroupUserDefault) var isiPhoneMode = false
     let pub = NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)
+    let sceneKey: String
     init(id: String) {
+        sceneKey = id
         guard let appInfo = MultitaskWindowManager.appDict[id] else {
             return
         }
@@ -128,7 +130,7 @@ struct MultitaskAppWindow: View {
                 ZStack {
                     Color.black
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: geometry.size,
+                    AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, sceneKey: sceneKey, initSize: geometry.size,
                                         hostScene: sceneDelegate.window?.windowScene,
                                         onAppInitialize: { pid, error in
                         DispatchQueue.main.async {
