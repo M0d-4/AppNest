@@ -59,10 +59,39 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     return windowScene ? windowScene.interfaceOrientation : UIInterfaceOrientationPortrait;
 }
 
+// File-based launch log - written to main app's Documents/Logs for 3uTools access
+static FILE *g_hostLogFile = NULL;
+
+static void hostLogInit(void) {
+    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *logsDir = [docs stringByAppendingPathComponent:@"Logs"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
+    NSString *logPath = [logsDir stringByAppendingPathComponent:@"multitask_launch.log"];
+    g_hostLogFile = fopen(logPath.fileSystemRepresentation, "w");
+    LCLOG_HOST(@"[LC-Host] Writing launch log to: %@", logPath);
+}
+
+static void hostLog(NSString *msg) {
+    NSLog(@"%@", msg);
+    if (g_hostLogFile) {
+        NSDateFormatter *df = [NSDateFormatter new];
+        df.dateFormat = @"HH:mm:ss.SSS";
+        NSString *ts = [df stringFromDate:[NSDate date]];
+        fprintf(g_hostLogFile, "[%s] %s\n", ts.UTF8String, msg.UTF8String);
+        fflush(g_hostLogFile);
+    }
+}
+
+#undef LCLOG_HOST
+#define LCLOG_HOST(fmt, ...) hostLog([NSString stringWithFormat:fmt, ##__VA_ARGS__])
+
+
+
 @implementation AppSceneViewController
 
 
 - (instancetype)initWithBundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID hostScene:(UIWindowScene *)hostScene delegate:(id<AppSceneViewControllerDelegate>)delegate {
+    hostLogInit();
     self = [super initWithNibName:nil bundle:nil];
     self.view = [[UIView alloc] init];
     self.contentView = [[UIView alloc] init];
@@ -119,29 +148,29 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     
     __weak typeof(self) weakSelf = self;
     [_extension setRequestCancellationBlock:^(NSUUID *uuid, NSError *error) {
-        NSLog(@"[LC-Host] setRequestCancellationBlock fired: %@", error.localizedDescription);
+        LCLOG_HOST(@"[LC-Host] setRequestCancellationBlock fired: %@", error.localizedDescription);
         [weakSelf appTerminationCleanUp];
         [weakSelf.delegate appSceneVC:weakSelf didInitializeWithError:error];
     }];
     [_extension setRequestInterruptionBlock:^(NSUUID *uuid) {
-        NSLog(@"[LC-Host] setRequestInterruptionBlock fired");
+        LCLOG_HOST(@"[LC-Host] setRequestInterruptionBlock fired");
         [weakSelf appTerminationCleanUp];
     }];
-    NSLog(@"[LC-Host] beginExtensionRequestWithInputItems called for bundleId=%@ dataUUID=%@", bundleId, dataUUID);
+    LCLOG_HOST(@"[LC-Host] beginExtensionRequestWithInputItems called for bundleId=%@ dataUUID=%@", bundleId, dataUUID);
     [_extension beginExtensionRequestWithInputItems:@[item] completion:^(NSUUID *identifier) {
-        NSLog(@"[LC-Host] beginExtensionRequest completion: identifier=%@", identifier);
+        LCLOG_HOST(@"[LC-Host] beginExtensionRequest completion: identifier=%@", identifier);
         if(identifier) {
             [MultitaskManager registerMultitaskContainerWithContainer:self.dataUUID];
             self.identifier = identifier;
             self.pid = [self.extension pidForRequestIdentifier:self.identifier];
-            NSLog(@"[LC-Host] Extension started with pid=%d", self.pid);
+            LCLOG_HOST(@"[LC-Host] Extension started with pid=%d", self.pid);
             [delegate appSceneVC:self didInitializeWithError:nil];
             dispatch_async(dispatch_get_main_queue(), ^{
-                NSLog(@"[LC-Host] Starting setUpAppPresenter");
+                LCLOG_HOST(@"[LC-Host] Starting setUpAppPresenter");
                 [self setUpAppPresenter];
             });
         } else {
-            NSLog(@"[LC-Host] beginExtensionRequest failed - identifier is nil");
+            LCLOG_HOST(@"[LC-Host] beginExtensionRequest failed - identifier is nil");
             NSError* error = [NSError errorWithDomain:@"LiveProcess" code:2 userInfo:@{NSLocalizedDescriptionKey: @"Failed to start app. Child process has unexpectedly crashed"}];
             [delegate appSceneVC:self didInitializeWithError:error];
         }
