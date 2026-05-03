@@ -119,22 +119,29 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     
     __weak typeof(self) weakSelf = self;
     [_extension setRequestCancellationBlock:^(NSUUID *uuid, NSError *error) {
+        NSLog(@"[LC-Host] setRequestCancellationBlock fired: %@", error.localizedDescription);
         [weakSelf appTerminationCleanUp];
         [weakSelf.delegate appSceneVC:weakSelf didInitializeWithError:error];
     }];
     [_extension setRequestInterruptionBlock:^(NSUUID *uuid) {
+        NSLog(@"[LC-Host] setRequestInterruptionBlock fired");
         [weakSelf appTerminationCleanUp];
     }];
+    NSLog(@"[LC-Host] beginExtensionRequestWithInputItems called for bundleId=%@ dataUUID=%@", bundleId, dataUUID);
     [_extension beginExtensionRequestWithInputItems:@[item] completion:^(NSUUID *identifier) {
+        NSLog(@"[LC-Host] beginExtensionRequest completion: identifier=%@", identifier);
         if(identifier) {
             [MultitaskManager registerMultitaskContainerWithContainer:self.dataUUID];
             self.identifier = identifier;
             self.pid = [self.extension pidForRequestIdentifier:self.identifier];
+            NSLog(@"[LC-Host] Extension started with pid=%d", self.pid);
             [delegate appSceneVC:self didInitializeWithError:nil];
             dispatch_async(dispatch_get_main_queue(), ^{
+                NSLog(@"[LC-Host] Starting setUpAppPresenter");
                 [self setUpAppPresenter];
             });
         } else {
+            NSLog(@"[LC-Host] beginExtensionRequest failed - identifier is nil");
             NSError* error = [NSError errorWithDomain:@"LiveProcess" code:2 userInfo:@{NSLocalizedDescriptionKey: @"Failed to start app. Child process has unexpectedly crashed"}];
             [delegate appSceneVC:self didInitializeWithError:error];
         }
