@@ -132,8 +132,12 @@ int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
 #pragma clang diagnostic ignored "-Wundeclared-selector"
     method_setImplementation(class_getInstanceMethod(NSClassFromString(@"NSXPCDecoder"), @selector(_validateAllowedClass:forKey:allowingInvocations:)), (IMP)hook_do_nothing);
 #pragma clang diagnostic pop
-    // hook dlopen UIKit
-    performHookDyldApi("dlopen", 2, (void**)&orig_dlopen, hook_dlopen);
+    // hook dlopen so UIKit loads into our fake UIApplicationMain.
+    // If the hook fails (e.g. dyld changed its layout on this iOS version),
+    // proceed anyway — the extension will still run, just without the UIKit redirect.
+    if (!performHookDyldApi("dlopen", 2, (void**)&orig_dlopen, hook_dlopen)) {
+        NSLog(@"[LC] NSExtensionMain: dlopen hook failed, proceeding without UIKit redirect");
+    }
     // call the real one
     _envp = envp;
     _apple = apple;
