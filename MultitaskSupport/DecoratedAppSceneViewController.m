@@ -411,32 +411,19 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
 }
 //⭐️⭐️⭐️
 - (void)appSceneVCAppDidExit:(AppSceneViewController*)vc {
-    BOOL skipTerminationScreen = [NSUserDefaults.lcSharedDefaults boolForKey:@"LCSkipTerminatedScreen"];
     BOOL isManual = _isAppTerminationRequested;
-    if(isManual || skipTerminationScreen) {
-        
-        MultitaskDockManager *dock = [MultitaskDockManager shared];
-        [dock removeRunningApp:self.dataUUID];
-        
-        self.view.layer.masksToBounds = NO;
-        [UIView transitionWithView:self.view duration:0.4 options:UIViewAnimationOptionTransitionCurlUp animations:^{
-            self.view.hidden = YES;
-        } completion:^(BOOL b){
-            [self.view removeFromSuperview];
-        }];
-        
-        if(skipTerminationScreen) {
-            [MultitaskRelaunchManager scheduleRelaunchIfNeededWithBundleId:self.appSceneVC.bundleId dataUUID:self.dataUUID isManualTermination:isManual];
-        }
-    } else {
-        UILabel *label = [[UILabel alloc] initWithFrame:self.view.bounds];
-        label.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        label.lineBreakMode = NSLineBreakByWordWrapping;
-        label.numberOfLines = 0;
-        label.text = NSLocalizedString(@"lc.multitaskAppWindow.appTerminated", @"");
-        label.textAlignment = NSTextAlignmentCenter;
-        [self.view insertSubview:label atIndex:0];
-    }
+
+    MultitaskDockManager *dock = [MultitaskDockManager shared];
+    [dock removeRunningApp:self.dataUUID];
+
+    self.view.layer.masksToBounds = NO;
+    [UIView transitionWithView:self.view duration:0.4 options:UIViewAnimationOptionTransitionCurlUp animations:^{
+        self.view.hidden = YES;
+    } completion:^(BOOL b){
+        [self.view removeFromSuperview];
+    }];
+
+    [MultitaskRelaunchManager scheduleRelaunchIfNeededWithBundleId:self.appSceneVC.bundleId dataUUID:self.dataUUID isManualTermination:isManual];
 }
 //⭐️⭐️⭐️Real iPhone mode + multitask mode
 - (void)appSceneVC:(AppSceneViewController*)vc didInitializeWithError:(NSError *)error {
