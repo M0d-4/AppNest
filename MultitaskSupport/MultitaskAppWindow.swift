@@ -171,23 +171,9 @@ struct MultitaskAppWindow: View {
                     }
                 }
         } else {
-            VStack {
-                Text("lc.multitaskAppWindow.appTerminated".loc)
-                    .font(.largeTitle)
-                if let errorMessage {
-                    Text(errorMessage)
-                        .font(.system(.body, design: .monospaced))
-                    Button("lc.common.copy".loc) {
-                        UIPasteboard.general.string = errorMessage
-                        requestSceneDestruction(isManual: true)
-                    }
-                    .buttonStyle(.bordered)
-                }
-                Button("lc.common.close".loc) {
-                    requestSceneDestruction(isManual: true)
-                }
-                .buttonStyle(.bordered)
-            }.onAppear {
+            Color.clear
+                .ignoresSafeArea(.all, edges: .all)
+                .onAppear {
                 // appInfo == nil indicates this is the first scene opened in this launch. We don't want this so we open lc's main scene and close this view
                 // however lc's main view may already be starting in another scene so we wait a bit before opening the main view
                 // also we have to keep the view open for a little bit otherwise lc will be killed by iOS
