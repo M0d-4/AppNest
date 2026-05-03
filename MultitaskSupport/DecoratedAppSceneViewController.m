@@ -421,6 +421,8 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
         self.view.hidden = YES;
     } completion:^(BOOL b){
         [self.view removeFromSuperview];
+        [self willMoveToParentViewController:nil];
+        [self removeFromParentViewController];
     }];
 
     [MultitaskRelaunchManager scheduleRelaunchIfNeededWithBundleId:self.appSceneVC.bundleId dataUUID:self.dataUUID isManualTermination:isManual];
