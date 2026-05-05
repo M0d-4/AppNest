@@ -13,7 +13,6 @@
 #import "../LiveContainer/Tweaks/Tweaks.h"
 #import "../MultitaskSupport/LCMultitaskXPCService.h"
 #import "../SideStore/XPCServer.h"
-#import "../fishhook/fishhook.h"
 
 // File-based logging so the launch trace is accessible without Xcode
 static FILE *g_logFile = NULL;
@@ -59,6 +58,7 @@ static void initLogFile(void) {
 @implementation LiveProcessHandler
 static NSExtensionContext *extensionContext;
 static NSDictionary *retrievedAppInfo;
+static CFRunLoopRef g_liveProcessRunLoop = NULL;
 + (NSExtensionContext *)extensionContext {
     return extensionContext;
 }
@@ -78,7 +78,11 @@ static NSDictionary *retrievedAppInfo;
     LCLOG(@"[LC-LP] retrievedAppInfo keys: %@", retrievedAppInfo.allKeys);
     // Return control to LiveContainerMain
     LCLOG(@"[LC-LP] Calling CFRunLoopStop");
-    CFRunLoopStop(CFRunLoopGetMain());
+    if (g_liveProcessRunLoop) {
+        CFRunLoopStop(g_liveProcessRunLoop);
+    } else {
+        CFRunLoopStop(CFRunLoopGetMain());
+    }
     LCLOG(@"[LC-LP] CFRunLoopStop called");
 }
 
@@ -101,8 +105,10 @@ static char **_envp, **_apple = NULL;
 int LiveProcessMain(int argc, char *argv[]) {
     LCLOG(@"[LC-LP] LiveProcessMain started");
     // Let NSExtensionContext initialize, once it's done it will call CFRunLoopStop
+    g_liveProcessRunLoop = CFRunLoopGetCurrent();
     LCLOG(@"[LC-LP] Waiting for beginRequestWithExtensionContext via CFRunLoopRun...");
     CFRunLoopRun();
+    g_liveProcessRunLoop = NULL;
     LCLOG(@"[LC-LP] CFRunLoopRun returned");
     // Ensure app info is delivered
     NSDictionary *appInfo = LiveProcessHandler.retrievedAppInfo;
@@ -156,27 +162,16 @@ int LiveProcessMain(int argc, char *argv[]) {
     return LiveContainerMain(argc, argv);
 }
 
-// Hook UIApplicationMain via dyld image callback + fishhook rebind on UIKit's GOT.
-// This intercepts UIKit's internal call to UIApplicationMain reliably on all iOS versions.
-static int (*orig_UIApplicationMain)(int argc, char *argv[], NSString *cls, NSString *delCls);
-
-static int hook_UIApplicationMain(int argc, char *argv[], NSString *cls, NSString *delCls) {
-    LCLOG(@"[LC-LP] hook_UIApplicationMain called - routing to LiveProcessMain");
-    return LiveProcessMain(argc, argv);
-}
-
-static void onImageAdded(const struct mach_header *mh, intptr_t slide) {
-    Dl_info info;
-    if (dladdr(mh, &info) && info.dli_fname && strstr(info.dli_fname, "UIKit.framework")) {
-        LCLOG(@"[LC-LP] UIKit loaded at %s - rebinding UIApplicationMain in UIKit GOT", info.dli_fname);
-        struct rebinding rb = {
-            "UIApplicationMain",
-            (void *)hook_UIApplicationMain,
-            (void **)&orig_UIApplicationMain
-        };
-        rebind_symbols_image((void *)mh, slide, &rb, 1);
-        LCLOG(@"[LC-LP] rebind_symbols_image done, orig=%p", orig_UIApplicationMain);
-    }
+// LiveProcessMain is called from a dedicated thread BEFORE orig_NSExtensionMain.
+// It calls CFRunLoopRun() which blocks until beginRequestWithExtensionContext fires.
+// This avoids all fragile UIApplicationMain/dlopen hooks entirely.
+static int g_argc;
+static char **g_argv;
+static void *liveProcessThread(void *unused) {
+    LCLOG(@"[LC-LP] liveProcessThread started - calling LiveProcessMain");
+    LiveProcessMain(g_argc, g_argv);
+    LCLOG(@"[LC-LP] liveProcessThread: LiveProcessMain returned");
+    return NULL;
 }
 
 // Extension entry point
@@ -189,11 +184,18 @@ int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
     _envp = envp;
     _apple = apple;
 
-    // Register dyld callback to hook UIApplicationMain when UIKit loads.
-    // This intercepts UIKit's internal call to UIApplicationMain and routes it
-    // to LiveProcessMain, which then runs the guest app.
-    LCLOG(@"[LC-LP] Registering dyld image add callback");
-    _dyld_register_func_for_add_image(onImageAdded);
+    // Start LiveProcessMain on a background thread. It will block on CFRunLoopRun()
+    // until beginRequestWithExtensionContext fires (when iOS calls it on the principal class).
+    // Once unblocked, it runs LCBootstrap which loads and launches the guest app.
+    g_argc = argc;
+    g_argv = argv;
+    LCLOG(@"[LC-LP] Spawning LiveProcess thread");
+    pthread_t thread;
+    pthread_attr_t attr;
+    pthread_attr_init(&attr);
+    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
+    pthread_create(&thread, &attr, liveProcessThread, NULL);
+    pthread_attr_destroy(&attr);
 
     LCLOG(@"[LC-LP] Calling orig_NSExtensionMain");
     int (*orig_NSExtensionMain)(int argc, char * argv[]) = dlsym(RTLD_NEXT, "NSExtensionMain");
