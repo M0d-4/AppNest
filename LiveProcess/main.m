@@ -6,7 +6,6 @@
 //
 
 #import <dlfcn.h>
-@import Darwin;
 #import <UIKit/UIKit.h>
 #import <mach-o/dyld.h>
 #import "LiveProcessHandler.h"
@@ -15,51 +14,30 @@
 #import "../MultitaskSupport/LCMultitaskXPCService.h"
 #import "../SideStore/XPCServer.h"
 
-// File-based logging so the launch trace is accessible without Xcode
+// File-based logging
 static FILE *g_logFile = NULL;
 static void lcLogToFile(NSString *msg) {
     if (g_logFile) {
         NSDateFormatter *df = [NSDateFormatter new];
-        df.dateFormat = @"HH:mm:ss.SSS";
-        NSString *ts = [df stringFromDate:[NSDate date]];
-        fprintf(g_logFile, "[%s] %s\n", ts.UTF8String, msg.UTF8String);
+        df.dateFormat = @"hh:mm:ss.SSS a";
+        fprintf(g_logFile, "[%s] %s
+", [df stringFromDate:[NSDate date]].UTF8String, msg.UTF8String);
         fflush(g_logFile);
     }
 }
-
 #define LCLOG(fmt, ...) do { NSString *_m = [NSString stringWithFormat:fmt, ##__VA_ARGS__]; NSLog(@"%@", _m); lcLogToFile(_m); } while(0)
 
 static void initLogFile(void) {
-    // Try each known app group prefix until we find a writable container
-    NSArray *prefixes = @[
-        @"group.com.SideStore.SideStore.",
-        @"group.com.rileytestut.AltStore.",
-    ];
-    NSString *teamID = nil;
-    // Extract team ID from the main bundle identifier's provisioning
-    NSString *bundleID = [NSBundle mainBundle].bundleIdentifier ?: @"";
-    // Try to find the group container by probing known prefixes + any suffix
-    NSURL *groupURL = nil;
-    NSFileManager *fm = [NSFileManager defaultManager];
-    // Probe all app groups the process is entitled to
-    NSDictionary *entitlements = [NSBundle mainBundle].infoDictionary;
-    NSArray *groups = entitlements[@"com.apple.security.application-groups"];
-    for (NSString *g in groups) {
-        NSURL *url = [fm containerURLForSecurityApplicationGroupIdentifier:g];
-        if (url) { groupURL = url; break; }
-    }
-    if (!groupURL) groupURL = [NSURL fileURLWithPath:NSTemporaryDirectory()];
-    NSURL *logsDir = [groupURL URLByAppendingPathComponent:@"Logs"];
-    [fm createDirectoryAtURL:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
-    NSURL *logURL = [logsDir URLByAppendingPathComponent:@"liveprocess_launch.log"];
-    g_logFile = fopen(logURL.fileSystemRepresentation, "w");
-    NSLog(@"[LC-LP] Writing launch log to: %@", logURL.path);
+    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *logsDir = [docs stringByAppendingPathComponent:@"Logs"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
+    NSString *logPath = [logsDir stringByAppendingPathComponent:@"liveprocess_launch.log"];
+    g_logFile = fopen(logPath.fileSystemRepresentation, "w");
 }
 
 @implementation LiveProcessHandler
 static NSExtensionContext *extensionContext;
 static NSDictionary *retrievedAppInfo;
-static CFRunLoopRef g_liveProcessRunLoop = NULL;
 + (NSExtensionContext *)extensionContext {
     return extensionContext;
 }
@@ -79,12 +57,7 @@ static CFRunLoopRef g_liveProcessRunLoop = NULL;
     LCLOG(@"[LC-LP] retrievedAppInfo keys: %@", retrievedAppInfo.allKeys);
     // Return control to LiveContainerMain
     LCLOG(@"[LC-LP] Calling CFRunLoopStop");
-    if (g_liveProcessRunLoop) {
-        CFRunLoopStop(g_liveProcessRunLoop);
-    } else {
-        CFRunLoopStop(CFRunLoopGetMain());
-    }
-    LCLOG(@"[LC-LP] CFRunLoopStop called");
+    CFRunLoopStop(CFRunLoopGetMain());
 }
 
 - (void)initializeMultitaskEndpoint:(NSXPCListenerEndpoint *)endpoint {
@@ -106,14 +79,12 @@ static char **_envp, **_apple = NULL;
 int LiveProcessMain(int argc, char *argv[]) {
     LCLOG(@"[LC-LP] LiveProcessMain started");
     // Let NSExtensionContext initialize, once it's done it will call CFRunLoopStop
-    g_liveProcessRunLoop = CFRunLoopGetCurrent();
-    LCLOG(@"[LC-LP] Waiting for beginRequestWithExtensionContext via CFRunLoopRun...");
+    LCLOG(@"[LC-LP] CFRunLoopRun - waiting for beginRequestWithExtensionContext");
     CFRunLoopRun();
-    g_liveProcessRunLoop = NULL;
     LCLOG(@"[LC-LP] CFRunLoopRun returned");
     // Ensure app info is delivered
     NSDictionary *appInfo = LiveProcessHandler.retrievedAppInfo;
-    LCLOG(@"[LC-LP] appInfo = %@", appInfo);
+    LCLOG(@"[LC-LP] appInfo=%@", appInfo);
     NSCAssert(appInfo, @"Failed to retrieve app info");
 
     // Check if we received a request to execute a custom payload
@@ -164,44 +135,52 @@ int LiveProcessMain(int argc, char *argv[]) {
     return LiveContainerMain(argc, argv);
 }
 
-// LiveProcessMain is called from a dedicated thread BEFORE orig_NSExtensionMain.
-// It calls CFRunLoopRun() which blocks until beginRequestWithExtensionContext fires.
-// This avoids all fragile UIApplicationMain/dlopen hooks entirely.
-static int g_argc;
-static char **g_argv;
-static void *liveProcessThread(void *unused) {
-    LCLOG(@"[LC-LP] liveProcessThread started - calling LiveProcessMain");
-    LiveProcessMain(g_argc, g_argv);
-    LCLOG(@"[LC-LP] liveProcessThread: LiveProcessMain returned");
-    return NULL;
+// this is our fake UIApplicationMain called from _xpc_objc_uimain (xpc_main)
+__attribute__((visibility("default")))
+int UIApplicationMain(int argc, char * argv[], NSString * principalClassName, NSString * delegateClassName) {
+    LCLOG(@"[LC-LP] UIApplicationMain called - routing to LiveProcessMain");
+    return LiveProcessMain(argc, argv);
+}
+
+// NSExtensionMain will load UIKit and call UIApplicationMain, so we need to redirect it to our fake one
+static void* (*orig_dlopen)(void* dyldApiInstancePtr, const char* path, int mode);
+static void* hook_dlopen(void* dyldApiInstancePtr, const char* path, int mode) {
+    const char *UIKitFrameworkPath = "/System/Library/Frameworks/UIKit.framework/UIKit";
+    if(path && !strncmp(path, UIKitFrameworkPath, strlen(UIKitFrameworkPath))) {
+        // switch back to original dlopen
+        performHookDyldApi("dlopen", 2, (void**)&orig_dlopen, orig_dlopen);
+        // FIXME: may be incompatible with jailbreak tweaks?
+        return RTLD_MAIN_ONLY;
+    } else {
+        __attribute__((musttail)) return orig_dlopen(dyldApiInstancePtr, path, mode);
+    }
 }
 
 // Extension entry point
 int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
     initLogFile();
+    LCLOG(@"[LC-LP] NSExtensionMain called");
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"
     method_setImplementation(class_getInstanceMethod(NSClassFromString(@"NSXPCDecoder"), @selector(_validateAllowedClass:forKey:allowingInvocations:)), (IMP)hook_do_nothing);
 #pragma clang diagnostic pop
+    // Try offsets 0-8 to find the correct ADRP pattern for dlopen on this iOS version
+    BOOL hooked = NO;
+    for (uint32_t offset = 0; offset <= 8 && !hooked; offset++) {
+        if (performHookDyldApi("dlopen", offset, (void**)&orig_dlopen, hook_dlopen)) {
+            LCLOG(@"[LC-LP] dlopen hooked at adrpOffset=%u", offset);
+            hooked = YES;
+        }
+    }
+    if (!hooked) {
+        LCLOG(@"[LC-LP] WARNING: dlopen hook failed for all offsets - UIApplicationMain may not be called");
+    }
+    // call the real one
     _envp = envp;
     _apple = apple;
-
-    // Start LiveProcessMain on a background thread. It will block on CFRunLoopRun()
-    // until beginRequestWithExtensionContext fires (when iOS calls it on the principal class).
-    // Once unblocked, it runs LCBootstrap which loads and launches the guest app.
-    g_argc = argc;
-    g_argv = argv;
-    LCLOG(@"[LC-LP] Spawning LiveProcess thread");
-    pthread_t thread;
-    pthread_attr_t attr;
-    pthread_attr_init(&attr);
-    pthread_attr_setdetachstate(&attr, PTHREAD_CREATE_DETACHED);
-    pthread_create(&thread, &attr, liveProcessThread, NULL);
-    pthread_attr_destroy(&attr);
-
     LCLOG(@"[LC-LP] Calling orig_NSExtensionMain");
     int (*orig_NSExtensionMain)(int argc, char * argv[]) = dlsym(RTLD_NEXT, "NSExtensionMain");
     int ret = orig_NSExtensionMain(argc, argv);
-    LCLOG(@"[LC-LP] orig_NSExtensionMain returned: %d", ret);
+    LCLOG(@"[LC-LP] orig_NSExtensionMain returned %d", ret);
     return ret;
 }
