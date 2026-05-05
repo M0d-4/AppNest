@@ -46,9 +46,6 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 @property NSDate* lastLaunched;
 @property NSDate* installationDate;
 @property NSString* remark;
-@property NSString* altSource;
-@property NSString* altSourceIdentifier;
-@property bool enableUpdates;
 @property NSArray<NSString*>* customUrlSchemes;
 #if is32BitSupported
 @property bool is32bit;
