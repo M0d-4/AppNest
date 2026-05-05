@@ -190,11 +190,13 @@ static void hostLog(NSString *msg) {
 }
 //⭐️⭐️⭐️Real iPhone mode + multitask mode
 - (void)setUpAppPresenter {
+    LCLOG_HOST(@"[LC-Host] setUpAppPresenter: pid=%d", self.pid);
     RBSProcessPredicate* predicate = [PrivClass(RBSProcessPredicate) predicateMatchingIdentifier:@(self.pid)];
     
     FBProcessManager *manager = [PrivClass(FBProcessManager) sharedInstance];
     // At this point, the process is spawned and we're ready to create a scene to render in our app
     RBSProcessHandle* processHandle = [PrivClass(RBSProcessHandle) handleForPredicate:predicate error:nil];
+    LCLOG_HOST(@"[LC-Host] processHandle=%@ (nil=%d)", processHandle, processHandle == nil);
     [manager registerProcessForAuditToken:processHandle.auditToken];
     // NSString *identifier = [NSString stringWithFormat:@"sceneID:%@-%@", bundleID, @"default"];
     self.sceneID = [NSString stringWithFormat:@"sceneID:%@-%@", @"LiveProcess", self.dataUUID];
@@ -250,8 +252,10 @@ static void hostLog(NSString *msg) {
     parameters.clientSettings = clientSettings;
     
     FBScene *scene = [[PrivClass(FBSceneManager) sharedInstance] createSceneWithDefinition:definition initialParameters:parameters];
+    LCLOG_HOST(@"[LC-Host] createSceneWithDefinition: scene=%@ identifier=%@", scene, self.sceneID);
     
     self.presenter = [scene.uiPresentationManager createPresenterWithIdentifier:self.sceneID];
+    LCLOG_HOST(@"[LC-Host] createPresenter: presenter=%@", self.presenter);
     [self.presenter modifyPresentationContext:^(UIMutableScenePresentationContext *context) {
         context.appearanceStyle = 2;
     }];
@@ -298,6 +302,7 @@ static void hostLog(NSString *msg) {
 
 
     [self.view.window.windowScene _registerSettingsDiffActionArray:@[self] forKey:self.sceneID];
+    LCLOG_HOST(@"[LC-Host] _registerSettingsDiffActionArray done for key=%@", self.sceneID);
 
     // Disable background notifications so WebKit doesn't pause media in multitasking
     [self setBackgroundNotificationEnabled:false];
@@ -306,6 +311,7 @@ static void hostLog(NSString *msg) {
     // to prevent iOS 17+ from throttling their display link / rendering pipeline
     [self acquireForegroundAssertionForChildProcesses];
     self.presenterReady = true;
+    LCLOG_HOST(@"[LC-Host] setUpAppPresenter COMPLETE - presenterReady=true");
 }
 
 - (void)setEnableVisibility:(BOOL)visible {
