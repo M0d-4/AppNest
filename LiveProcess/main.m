@@ -20,8 +20,7 @@ static void lcLogToFile(NSString *msg) {
     if (g_logFile) {
         NSDateFormatter *df = [NSDateFormatter new];
         df.dateFormat = @"hh:mm:ss.SSS a";
-        fprintf(g_logFile, "[%s] %s
-", [df stringFromDate:[NSDate date]].UTF8String, msg.UTF8String);
+        NSString *_line = [NSString stringWithFormat:@"[%@] %@\n", [df stringFromDate:[NSDate date]], msg]; fputs(_line.UTF8String, g_logFile);
         fflush(g_logFile);
     }
 }
