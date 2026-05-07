@@ -131,7 +131,7 @@ int LiveProcessMain(int argc, char *argv[]) {
         NSString *customPayloadEntry = appInfo[@"customPayloadEntry"];
         NSCAssert(customPayloadEntry, @"Missing customPayloadEntry");
         int (*payloadEntry)(int, char **, char **, char **) = dlsym(handle, customPayloadEntry.UTF8String);
-        return payloadEntry(argc, argv, _envp, _apple);
+        (void)payloadEntry(capturedArgc, capturedArgv, _envp, _apple);
     }
 
     NSLog(@"Retrieved app info: %@", appInfo);
