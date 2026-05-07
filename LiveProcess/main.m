@@ -17,13 +17,13 @@
 // File-based logging
 static FILE *g_logFile = NULL;
 static void lcLogToFile(NSString *msg) {
-    if (g_logFile) {
-        NSDateFormatter *df = [NSDateFormatter new];
-        df.dateFormat = @"hh:mm:ss.SSS a";
-        fprintf(g_logFile, "[%s] %s
-", [df stringFromDate:[NSDate date]].UTF8String, msg.UTF8String);
-        fflush(g_logFile);
-    }
+    if (!g_logFile) return;
+    NSDateFormatter *df = [NSDateFormatter new];
+    df.dateFormat = @"hh:mm:ss.SSS a";
+    NSString *line = [NSString stringWithFormat:@"[%@] %@", [df stringFromDate:[NSDate date]], msg];
+    NSData *data = [[line stringByAppendingString:@"\n"] dataUsingEncoding:NSUTF8StringEncoding];
+    fwrite(data.bytes, 1, data.length, g_logFile);
+    fflush(g_logFile);
 }
 #define LCLOG(fmt, ...) do { NSString *_m = [NSString stringWithFormat:fmt, ##__VA_ARGS__]; NSLog(@"%@", _m); lcLogToFile(_m); } while(0)
 
