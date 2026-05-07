@@ -63,6 +63,10 @@ static dispatch_semaphore_t g_appInfoSemaphore;
 @implementation LiveProcessHandler
 static NSExtensionContext *extensionContext;
 static NSDictionary *retrievedAppInfo;
+
++ (void)load {
+    g_appInfoSemaphore = dispatch_semaphore_create(0);
+}
 + (NSExtensionContext *)extensionContext {
     return extensionContext;
 }
@@ -107,7 +111,7 @@ static dispatch_semaphore_t g_appInfoSemaphore;
 
 int LiveProcessMain(int argc, char *argv[]) {
     LCLOG(@"[LC-LP] LiveProcessMain started - ServiceType=Application, using semaphore approach");
-    if (!g_appInfoSemaphore) g_appInfoSemaphore = dispatch_semaphore_create(0);
+    // semaphore initialized via +load below
 
     // Run LiveContainerMain on a background thread so we don't block the main thread.
     // UIKit needs the main thread free to call beginRequestWithExtensionContext.
@@ -120,7 +124,10 @@ int LiveProcessMain(int argc, char *argv[]) {
 
         NSDictionary *appInfo = LiveProcessHandler.retrievedAppInfo;
         LCLOG(@"[LC-LP] appInfo=%@", appInfo);
-        NSCAssert(appInfo, @"Failed to retrieve app info");
+        if (!appInfo) {
+            LCLOG(@"[LC-LP] ERROR: appInfo is nil - aborting launch");
+            return;
+        }
 
     // Check if we received a request to execute a custom payload
     NSString *customPayloadDylib = appInfo[@"customPayloadDylib"];
