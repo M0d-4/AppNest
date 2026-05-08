@@ -20447,6 +20447,61 @@
         }
       }
     },
+    "lc.settings.interface.appList" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App list"
+          }
+        }
+      }
+    },
+    "lc.settings.interface.appLayout" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Layout"
+          }
+        }
+      }
+    },
+    "lc.settings.interface.grid" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Grid"
+          }
+        }
+      }
+    },
+    "lc.settings.interface.list" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "List (Default)"
+          }
+        }
+      }
+    },
+    "lc.settings.interface.showAppLabels" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Show app labels"
+          }
+        }
+      }
+    },
     "lc.settings.interface": {
       "extractionState": "manual",
       "localizations": {
