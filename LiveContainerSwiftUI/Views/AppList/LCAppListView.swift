@@ -514,7 +514,7 @@ func setMode(_ mode: AppLaunchMode) {
                 .hidden()
                 .disabled(isMultiSelectMode)
                 
-                appList(apps: filteredApps, hidden: false, gridID: "apps")
+                    appList(apps: filteredApps, hidden: false, gridID: "apps")
                     .padding()
                     .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredApps)
 
