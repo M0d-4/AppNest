@@ -8,6 +8,101 @@
 import Combine
 import SwiftUI
 import UniformTypeIdentifiers
+
+private func scheduleGridDragCleanup(draggingApp: Binding<LCAppModel?>, cleanupID: Binding<UUID>, delay: TimeInterval = 0.7) {
+    let newID = UUID()
+    cleanupID.wrappedValue = newID
+    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        if cleanupID.wrappedValue == newID {
+            draggingApp.wrappedValue = nil
+        }
+    }
+}
+
+private func cancelGridDrag(draggingApp: Binding<LCAppModel?>, cleanupID: Binding<UUID>) {
+    cleanupID.wrappedValue = UUID()
+    draggingApp.wrappedValue = nil
+}
+
+private struct LCGridAppFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { _, newValue in newValue }
+    }
+}
+
+private struct LCGridDropDelegate: DropDelegate {
+    let apps: [LCAppModel]
+    let appFrames: [String: CGRect]
+    @Binding var draggingApp: LCAppModel?
+    @Binding var dragCleanupID: UUID
+    @ObservedObject var sortManager: LCAppSortManager
+
+    func performDrop(info: DropInfo) -> Bool {
+        cancelGridDrag(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
+        return true
+    }
+
+    func dropExited(info: DropInfo) {
+        cancelGridDrag(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        moveDraggingApp(to: info.location)
+        scheduleGridDragCleanup(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
+        return DropProposal(operation: .move)
+    }
+
+    private func moveDraggingApp(to location: CGPoint) {
+        guard let draggingApp else {
+            return
+        }
+
+        let destinationIndex = gridDestinationIndex(for: location)
+        withAnimation(.easeInOut(duration: 0.18)) {
+            sortManager.moveCustomSortApp(draggingApp, toDestinationIndex: destinationIndex, in: apps, visibleApps: DataManager.shared.model.apps, hiddenApps: DataManager.shared.model.hiddenApps)
+        }
+    }
+
+    private func gridDestinationIndex(for location: CGPoint) -> Int {
+        let indexedFrames = apps.enumerated().compactMap { index, app -> (index: Int, frame: CGRect)? in
+            guard let uniqueIdentifier = sortManager.getUniqueIdentifier(for: app),
+                  let frame = appFrames[uniqueIdentifier] else {
+                return nil
+            }
+
+            return (index, frame)
+        }
+
+        guard !indexedFrames.isEmpty else {
+            return apps.count
+        }
+
+        if let lowestFrame = indexedFrames.map(\.frame).max(by: { $0.maxY < $1.maxY }),
+           location.y > lowestFrame.maxY {
+            return apps.count
+        }
+
+        let closestRowMidY = indexedFrames
+            .min(by: { abs($0.frame.midY - location.y) < abs($1.frame.midY - location.y) })?
+            .frame
+            .midY ?? 0
+
+        let rowFrames = indexedFrames
+            .filter { abs($0.frame.midY - closestRowMidY) < ($0.frame.height / 2) }
+            .sorted { $0.frame.minX < $1.frame.minX }
+
+        for indexedFrame in rowFrames {
+            if location.x < indexedFrame.frame.midX {
+                return indexedFrame.index
+            }
+        }
+
+        return (rowFrames.last?.index ?? apps.count - 1) + 1
+    }
+}
+
 import Intents
 
 enum AppLaunchMode: Int {
@@ -128,11 +223,17 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @State private var helpPresent = false
     
     @State private var customSortViewPresent = false
+    @State private var draggingApp: LCAppModel?
+    @State private var dragCleanupID = UUID()
+    @State private var visibleGridAppFrames: [String: CGRect] = [:]
+    @State private var hiddenGridAppFrames: [String: CGRect] = [:]
     
     @EnvironmentObject private var sharedModel : SharedModel
     @EnvironmentObject private var sharedAppSortManager : LCAppSortManager
     
     @AppStorage("LCMultitaskMode", store: LCUtils.appGroupUserDefault) var multitaskMode: MultitaskMode = .virtualWindow
+    @AppStorage("LCAppListInterfaceStyle", store: LCUtils.appGroupUserDefault) var appListInterfaceStyle: LCAppListInterfaceStyle = .list
+    @AppStorage("LCAppGridShowLabels", store: LCUtils.appGroupUserDefault) var appGridShowLabels = false
     @AppStorage("LCLaunchInMultitaskMode") var launchInMultitaskMode = false
     
     @State private var isViewAppeared = false
@@ -324,6 +425,72 @@ func setMode(_ mode: AppLaunchMode) {
         _tweakFolderNames = tweakFolderNames
     }
     
+    var gridItemWidth: CGFloat {
+        appGridShowLabels ? 76 : 78
+    }
+
+    var gridSpacing: CGFloat {
+        appGridShowLabels ? 12 : 10
+    }
+
+    @ViewBuilder
+    func appList(apps: [LCAppModel], hidden: Bool, gridID: String) -> some View {
+        if appListInterfaceStyle == .grid {
+            let isHiddenAppGrid = gridID == "hiddenApps"
+            let gridCoordinateSpace = isHiddenAppGrid ? "LCHiddenAppGrid" : "LCVisibleAppGrid"
+            let appFrames = isHiddenAppGrid ? hiddenGridAppFrames : visibleGridAppFrames
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: gridItemWidth), spacing: gridSpacing)], spacing: appGridShowLabels ? 22 : 12) {
+                ForEach(apps, id: \.self) { app in
+                    if hidden {
+                        LCAppSkeletonIcon(showLabels: appGridShowLabels)
+                    } else {
+                        LCAppBanner(appModel: app, delegate: self, appDataFolders: $appDataFolderNames, tweakFolders: $tweakFolderNames, interfaceStyle: .grid) { _ in
+                            cancelGridDrag(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
+                        }
+                            .onDrag {
+                                draggingApp = app
+                                scheduleGridDragCleanup(draggingApp: $draggingApp, cleanupID: $dragCleanupID, delay: 30)
+                                return NSItemProvider(object: NSString(string: sharedAppSortManager.getUniqueIdentifier(for: app) ?? app.displayName))
+                            } preview: {
+                                IconImageView(icon: app.appInfo.iconIsDarkIcon(LCUtils.appGroupUserDefault.bool(forKey: "darkModeIcon")))
+                                    .frame(width: appGridShowLabels ? 58 : 70, height: appGridShowLabels ? 58 : 70)
+                            }
+                            .background {
+                                GeometryReader { proxy in
+                                    Color.clear
+                                        .preference(key: LCGridAppFramePreferenceKey.self, value: gridFramePreference(for: app, proxy: proxy, coordinateSpace: gridCoordinateSpace))
+                                }
+                            }
+                    }
+                }
+                .transition(.scale)
+            }
+            .coordinateSpace(name: gridCoordinateSpace)
+            .frame(maxWidth: .infinity)
+            .onPreferenceChange(LCGridAppFramePreferenceKey.self) { value in
+                if isHiddenAppGrid {
+                    hiddenGridAppFrames = value
+                } else {
+                    visibleGridAppFrames = value
+                }
+            }
+            .onDrop(of: [.text], delegate: LCGridDropDelegate(apps: apps, appFrames: appFrames, draggingApp: $draggingApp, dragCleanupID: $dragCleanupID, sortManager: sharedAppSortManager))
+        } else {
+            LazyVStack {
+                appList(apps: filteredHiddenApps, hidden: false, gridID: "hiddenApps")
+        }
+    }
+
+    func gridFramePreference(for app: LCAppModel, proxy: GeometryProxy, coordinateSpace: String) -> [String: CGRect] {
+        guard let uniqueIdentifier = sharedAppSortManager.getUniqueIdentifier(for: app) else {
+            return [:]
+        }
+
+        return [uniqueIdentifier: proxy.frame(in: .named(coordinateSpace))]
+    }
+
+    
     var body: some View {
         ZStack(alignment: .bottom) {
         NavigationView {
@@ -347,13 +514,9 @@ func setMode(_ mode: AppLaunchMode) {
                 .hidden()
                 .disabled(isMultiSelectMode)
                 
-                VStack(spacing: 8) {
-                    ForEach(filteredApps, id: \.self) { app in
-                        appRow(app: app, isHidden: false)
-                    }
-                }
-                .padding()
-                .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredApps)
+                appList(apps: filteredApps, hidden: false, gridID: "apps")
+                    .padding()
+                    .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredApps)
 
                 VStack {
                     if sharedModel.hiddenApps.count > 0 {
@@ -363,13 +526,7 @@ func setMode(_ mode: AppLaunchMode) {
                                     .font(.system(.title2).bold())
                                 Spacer()
                             }
-                            ForEach(filteredHiddenApps, id: \.self) { app in
-                                if sharedModel.isHiddenAppUnlocked {
-                                    appRow(app: app, isHidden: true)
-                                } else {
-                                    LCAppSkeletonBanner()
-                                }
-                            }
+                            appList(apps: filteredHiddenApps, hidden: !sharedModel.isHiddenAppUnlocked, gridID: "hiddenApps")
                             .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
                             .onTapGesture {
                                 if !isMultiSelectMode {
@@ -518,11 +675,11 @@ func setMode(_ mode: AppLaunchMode) {
                                 }
                             }
                             .onChange(of: sharedAppSortManager.appSortType) { newValue in
-                                if sharedAppSortManager.appSortType == .custom {
+                                if sharedAppSortManager.appSortType == .custom && appListInterfaceStyle != .grid {
                                     customSortViewPresent = true
                                 }
                             }
-                            if sharedAppSortManager.appSortType == .custom {
+                            if sharedAppSortManager.appSortType == .custom && appListInterfaceStyle != .grid {
                                 Divider()
                                 Button {
                                     customSortViewPresent = true
