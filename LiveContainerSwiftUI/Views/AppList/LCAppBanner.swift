@@ -20,6 +20,9 @@ protocol LCAppBannerDelegate {
 struct LCAppBanner : View {
     @State var appInfo: LCAppInfo
     var delegate: LCAppBannerDelegate
+    var interfaceStyle: LCAppListInterfaceStyle
+    var onContextMenuVisibilityChanged: ((Bool) -> Void)?
+
     
     @ObservedObject var model : LCAppModel
     
@@ -38,18 +41,21 @@ struct LCAppBanner : View {
     
     @AppStorage("dynamicColors", store: LCUtils.appGroupUserDefault) var dynamicColors = true
     @AppStorage("darkModeIcon", store: LCUtils.appGroupUserDefault) var darkModeIcon = false
+    @AppStorage("LCAppGridShowLabels", store: LCUtils.appGroupUserDefault) var appGridShowLabels = false
     @State private var mainColor : Color
     @State private var icon: UIImage
     
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject private var sharedModel : SharedModel
     
-    init(appModel: LCAppModel, delegate: LCAppBannerDelegate, appDataFolders: Binding<[String]>, tweakFolders: Binding<[String]>, updateAction: (() -> Void)? = nil) {
+    init(appModel: LCAppModel, delegate: LCAppBannerDelegate, appDataFolders: Binding<[String]>, tweakFolders: Binding<[String]>, interfaceStyle: LCAppListInterfaceStyle = .list, onContextMenuVisibilityChanged: ((Bool) -> Void)? = nil), updateAction: (() -> Void)? = nil) {
         _appInfo = State(initialValue: appModel.appInfo)
         _appDataFolders = appDataFolders
         _tweakFolders = tweakFolders
         self.delegate = delegate
         self.updateAction = updateAction
+        self.interfaceStyle = interfaceStyle
+        self.onContextMenuVisibilityChanged = onContextMenuVisibilityChanged
         
         _model = ObservedObject(wrappedValue: appModel)
         _mainColor = State(initialValue: Color.clear)
@@ -58,9 +64,17 @@ struct LCAppBanner : View {
 
     }
     @State private var mainHueColor: CGFloat? = nil
-    
-    var body: some View {
 
+    @ViewBuilder
+    var body: some View {
+        if interfaceStyle == .grid {
+            gridIcon
+        } else {
+            banner
+        }
+    }
+
+    var banner: some View {
         HStack {
             HStack {
                 IconImageView(icon: icon)
@@ -241,7 +255,7 @@ struct LCAppBanner : View {
             onCompletion: { result in
             
         })
-        .betterContextMenu(menuProvider: makeContextMenu)
+        .betterContextMenu(menuProvider: makeContextMenu, onMenuVisibilityChanged: onContextMenuVisibilityChanged)
         .alert("lc.appBanner.confirmUninstallTitle".loc, isPresented: $appRemovalAlert.show) {
             Button(role: .destructive) {
                 appRemovalAlert.close(result: true)
@@ -355,6 +369,57 @@ struct LCAppBanner : View {
             .foregroundColor(.white)
             .frame(width: 16, height:16)
             .background(Capsule().fill(Color(color)))
+    }
+    var gridIcon: some View {
+        Button {
+            if #available(iOS 16.0, *) {
+                if let currentDataFolder = model.uiSelectedContainer?.folderName,
+                   MultitaskManager.isUsing(container: currentDataFolder) {
+                    var found = false
+                    if #available(iOS 16.1, *) {
+                        found = MultitaskWindowManager.openExistingAppWindow(dataUUID: currentDataFolder)
+                    }
+                    if !found {
+                        found = MultitaskDockManager.shared.bringMultitaskViewToFront(uuid: currentDataFolder)
+                    }
+                    if found {
+                        return
+                    }
+                }
+
+                Task{ await runApp() }
+            } else {
+                Task{ await runApp() }
+            }
+        } label: {
+            VStack(spacing: 5) {
+                ZStack {
+                    IconImageView(icon: icon)
+                        .frame(width: appGridShowLabels ? 58 : 70, height: appGridShowLabels ? 58 : 70)
+                        .opacity(model.isSigningInProgress ? 0.35 : 1)
+                    if model.isSigningInProgress {
+                        ProgressView().progressViewStyle(.circular)
+                    }
+                }
+                if appGridShowLabels {
+                    Text(model.displayName)
+                        .font(.system(size: 11))
+                        .lineLimit(2)
+                        .multilineTextAlignment(.center)
+                        .foregroundColor(.primary)
+                        .frame(width: 76, height: 28, alignment: .top)
+                }
+            }
+            .frame(width: appGridShowLabels ? 76 : 78, height: appGridShowLabels ? 92 : 78, alignment: .top)
+        }
+        .buttonStyle(.plain)
+        .disabled(model.isAppRunning)
+        .contentShape(RoundedRectangle(cornerRadius: 20))
+        .betterContextMenu(menuProvider: makeContextMenu, onMenuVisibilityChanged: onContextMenuVisibilityChanged)
+        .onChange(of: darkModeIcon) { newVal in
+            icon = appInfo.iconIsDarkIcon(newVal)
+            mainColor = extractMainHueColor()
+        }
     }
 
     func makeContextMenu() -> UIMenu {
@@ -762,4 +827,22 @@ struct LCAppSkeletonBanner: View {
         .background(RoundedRectangle(cornerRadius: 22).fill(Color.gray.opacity(0.1)))
     }
     
+}
+
+struct LCAppSkeletonIcon: View {
+    var showLabels: Bool
+
+    var body: some View {
+        VStack(spacing: 5) {
+            RoundedRectangle(cornerRadius: showLabels ? 16 : 19)
+                .fill(Color.gray.opacity(0.3))
+                .frame(width: showLabels ? 58 : 70, height: showLabels ? 58 : 70)
+            if showLabels {
+                RoundedRectangle(cornerRadius: 4)
+                    .fill(Color.gray.opacity(0.3))
+                    .frame(width: 64, height: 10)
+            }
+        }
+        .frame(width: showLabels ? 76 : 78, height: showLabels ? 92 : 78, alignment: .top)
+    }
 }
