@@ -380,8 +380,6 @@ void SecItemGuestHooksInit(void)  {
     } else {
         accessGroup = [NSString stringWithFormat:@"%@.com.kdt.livecontainer.shared.%ld", groupId, (long)keychainGroupId];
     }
-    NSString* teamId = [LCSharedUtils teamIdentifier];
-    accessGroup = [NSString stringWithFormat:@"%@.com.kdt.livecontainer.container.%@", teamId, containerId];
     
     // check if the keychain access group is available
     NSDictionary *query = @{
