@@ -463,11 +463,10 @@ func setMode(_ mode: AppLaunchMode) {
                                         .preference(key: LCGridAppFramePreferenceKey.self, value: gridFramePreference(for: app, proxy: proxy, coordinateSpace: gridCoordinateSpace))
                                 }
                             }
-                            .opacity(isMultiSelectMode && !isDeleting && !selectedAppsForDeletion.contains(app) ? 0.6 : 1.0)
+                            .opacity(isMultiSelectMode && selectedAppsForDeletion.contains(app) ? 0.5 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isMultiSelectMode)
-                            .allowsHitTesting(!isMultiSelectMode || isDeleting ? true : false)
 
-                        // Multiselect badge overlay
+                        // Multiselect badge — centered over the icon
                         if isMultiSelectMode {
                             let isSelected = selectedAppsForDeletion.contains(app)
                             Group {
@@ -475,18 +474,18 @@ func setMode(_ mode: AppLaunchMode) {
                                     Image(systemName: isSelected
                                           ? (app.appInfo.isHidden ? "lock.open.fill" : "lock.fill")
                                           : (app.appInfo.isHidden ? "lock.open" : "lock.open"))
-                                        .foregroundColor(isSelected ? (app.appInfo.isHidden ? .green : .orange) : .secondary)
+                                        .foregroundColor(isSelected ? (app.appInfo.isHidden ? .green : .orange) : .white)
                                 } else if isDeleteMode {
                                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                        .foregroundColor(isSelected ? .red : .secondary)
+                                        .foregroundColor(isSelected ? .red : .white)
                                 } else {
                                     Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                                        .foregroundColor(isSelected ? .green : .secondary)
+                                        .foregroundColor(isSelected ? .green : .white)
                                 }
                             }
-                            .font(.system(size: 18, weight: .semibold))
-                            .padding(4)
-                            .background(Circle().fill(Color(UIColor.systemBackground).opacity(0.85)))
+                            .font(.system(size: 22, weight: .semibold))
+                            .shadow(color: .black.opacity(0.4), radius: 2, x: 0, y: 1)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .transition(.scale.combined(with: .opacity))
                         }
                         }
