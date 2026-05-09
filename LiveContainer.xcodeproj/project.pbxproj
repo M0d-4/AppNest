@@ -29,6 +29,12 @@
 		E1292C132DCA46070065E12D /* main.c in Sources */ = {isa = PBXBuildFile; fileRef = E1292C032DCA3C160065E12D /* main.c */; };
 		E16D95742E1CD2980068EB63 /* LCMachOUtils.m in Sources */ = {isa = PBXBuildFile; fileRef = E16D94DE2E1CC8200068EB63 /* LCMachOUtils.m */; };
 		E16D95752E1CD2B90068EB63 /* LiveContainerShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */; };
+		DEADBEEF00000003 /* DeviceCheck+GuestHooks.m in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000001 /* DeviceCheck+GuestHooks.m */; };
+		DEADBEEF00000006 /* UIDevice+GuestHooks.m in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000004 /* UIDevice+GuestHooks.m */; };
+		DEADBEEF00000009 /* CoreTelephony+GuestHooks.m in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000007 /* CoreTelephony+GuestHooks.m */; };
+		DEADBEEF00000012 /* Sandbox+GuestHooks.m in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000010 /* Sandbox+GuestHooks.m */; };
+		DEADBEEF00000014 /* LCGPSLocationListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000013 /* LCGPSLocationListView.swift */; };
+		DEADBEEF00000020 /* LCSettingSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000018 /* LCSettingSectionView.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -163,6 +169,16 @@
 		E16D94DE2E1CC8200068EB63 /* LCMachOUtils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = LCMachOUtils.m; sourceTree = "<group>"; };
 		E16D95762E1CD49E0068EB63 /* LCMachOUtils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LCMachOUtils.h; sourceTree = "<group>"; };
 		E16D9BA02E1D48DE0068EB63 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		DEADBEEF00000001 /* DeviceCheck+GuestHooks.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "DeviceCheck+GuestHooks.m"; sourceTree = "<group>"; };
+		DEADBEEF00000002 /* DeviceCheck+GuestHooks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "DeviceCheck+GuestHooks.h"; sourceTree = "<group>"; };
+		DEADBEEF00000004 /* UIDevice+GuestHooks.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "UIDevice+GuestHooks.m"; sourceTree = "<group>"; };
+		DEADBEEF00000005 /* UIDevice+GuestHooks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "UIDevice+GuestHooks.h"; sourceTree = "<group>"; };
+		DEADBEEF00000007 /* CoreTelephony+GuestHooks.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "CoreTelephony+GuestHooks.m"; sourceTree = "<group>"; };
+		DEADBEEF00000008 /* CoreTelephony+GuestHooks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CoreTelephony+GuestHooks.h"; sourceTree = "<group>"; };
+		DEADBEEF00000010 /* Sandbox+GuestHooks.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "Sandbox+GuestHooks.m"; sourceTree = "<group>"; };
+		DEADBEEF00000011 /* Sandbox+GuestHooks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Sandbox+GuestHooks.h"; sourceTree = "<group>"; };
+		DEADBEEF00000013 /* LCGPSLocationListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LCGPSLocationListView.swift; sourceTree = "<group>"; };
+		DEADBEEF00000018 /* LCSettingSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LCSettingSectionView.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -218,6 +234,10 @@
 			membershipExceptions = (
 				"AVFoundation+GuestHooks.m",
 				"CoreLocation+GuestHooks.m",
+				"DeviceCheck+GuestHooks.m",
+				"UIDevice+GuestHooks.m",
+				"CoreTelephony+GuestHooks.m",
+				"Sandbox+GuestHooks.m",
 				"Network+GuestHooks.m",
 			);
 			target = 174140392D9C0D0000F3F928 /* TweakLoader */;
@@ -257,6 +277,20 @@
 			);
 			target = 17413FB42D9C0BAE00F3F928 /* LiveContainerSwiftUI */;
 		};
+		DEADBEEF00000015 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"LCGPSLocationListView.swift",
+			);
+			target = 17413FB42D9C0BAE00F3F928 /* LiveContainerSwiftUI */;
+		};
+		DEADBEEF00000019 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				"LCSettingSectionView.swift",
+			);
+			target = 17413FB42D9C0BAE00F3F928 /* LiveContainerSwiftUI */;
+		};
 		E1292AF72DCA3A660065E12D /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
@@ -269,6 +303,10 @@
 			membershipExceptions = (
 				"AVFoundation+GuestHooks.h",
 				"CoreLocation+GuestHooks.h",
+				"DeviceCheck+GuestHooks.h",
+				"UIDevice+GuestHooks.h",
+				"CoreTelephony+GuestHooks.h",
+				"Sandbox+GuestHooks.h",
 				"Network+GuestHooks.h",
 				Tweaks.h,
 			);
@@ -356,7 +394,7 @@
 		172CA8992D9D72C300CF6989 /* Resources */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (172CA8BD2D9D74B700CF6989 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 172CA8C32D9D76AD00CF6989 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Resources; sourceTree = "<group>"; };
 		172CA8AD2D9D741F00CF6989 /* fishhook */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (58AB1E2C2E479B67003668F2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 5822D4F32E206BF2004F7F58 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = fishhook; sourceTree = "<group>"; };
 		173545A92E2C7913001B3B4C /* SideStore */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (173546D32E2C82AE001B3B4C /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 176614FC2E2C851800B1F478 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, 173546D42E2C82AE001B3B4C /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = SideStore; sourceTree = "<group>"; };
-		17413FB62D9C0BAE00F3F928 /* LiveContainerSwiftUI */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = LiveContainerSwiftUI; sourceTree = "<group>"; };
+		17413FB62D9C0BAE00F3F928 /* LiveContainerSwiftUI */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (DEADBEEF00000015 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, DEADBEEF00000019 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LiveContainerSwiftUI; sourceTree = "<group>"; };
 		174140162D9C0C1B00F3F928 /* TweakLoader */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (174140F52D9C1C9B00F3F928 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 174140F62D9C1C9B00F3F928 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = TweakLoader; sourceTree = "<group>"; };
 		174140552D9C0D6D00F3F928 /* ZSign */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ZSign; sourceTree = "<group>"; };
 		174140AE2D9C0F4100F3F928 /* TestJITLess */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = TestJITLess; sourceTree = "<group>"; };
@@ -994,6 +1032,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DEADBEEF00000014 /* LCGPSLocationListView.swift in Sources */,
+				DEADBEEF00000020 /* LCSettingSectionView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -1001,6 +1041,10 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DEADBEEF00000003 /* DeviceCheck+GuestHooks.m in Sources */,
+				DEADBEEF00000006 /* UIDevice+GuestHooks.m in Sources */,
+				DEADBEEF00000009 /* CoreTelephony+GuestHooks.m in Sources */,
+				DEADBEEF00000012 /* Sandbox+GuestHooks.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

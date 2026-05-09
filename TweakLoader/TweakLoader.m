@@ -3,6 +3,15 @@
 #include <dlfcn.h>
 #include <objc/runtime.h>
 #include "utils.h"
+#import "DeviceCheck+GuestHooks.h"
+#import "UIDevice+GuestHooks.h"
+#import "CoreTelephony+GuestHooks.h"
+#import "Sandbox+GuestHooks.h"
+
+void DeviceCheckGuestHooksInit(void);
+void UIDeviceGuestHooksInit(void);
+void CoreTelephonyGuestHooksInit(void);
+void SandboxGuestHooksInit(void);
 
 static NSString *const kDisabledTweaksKey = @"disabledItems";
 
@@ -170,6 +179,20 @@ static void TweakLoaderConstructor() {
             }
         }
     }
+
+    // DeviceCheck/AppAttest Hooks
+    if (NSUserDefaults.guestAppInfo[@"bypassDeviceCheck"] && [NSUserDefaults.guestAppInfo[@"bypassDeviceCheck"] boolValue]) {
+        DeviceCheckGuestHooksInit();
+    }
+
+    // UIDevice Hooks
+    UIDeviceGuestHooksInit();
+
+    // CoreTelephony Hooks
+    CoreTelephonyGuestHooksInit();
+
+    // Sandbox Hooks
+    SandboxGuestHooksInit();
 
     if (errors.count > 0) {
         dispatch_async(dispatch_get_main_queue(), ^{
