@@ -478,8 +478,11 @@ func setMode(_ mode: AppLaunchMode) {
             .onDrop(of: [.text], delegate: LCGridDropDelegate(apps: apps, appFrames: appFrames, draggingApp: $draggingApp, dragCleanupID: $dragCleanupID, sortManager: sharedAppSortManager))
         } else {
             LazyVStack {
-                appList(apps: filteredHiddenApps, hidden: false, gridID: "hiddenApps")
-        }
+                ForEach(apps, id: \.self) { app in
+                    appRow(app: app, isHidden: hidden)
+                }
+            }
+    }
     }
 
     func gridFramePreference(for app: LCAppModel, proxy: GeometryProxy, coordinateSpace: String) -> [String: CGRect] {
@@ -1776,7 +1779,6 @@ func setMode(_ mode: AppLaunchMode) {
                 }
             }
         }
-    }
     private func multitaskPIDJITBundleId(for appToLaunch: LCAppModel) -> String {
         appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier
     }
