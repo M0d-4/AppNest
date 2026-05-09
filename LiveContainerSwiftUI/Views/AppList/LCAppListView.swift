@@ -264,7 +264,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     }
 
     return .native 
-}
+    }
 
 
 
@@ -298,7 +298,7 @@ func setMode(_ mode: AppLaunchMode) {
         }
     }
     sharedModel.objectWillChange.send()
-}
+    }
 
 
 
@@ -480,6 +480,7 @@ func setMode(_ mode: AppLaunchMode) {
             LazyVStack {
                 appList(apps: filteredHiddenApps, hidden: false, gridID: "hiddenApps")
         }
+    }
     }
 
     func gridFramePreference(for app: LCAppModel, proxy: GeometryProxy, coordinateSpace: String) -> [String: CGRect] {
