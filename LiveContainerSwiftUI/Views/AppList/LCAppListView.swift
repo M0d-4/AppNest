@@ -445,6 +445,7 @@ func setMode(_ mode: AppLaunchMode) {
                     if hidden {
                         LCAppSkeletonIcon(showLabels: appGridShowLabels)
                     } else {
+                        ZStack(alignment: .topLeading) {
                         LCAppBanner(appModel: app, delegate: self, appDataFolders: $appDataFolderNames, tweakFolders: $tweakFolderNames, interfaceStyle: .grid) { _ in
                             cancelGridDrag(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
                         }
@@ -462,6 +463,44 @@ func setMode(_ mode: AppLaunchMode) {
                                         .preference(key: LCGridAppFramePreferenceKey.self, value: gridFramePreference(for: app, proxy: proxy, coordinateSpace: gridCoordinateSpace))
                                 }
                             }
+                            .opacity(isMultiSelectMode && !isDeleting && !selectedAppsForDeletion.contains(app) ? 0.6 : 1.0)
+                            .animation(.easeInOut(duration: 0.15), value: isMultiSelectMode)
+                            .allowsHitTesting(!isMultiSelectMode || isDeleting ? true : false)
+
+                        // Multiselect badge overlay
+                        if isMultiSelectMode {
+                            let isSelected = selectedAppsForDeletion.contains(app)
+                            Group {
+                                if isLockHideMode {
+                                    Image(systemName: isSelected
+                                          ? (app.appInfo.isHidden ? "lock.open.fill" : "lock.fill")
+                                          : (app.appInfo.isHidden ? "lock.open" : "lock.open"))
+                                        .foregroundColor(isSelected ? (app.appInfo.isHidden ? .green : .orange) : .secondary)
+                                } else if isDeleteMode {
+                                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(isSelected ? .red : .secondary)
+                                } else {
+                                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(isSelected ? .green : .secondary)
+                                }
+                            }
+                            .font(.system(size: 18, weight: .semibold))
+                            .padding(4)
+                            .background(Circle().fill(Color(UIColor.systemBackground).opacity(0.85)))
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard isMultiSelectMode, !isDeleting else { return }
+                            withAnimation(.easeInOut(duration: 0.1)) {
+                                if selectedAppsForDeletion.contains(app) {
+                                    selectedAppsForDeletion.remove(app)
+                                } else {
+                                    selectedAppsForDeletion.insert(app)
+                                }
+                            }
+                        }
                     }
                 }
                 .transition(.scale)
