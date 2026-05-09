@@ -477,7 +477,7 @@ func setMode(_ mode: AppLaunchMode) {
             }
             .onDrop(of: [.text], delegate: LCGridDropDelegate(apps: apps, appFrames: appFrames, draggingApp: $draggingApp, dragCleanupID: $dragCleanupID, sortManager: sharedAppSortManager))
         } else {
-            LazyVStack {
+            LazyVStack(spacing: 8) {
                 ForEach(apps, id: \.self) { app in
                     appRow(app: app, isHidden: hidden)
                 }
@@ -1940,8 +1940,6 @@ func setMode(_ mode: AppLaunchMode) {
     @ViewBuilder
     func appRow(app: LCAppModel, isHidden: Bool) -> some View {
         VStack(spacing: 0) {
-            Divider()
-                .padding(.leading, isMultiSelectMode ? 52 : 16)
             ZStack(alignment: .leading) {
             LCAppBanner(appModel: app, delegate: self, appDataFolders: $appDataFolderNames, tweakFolders: $tweakFolderNames, updateAction: updateAction(for: app))
                 .padding(.leading, isMultiSelectMode ? 36 : 0)
