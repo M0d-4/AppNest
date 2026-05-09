@@ -1756,6 +1756,7 @@ func setMode(_ mode: AppLaunchMode) {
                 }
             }
         }
+
     private func multitaskPIDJITBundleId(for appToLaunch: LCAppModel) -> String {
         appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier
     }
