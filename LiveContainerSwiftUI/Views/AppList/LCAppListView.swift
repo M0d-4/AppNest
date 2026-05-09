@@ -445,7 +445,7 @@ func setMode(_ mode: AppLaunchMode) {
                     if hidden {
                         LCAppSkeletonIcon(showLabels: appGridShowLabels)
                     } else {
-                        ZStack(alignment: .topLeading) {
+                        ZStack {
                         LCAppBanner(appModel: app, delegate: self, appDataFolders: $appDataFolderNames, tweakFolders: $tweakFolderNames, interfaceStyle: .grid) { _ in
                             cancelGridDrag(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
                         }
@@ -465,8 +465,9 @@ func setMode(_ mode: AppLaunchMode) {
                             }
                             .opacity(isMultiSelectMode && selectedAppsForDeletion.contains(app) ? 0.5 : 1.0)
                             .animation(.easeInOut(duration: 0.15), value: isMultiSelectMode)
+                            .allowsHitTesting(!isMultiSelectMode)
 
-                        // Multiselect badge — centered over the icon
+                        // Multiselect badge — centered
                         if isMultiSelectMode {
                             let isSelected = selectedAppsForDeletion.contains(app)
                             Group {
@@ -485,7 +486,6 @@ func setMode(_ mode: AppLaunchMode) {
                             }
                             .font(.system(size: 22, weight: .semibold))
                             .shadow(color: .black.opacity(0.4), radius: 2, x: 0, y: 1)
-                            .frame(maxWidth: .infinity, maxHeight: .infinity)
                             .transition(.scale.combined(with: .opacity))
                         }
                         }
