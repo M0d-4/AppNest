@@ -481,7 +481,6 @@ func setMode(_ mode: AppLaunchMode) {
                 appList(apps: filteredHiddenApps, hidden: false, gridID: "hiddenApps")
         }
     }
-    }
 
     func gridFramePreference(for app: LCAppModel, proxy: GeometryProxy, coordinateSpace: String) -> [String: CGRect] {
         guard let uniqueIdentifier = sharedAppSortManager.getUniqueIdentifier(for: app) else {
@@ -1705,59 +1704,6 @@ func setMode(_ mode: AppLaunchMode) {
 
     }
 
-    private func multitaskPIDJITBundleId(for appToLaunch: LCAppModel) -> String {
-        appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier
-    }
-
-    private func targetGuestBundleIdForPIDJIT() -> String {
-        if let selectedBundlePath = UserDefaults.standard.string(forKey: "selected") {
-            let appListsToConsider: [[LCAppModel]] = [sharedModel.apps, sharedModel.hiddenApps]
-            for appList in appListsToConsider {
-                if let app = appList.first(where: { $0.appInfo.relativeBundlePath == selectedBundlePath }) {
-                    return app.bundleIdentifier
-                }
-            }
-        }
-        return Bundle.main.bundleIdentifier ?? ""
-    }
-
-    private func multitaskPIDJITRelayScheme(for appToLaunch: LCAppModel) -> String? {
-        let currentScheme = LCUtils.appUrlScheme()?.lowercased()
-        let runningScheme = LCSharedUtils.getContainerUsingLCScheme(withFolderName: appToLaunch.uiDefaultDataFolder)
-        if let runningScheme,
-           runningScheme.lowercased() != currentScheme {
-            return runningScheme
-        }
-
-        var freeScheme: String?
-        LCUtils.forEachInstalledLC(isFree: true) { scheme, shouldBreak in
-            if scheme.lowercased() != currentScheme {
-                freeScheme = scheme
-                shouldBreak = true
-            }
-        }
-        return freeScheme
-    }
-    
-    private func openJITInAnotherLC(encodedURL: String, appToLaunch: LCAppModel, errorMessage: String) async -> Bool {
-        let freeScheme = multitaskPIDJITRelayScheme(for: appToLaunch)
-        guard let freeScheme else {
-            errorInfo = errorMessage
-            errorShow = true
-            return false
-        }
-
-        guard let launchURL = URL(string: "\(freeScheme)://open-url?url=\(encodedURL)") else {
-            errorInfo = "lc.appList.urlInvalidError".loc
-            errorShow = true
-            return false
-        }
-
-        LCUtils.appGroupUserDefault.set(multitaskPIDJITBundleId(for: appToLaunch), forKey: "LCLaunchExtensionBundleID")
-        LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
-        await UIApplication.shared.open(launchURL)
-        return true
-    }
 
     func jitLaunch(withPID pid: Int, withScript script: String? = nil, appName: String) async {
         await MainActor.run {
@@ -1830,6 +1776,59 @@ func setMode(_ mode: AppLaunchMode) {
                 }
             }
         }
+    }
+    private func multitaskPIDJITBundleId(for appToLaunch: LCAppModel) -> String {
+        appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier
+    }
+
+    private func targetGuestBundleIdForPIDJIT() -> String {
+        if let selectedBundlePath = UserDefaults.standard.string(forKey: "selected") {
+            let appListsToConsider: [[LCAppModel]] = [sharedModel.apps, sharedModel.hiddenApps]
+            for appList in appListsToConsider {
+                if let app = appList.first(where: { $0.appInfo.relativeBundlePath == selectedBundlePath }) {
+                    return app.bundleIdentifier
+                }
+            }
+        }
+        return Bundle.main.bundleIdentifier ?? ""
+    }
+
+    private func multitaskPIDJITRelayScheme(for appToLaunch: LCAppModel) -> String? {
+        let currentScheme = LCUtils.appUrlScheme()?.lowercased()
+        let runningScheme = LCSharedUtils.getContainerUsingLCScheme(withFolderName: appToLaunch.uiDefaultDataFolder)
+        if let runningScheme,
+           runningScheme.lowercased() != currentScheme {
+            return runningScheme
+        }
+
+        var freeScheme: String?
+        LCUtils.forEachInstalledLC(isFree: true) { scheme, shouldBreak in
+            if scheme.lowercased() != currentScheme {
+                freeScheme = scheme
+                shouldBreak = true
+            }
+        }
+        return freeScheme
+    }
+    
+    private func openJITInAnotherLC(encodedURL: String, appToLaunch: LCAppModel, errorMessage: String) async -> Bool {
+        let freeScheme = multitaskPIDJITRelayScheme(for: appToLaunch)
+        guard let freeScheme else {
+            errorInfo = errorMessage
+            errorShow = true
+            return false
+        }
+
+        guard let launchURL = URL(string: "\(freeScheme)://open-url?url=\(encodedURL)") else {
+            errorInfo = "lc.appList.urlInvalidError".loc
+            errorShow = true
+            return false
+        }
+
+        LCUtils.appGroupUserDefault.set(multitaskPIDJITBundleId(for: appToLaunch), forKey: "LCLaunchExtensionBundleID")
+        LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
+        await UIApplication.shared.open(launchURL)
+        return true
     }
 
     func showRunWhenMultitaskAlert() async -> Bool? {
