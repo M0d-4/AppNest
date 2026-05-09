@@ -177,8 +177,8 @@
 		DEADBEEF00000008 /* CoreTelephony+GuestHooks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "CoreTelephony+GuestHooks.h"; sourceTree = "<group>"; };
 		DEADBEEF00000010 /* Sandbox+GuestHooks.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "Sandbox+GuestHooks.m"; sourceTree = "<group>"; };
 		DEADBEEF00000011 /* Sandbox+GuestHooks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Sandbox+GuestHooks.h"; sourceTree = "<group>"; };
-		DEADBEEF00000013 /* LCGPSLocationListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/LCGPSLocationListView.swift"; sourceTree = "<group>"; };
-		DEADBEEF00000018 /* LCSettingSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "Views/LCSettingSectionView.swift"; sourceTree = "<group>"; };
+		DEADBEEF00000013 /* LCGPSLocationListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiveContainerSwiftUI/Views/LCGPSLocationListView.swift"; sourceTree = SOURCE_ROOT; };
+		DEADBEEF00000018 /* LCSettingSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiveContainerSwiftUI/Views/LCSettingSectionView.swift"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
