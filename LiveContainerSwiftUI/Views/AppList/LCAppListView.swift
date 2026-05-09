@@ -1753,12 +1753,9 @@ func setMode(_ mode: AppLaunchMode) {
                         }
                 } else if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encoded)") {
                     UIApplication.shared.open(url)
-                    }
                 }
             }
         }
-    }
-
     private func multitaskPIDJITBundleId(for appToLaunch: LCAppModel) -> String {
         appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier
     }
