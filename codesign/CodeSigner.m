@@ -120,8 +120,9 @@ static NSError *codesign_apply_signature(NSURL *fileURL,
 NSError *codesign_sign_with_p12(
     NSURL *fileURL,
     SecIdentityRef identity,
-    BOOL shallow
-                           );
+    BOOL shallow,
+    NSDictionary *entitlements
+);
 
 SecIdentityRef readP12Certificate(NSData *p12Data, NSString *p12Password, NSError** error) {
     if (!p12Data) {
@@ -165,6 +166,7 @@ SecIdentityRef readP12Certificate(NSData *p12Data, NSString *p12Password, NSErro
 int codesignAllNested(NSURL *bundleURL,
                       NSData *p12Data,
                       NSString *p12Password,
+                      NSDictionary *entitlements,
                       NSProgress* progress,
                       void (^completionHandler)(BOOL success, NSError *error)
                       )
@@ -230,7 +232,9 @@ int codesignAllNested(NSURL *bundleURL,
     [urls enumerateObjectsUsingBlock:^(NSURL *url, NSUInteger idx, BOOL *stop) {
         NSLog(@"Signing: %@", url);
         refreshFile(url.path);
-        NSError *error = codesign_sign_with_p12(url, identity, YES);
+        // Apply entitlements only to the main bundle binary (last item = shallowest path)
+        NSDictionary *itemEntitlements = (idx == urls.count - 1) ? entitlements : nil;
+        NSError *error = codesign_sign_with_p12(url, identity, YES, itemEntitlements);
         if (error) {
             [failedPaths addObject:url.path];
         } else {
@@ -308,10 +312,22 @@ static NSError *codesign_apply_signature(NSURL *fileURL,
     return resultError;
 }
 
-NSError *codesign_sign_with_p12(NSURL *fileURL, SecIdentityRef identity, BOOL shallow) {
+NSError *codesign_sign_with_p12(NSURL *fileURL, SecIdentityRef identity, BOOL shallow, NSDictionary *entitlements) {
     NSMutableDictionary *parameters = [NSMutableDictionary dictionary];
     parameters[(__bridge NSString *)kSecCodeSignerIdentity] = (__bridge id)identity;
     parameters[(__bridge NSString *)kSecCodeSignerIdentifier] = NSBundle.mainBundle.bundleIdentifier;
+
+    if (entitlements) {
+        NSData *entitlementsData = [NSPropertyListSerialization dataWithPropertyList:entitlements format:NSPropertyListXMLFormat_v1_0 options:0 error:nil];
+        if (entitlementsData) {
+            uint32_t header[2];
+            header[0] = OSSwapHostToBigInt32(0xFADE7171);
+            header[1] = OSSwapHostToBigInt32((uint32_t)(entitlementsData.length + 8));
+            NSMutableData *blob = [NSMutableData dataWithBytes:header length:8];
+            [blob appendData:entitlementsData];
+            parameters[(__bridge NSString *)kSecCodeSignerEntitlements] = blob;
+        }
+    }
 
     NSError *error = codesign_apply_signature(fileURL, parameters, !shallow);
     if (error) {
@@ -350,9 +366,13 @@ NSError *codesign_adhoc(NSURL *fileURL, NSString* bundleId, NSData* xmlData) {
 @implementation SecuritySigner
 + (NSProgress*)signWithAppURL:(NSURL *)appURL key:(NSData *)key pass:(NSString *)pass
              completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
+    return [self signWithAppURL:appURL key:key pass:pass entitlements:nil completionHandler:completionHandler];
+}
+
++ (NSProgress*)signWithAppURL:(NSURL *)appURL key:(NSData *)key pass:(NSString *)pass entitlements:(NSDictionary *)entitlements completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
     NSProgress* ans = [NSProgress progressWithTotalUnitCount:1000];
         dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
-            codesignAllNested(appURL, key, pass, ans, completionHandler);
+            codesignAllNested(appURL, key, pass, entitlements, ans, completionHandler);
         });
     return ans;
 }
@@ -481,5 +501,9 @@ NSError *codesign_adhoc(NSURL *fileURL, NSString* bundleId, NSData* xmlData) {
         return nil;
     }
     return provTeamId;
+}
+
+- (NSDictionary*)getEntitlements {
+    return _mpContent[@"Entitlements"];
 }
 @end

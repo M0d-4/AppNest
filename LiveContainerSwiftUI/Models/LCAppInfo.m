@@ -7,6 +7,7 @@
 #import "LCAppInfo.h"
 #import "LCUtils.h"
 #import "../../LiveContainer/LCSharedUtils.h"
+#import "../../codesign/CodeSigner.h"
 
 uint32_t dyld_get_sdk_version(const struct mach_header* mh);
 
@@ -635,7 +636,26 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
         });
     };
 
-    NSProgress *progress = [LCUtils signAppBundleWithURL:appPathURL completionHandler:signCompletionHandler];
+    // Get entitlements from guest app's provisioning profile
+    NSString *appProvPath = [appPath stringByAppendingPathComponent:@"embedded.mobileprovision"];
+    NSData *appProvData = [NSData dataWithContentsOfFile:appProvPath];
+    NSError *mpError = nil;
+    LCMobileProvisionWarpepr *appProv = appProvData ? [LCMobileProvisionWarpepr initWithMPData:appProvData error:&mpError] : nil;
+    NSDictionary *appEntitlements = [appProv getEntitlements];
+
+    // Get entitlements from LiveContainer's own provisioning profile
+    NSURL *lcProfilePath = [NSBundle.mainBundle URLForResource:@"embedded" withExtension:@"mobileprovision"];
+    NSData *lcProfileData = [NSData dataWithContentsOfURL:lcProfilePath];
+    LCMobileProvisionWarpepr *lcProv = lcProfileData ? [LCMobileProvisionWarpepr initWithMPData:lcProfileData error:&mpError] : nil;
+    NSDictionary *lcEntitlements = [lcProv getEntitlements];
+
+    // Merge: start with LC's entitlements, then overlay app's entitlements
+    NSMutableDictionary *mergedEntitlements = lcEntitlements ? [lcEntitlements mutableCopy] : [NSMutableDictionary dictionary];
+    if (appEntitlements) {
+        [mergedEntitlements addEntriesFromDictionary:appEntitlements];
+    }
+
+    __block NSProgress *progress = [LCUtils signAppBundleWithURL:appPathURL entitlements:[mergedEntitlements copy] completionHandler:signCompletionHandler];
 
     if (progress) {
         progressHandler(progress);

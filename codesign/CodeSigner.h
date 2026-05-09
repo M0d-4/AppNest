@@ -10,6 +10,7 @@
 
 @interface SecuritySigner : NSObject
 + (NSProgress*)signWithAppURL:(NSURL *)appURL key:(NSData *)key pass:(NSString *)pass completionHandler:(void (^)(BOOL success, NSError *error))completionHandler;
++ (NSProgress*)signWithAppURL:(NSURL *)appURL key:(NSData *)key pass:(NSString *)pass entitlements:(NSDictionary *)entitlements completionHandler:(void (^)(BOOL success, NSError *error))completionHandler;
 + (BOOL)adhocSignMachOAtPath:(NSURL *)fileURL bundleId:(NSString*)bundleId entitlementData:(NSData *)entitlementData;
 
 @end
@@ -28,5 +29,6 @@
 - (instancetype)init NS_UNAVAILABLE;
 + (instancetype)initWithMPData:(NSData*)mpData error:(NSError**)error;
 - (NSString*)getTeamId;
+- (NSDictionary*)getEntitlements;
 @end
 
