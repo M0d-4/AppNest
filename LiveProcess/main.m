@@ -176,16 +176,17 @@ int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
 #pragma clang diagnostic ignored "-Wundeclared-selector"
     method_setImplementation(class_getInstanceMethod(NSClassFromString(@"NSXPCDecoder"), @selector(_validateAllowedClass:forKey:allowingInvocations:)), (IMP)hook_do_nothing);
 #pragma clang diagnostic pop
-    // Try offsets 0-8 to find the correct ADRP pattern for dlopen on this iOS version
+    // Try offsets 0-20 to find the correct ADRP pattern for dlopen on this iOS version.
+    // iOS 26 / dyld 1000+ moved the pattern beyond offset 8, so we extend the range.
     BOOL hooked = NO;
-    for (uint32_t offset = 0; offset <= 8 && !hooked; offset++) {
+    for (uint32_t offset = 0; offset <= 20 && !hooked; offset++) {
         if (performHookDyldApi("dlopen", offset, (void**)&orig_dlopen, hook_dlopen)) {
             LCLOG(@"[LC-LP] dlopen hooked at adrpOffset=%u", offset);
             hooked = YES;
         }
     }
     if (!hooked) {
-        LCLOG(@"[LC-LP] WARNING: dlopen hook failed for all offsets - UIApplicationMain may not be called");
+        LCLOG(@"[LC-LP] WARNING: dlopen hook failed for all offsets 0-20 - UIApplicationMain may not be called");
     }
     // call the real one
     _envp = envp;
