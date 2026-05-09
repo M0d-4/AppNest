@@ -48,7 +48,7 @@ struct LCAppBanner : View {
     @Environment(\.colorScheme) var colorScheme
     @EnvironmentObject private var sharedModel : SharedModel
     
-    init(appModel: LCAppModel, delegate: LCAppBannerDelegate, appDataFolders: Binding<[String]>, tweakFolders: Binding<[String]>, interfaceStyle: LCAppListInterfaceStyle = .list, onContextMenuVisibilityChanged: ((Bool) -> Void)? = nil), updateAction: (() -> Void)? = nil) {
+    init(appModel: LCAppModel, delegate: LCAppBannerDelegate, appDataFolders: Binding<[String]>, tweakFolders: Binding<[String]>, interfaceStyle: LCAppListInterfaceStyle = .list, onContextMenuVisibilityChanged: ((Bool) -> Void)? = nil, updateAction: (() -> Void)? = nil) {
         _appInfo = State(initialValue: appModel.appInfo)
         _appDataFolders = appDataFolders
         _tweakFolders = tweakFolders
