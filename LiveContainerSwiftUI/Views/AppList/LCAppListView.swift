@@ -1738,28 +1738,6 @@ func setMode(_ mode: AppLaunchMode) {
                 }
 
                 let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
-                if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encoded)") {
-                    if jitEnabler == .StikJITLC {
-                        if let app = sharedModel.apps.first(where: { app in
-                            return app.appInfo.urlSchemes().contains("stikjit") &&
-                            (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
-                        }) {
-                            Task { await openWebView(urlString: url.absoluteString) }
-                        } else {
-                        let targetBundleId = UserDefaults.standard.string(forKey: "selected") ?? targetGuestBundleIdForPIDJIT()
-                        let encodedAppName = appName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? appName
-                        var urlString = "stosdebug://enableJIT?bundleId=\(targetBundleId)&appName=\(encodedAppName)&pid=\(pid)&relaunchApp=false&forcePID=true"
-                        if let encodedData, !encodedData.isEmpty {
-                            urlString += "&script=\(encodedData)"
-                        }
-                        if let url = URL(string: urlString) {
-                            UIApplication.shared.open(url)
-                        }
-                    }
-                    return
-                }
-                    
-                let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
                 if jitEnabler == .StikJITLC {
                     if let app = sharedModel.apps.first(where: { app in
                         return app.appInfo.urlSchemes().contains("stikjit") &&
@@ -1779,6 +1757,8 @@ func setMode(_ mode: AppLaunchMode) {
                 }
             }
         }
+    }
+
     private func multitaskPIDJITBundleId(for appToLaunch: LCAppModel) -> String {
         appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier
     }
