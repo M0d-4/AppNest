@@ -1723,7 +1723,6 @@ func setMode(_ mode: AppLaunchMode) {
                             let urlString = "stosdebug://enableJIT?bundleId=\(multitaskPIDJITBundleId(for: app))&appName=\(appName)&pid=\(pid)&relaunchApp=false&forcePID=true\(encoded)"
                             let encodedStr = Data(urlString.utf8).base64EncodedString().addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
                             Task { _ = await openJITInAnotherLC(encodedURL: encodedStr, appToLaunch: app, errorMessage: "No free LiveContainer is available. Please either: \n(1)close one, \n(2)install a new one, \n(3)choose another method to enable JIT.") }
-                            }
                         } else {
                             errorInfo = "StosDebug is not found. Please install it first and switch it to shared app."
                             errorShow = true
@@ -1756,6 +1755,7 @@ func setMode(_ mode: AppLaunchMode) {
                 }
             }
         }
+    }
 
     private func multitaskPIDJITBundleId(for appToLaunch: LCAppModel) -> String {
         appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier
