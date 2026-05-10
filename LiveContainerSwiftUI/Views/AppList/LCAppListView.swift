@@ -560,14 +560,14 @@ func setMode(_ mode: AppLaunchMode) {
                     .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredApps)
 
                 VStack {
-                    if sharedModel.hiddenApps.count > 0 {
+                    if sharedModel.hiddenApps.count > 0 && sharedModel.isHiddenAppUnlocked {
                         VStack(spacing: 8) {
                             HStack {
                                 Text("lc.appList.hiddenApps".loc)
                                     .font(.system(.title2).bold())
                                 Spacer()
                             }
-                            appList(apps: filteredHiddenApps, hidden: !sharedModel.isHiddenAppUnlocked, gridID: "hiddenApps")
+                            appList(apps: filteredHiddenApps, hidden: false, gridID: "hiddenApps")
                             .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
                             .onTapGesture {
                                 if !isMultiSelectMode {
