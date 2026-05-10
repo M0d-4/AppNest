@@ -7,6 +7,27 @@ static BOOL spoofGPSEnabled = NO;
 static CLLocationCoordinate2D spoofedCoordinate = {37.7749, -122.4194};
 static CLLocationDistance spoofedAltitude = 0.0;
 
+// Generate a random realistic GPS coordinate (land-biased, populated-area-biased)
+static CLLocationCoordinate2D LCRandomGPSCoordinate(void) {
+    // Bias toward populated land areas using predefined region pools
+    static const struct { double latMin; double latMax; double lonMin; double lonMax; } regions[] = {
+        {  25.0,  50.0, -125.0,  -66.0 }, // North America
+        {  35.0,  60.0,  -10.0,   40.0 }, // Europe
+        {  20.0,  55.0,   65.0,  145.0 }, // Asia
+        { -35.0,   5.0,  -80.0,  -34.0 }, // South America
+        { -35.0,  37.0,  -18.0,   52.0 }, // Africa
+        { -45.0, -10.0,  110.0,  155.0 }, // Australia
+    };
+    int regionCount = (int)(sizeof(regions) / sizeof(regions[0]));
+    int r = arc4random_uniform(regionCount);
+    double lat = regions[r].latMin + ((double)arc4random() / (double)UINT32_MAX) * (regions[r].latMax - regions[r].latMin);
+    double lon = regions[r].lonMin + ((double)arc4random() / (double)UINT32_MAX) * (regions[r].lonMax - regions[r].lonMin);
+    // Add small jitter (up to ±0.05°, ~5km) for variation
+    lat += (((double)arc4random() / (double)UINT32_MAX) - 0.5) * 0.1;
+    lon += (((double)arc4random() / (double)UINT32_MAX) - 0.5) * 0.1;
+    return CLLocationCoordinate2DMake(lat, lon);
+}
+
 static id LCValidValueOrNil(id value) {
     if (value == nil || [value isKindOfClass:NSNull.class]) {
         return nil;
@@ -157,39 +178,13 @@ void CoreLocationGuestHooksInit(void) {
             NSLog(@"[LC] spoofGPSEnabled: %d (source=%@)", spoofGPSEnabled, spoofGPSSource);
             
             if (spoofGPSEnabled) {
-                id latValue = LCValidValueOrNil(guestAppInfo[@"spoofLatitude"]);
-                id lonValue = LCValidValueOrNil(guestAppInfo[@"spoofLongitude"]);
-                id altValue = LCValidValueOrNil(guestAppInfo[@"spoofAltitude"]);
-                NSString *latSource = @"guestAppInfo";
-                NSString *lonSource = @"guestAppInfo";
-                NSString *altSource = @"guestAppInfo";
-
-                if (![latValue respondsToSelector:@selector(doubleValue)]) {
-                    latValue = LCValidValueOrNil(containerScopedSettings[@"spoofLatitude"]);
-                    latSource = @"containerScopedSettings";
-                }
-                if (![lonValue respondsToSelector:@selector(doubleValue)]) {
-                    lonValue = LCValidValueOrNil(containerScopedSettings[@"spoofLongitude"]);
-                    lonSource = @"containerScopedSettings";
-                }
-                if (![altValue respondsToSelector:@selector(doubleValue)]) {
-                    altValue = LCValidValueOrNil(containerScopedSettings[@"spoofAltitude"]);
-                    altSource = @"containerScopedSettings";
-                }
-
-                spoofedCoordinate.latitude = LCDoubleValueOrFallback(latValue, 37.7749);
-                spoofedCoordinate.longitude = LCDoubleValueOrFallback(lonValue, -122.4194);
-                spoofedAltitude = LCDoubleValueOrFallback(altValue, 0.0);
+                // Always generate a random coordinate on each launch when spoofGPS is enabled
+                spoofedCoordinate = LCRandomGPSCoordinate();
+                spoofedAltitude = LCDoubleValueOrFallback(LCValidValueOrNil(guestAppInfo[@"spoofAltitude"]), 0.0);
                 
-                NSLog(@"[LC] GPS coordinates from guestAppInfo:");
-                NSLog(@"[LC] - spoofLatitude: %@ (%@) -> %f (source=%@)", latValue, [latValue class], spoofedCoordinate.latitude, latSource);
-                NSLog(@"[LC] - spoofLongitude: %@ (%@) -> %f (source=%@)", lonValue, [lonValue class], spoofedCoordinate.longitude, lonSource);
-                NSLog(@"[LC] - spoofAltitude: %@ (%@) -> %f (source=%@)", altValue, [altValue class], spoofedAltitude, altSource);
-                
-                NSLog(@"[LC] Final GPS spoofing coordinates: %f, %f, %f", 
+                NSLog(@"[LC] GPS spoofing: random coordinates generated: %f, %f", 
                       spoofedCoordinate.latitude, 
-                      spoofedCoordinate.longitude, 
-                      spoofedAltitude);
+                      spoofedCoordinate.longitude);
                 
                 // Only hook if CoreLocation is available and GPS spoofing is enabled
                 Class clLocationManagerClass = NSClassFromString(@"CLLocationManager");
