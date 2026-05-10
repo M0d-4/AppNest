@@ -163,24 +163,41 @@ static void hostLog(NSString *msg) {
         [weakSelf appTerminationCleanUp];
     }];
     LCLOG_HOST(@"[LC-Host] beginExtensionRequestWithInputItems called for bundleId=%@ dataUUID=%@", bundleId, dataUUID);
-    [_extension beginExtensionRequestWithInputItems:@[item] completion:^(NSUUID *identifier) {
-        LCLOG_HOST(@"[LC-Host] beginExtensionRequest completion: identifier=%@", identifier);
-        if(identifier) {
-            [MultitaskManager registerMultitaskContainerWithContainer:self.dataUUID];
-            self.identifier = identifier;
-            self.pid = [self.extension pidForRequestIdentifier:self.identifier];
-            LCLOG_HOST(@"[LC-Host] Extension started with pid=%d", self.pid);
-            [delegate appSceneVC:self didInitializeWithError:nil];
-            dispatch_async(dispatch_get_main_queue(), ^{
-                LCLOG_HOST(@"[LC-Host] Starting setUpAppPresenter");
-                [self setUpAppPresenter];
-            });
-        } else {
-            LCLOG_HOST(@"[LC-Host] beginExtensionRequest failed - identifier is nil");
-            NSError* error = [NSError errorWithDomain:@"LiveProcess" code:2 userInfo:@{NSLocalizedDescriptionKey: @"Failed to start app. Child process has unexpectedly crashed"}];
-            [delegate appSceneVC:self didInitializeWithError:error];
-        }
-    }];
+    
+    // Retry helper block: attempts beginExtensionRequest up to maxRetries times
+    __block int retryCount = 0;
+    const int maxRetries = 2;
+    
+    __block void (^attemptLaunch)(void);
+    attemptLaunch = ^{
+        [self->_extension beginExtensionRequestWithInputItems:@[item] completion:^(NSUUID *identifier) {
+            LCLOG_HOST(@"[LC-Host] beginExtensionRequest completion: identifier=%@ (attempt %d)", identifier, retryCount + 1);
+            if (identifier) {
+                [MultitaskManager registerMultitaskContainerWithContainer:self.dataUUID];
+                self.identifier = identifier;
+                self.pid = [self.extension pidForRequestIdentifier:self.identifier];
+                LCLOG_HOST(@"[LC-Host] Extension started with pid=%d", self.pid);
+                [delegate appSceneVC:self didInitializeWithError:nil];
+                dispatch_async(dispatch_get_main_queue(), ^{
+                    LCLOG_HOST(@"[LC-Host] Starting setUpAppPresenter");
+                    [self setUpAppPresenter];
+                });
+            } else if (retryCount < maxRetries) {
+                retryCount++;
+                LCLOG_HOST(@"[LC-Host] beginExtensionRequest failed (identifier nil), retrying %d/%d...", retryCount, maxRetries);
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                    attemptLaunch();
+                });
+            } else {
+                LCLOG_HOST(@"[LC-Host] beginExtensionRequest failed after %d attempts - identifier is nil", maxRetries + 1);
+                NSError* error = [NSError errorWithDomain:@"LiveProcess" code:2 userInfo:@{
+                    NSLocalizedDescriptionKey: @"Failed to start app in multitask mode. The LiveProcess extension crashed.\n\nTip: Try running the app in normal mode first, or disable 'Auto Launch in Multitask Mode' in Settings → Multitask."
+                }];
+                [delegate appSceneVC:self didInitializeWithError:error];
+            }
+        }];
+    };
+    attemptLaunch();
     
     
 
