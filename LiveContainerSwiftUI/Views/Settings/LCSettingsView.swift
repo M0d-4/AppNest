@@ -293,13 +293,7 @@ struct LCSettingsView: View {
                     }
                 }
                 
-                Section {
-                    NavigationLink {
-                        LCGPSLocationListView()
-                    } label: {
-                        Text("Saved Locations")
-                    }
-                }
+
                 
                 Section {
                     HStack {
