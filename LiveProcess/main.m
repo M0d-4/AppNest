@@ -148,11 +148,23 @@ int LiveProcessMain(int argc, char *argv[]) {
 }
 
 // this is our fake UIApplicationMain called from _xpc_objc_uimain (xpc_main)
-__attribute__((visibility("default")))
-int UIApplicationMain(int argc, char * argv[], NSString * principalClassName, NSString * delegateClassName) {
+// Renamed to lc_UIApplicationMain; the public symbol UIApplicationMain is declared
+// via DYLD_INTERPOSE below so dyld always routes calls to our version.
+static int lc_UIApplicationMain(int argc, char * argv[], NSString * principalClassName, NSString * delegateClassName) {
     LCLOG(@"[LC-LP] UIApplicationMain called - routing to LiveProcessMain");
     return LiveProcessMain(argc, argv);
 }
+
+// Guarantee that ALL calls to UIApplicationMain (including those from UIKit loaded
+// dynamically by NSExtensionMain) resolve to our version, regardless of whether
+// the dlopen vtable hook succeeds.  dyld processes this table at image-load time.
+typedef int (*UIApplicationMain_t)(int, char * _Nonnull * _Nonnull, NSString * _Nullable, NSString * _Nullable);
+__attribute__((used, section("__DATA,__interpose")))
+static struct { UIApplicationMain_t replacement; UIApplicationMain_t original; }
+lc_UIApplicationMain_interpose = {
+    (UIApplicationMain_t)lc_UIApplicationMain,
+    (UIApplicationMain_t)UIApplicationMain
+};
 
 // NSExtensionMain will load UIKit and call UIApplicationMain, so we need to redirect it to our fake one
 // Track the adrpOffset at which the dlopen vtable hook was installed,
@@ -181,10 +193,12 @@ int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
         method_setImplementation(xpcDecoderMethod, (IMP)hook_do_nothing);
     }
 #pragma clang diagnostic pop
-    // Try offsets 0-20 to find the correct ADRP pattern for dlopen on this iOS version.
-    // iOS 26 / dyld 1000+ moved the pattern beyond offset 8, so we extend the range.
+    // Try offsets 0-30 to find the correct ADRP pattern for dlopen on this iOS version.
+    // iOS 26 / dyld 1000+ may use offsets beyond 20 (internally +20 is also tried per call).
+    // The DYLD_INTERPOSE above is the primary guarantee; this hook is a belt-and-suspenders
+    // optimization that lets orig_UIApplicationMain also resolve to our version via dlsym.
     BOOL hooked = NO;
-    for (uint32_t offset = 0; offset <= 20 && !hooked; offset++) {
+    for (uint32_t offset = 0; offset <= 30 && !hooked; offset++) {
         if (performHookDyldApi("dlopen", offset, (void**)&orig_dlopen, hook_dlopen)) {
             g_dlopenHookAdrpOffset = offset;
             LCLOG(@"[LC-LP] dlopen hooked at adrpOffset=%u", offset);
@@ -192,7 +206,7 @@ int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
         }
     }
     if (!hooked) {
-        LCLOG(@"[LC-LP] WARNING: dlopen hook failed for all offsets 0-20 - UIApplicationMain may not be called");
+        LCLOG(@"[LC-LP] dlopen hook failed for all offsets - falling back to DYLD_INTERPOSE (UIApplicationMain already redirected at load time)");
     }
     // call the real one
     _envp = envp;
