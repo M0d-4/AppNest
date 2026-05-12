@@ -75,6 +75,7 @@ struct LCAppBanner : View {
     }
 
     var banner: some View {
+        ZStack {
         HStack {
             HStack {
                 IconImageView(icon: icon)
@@ -245,6 +246,20 @@ struct LCAppBanner : View {
                 }
         }
 
+        // Locked overlay for hidden apps
+        if appInfo.isLocked && !sharedModel.isHiddenAppUnlocked {
+            RoundedRectangle(cornerRadius: 22)
+                .fill(Color(.systemBackground).opacity(0.55))
+                .frame(height: 88)
+                .overlay(
+                    Image(systemName: "lock.fill")
+                        .font(.system(size: 20, weight: .semibold))
+                        .foregroundColor(.secondary)
+                )
+                .allowsHitTesting(false)
+        }
+        } // end ZStack
+
 
 
         .fileExporter(
@@ -395,10 +410,21 @@ struct LCAppBanner : View {
             VStack(spacing: 5) {
                 ZStack {
                     IconImageView(icon: icon)
-                        .frame(width: appGridShowLabels ? 58 : 70, height: appGridShowLabels ? 58 : 70)
+                        .frame(width: appGridShowLabels ? 72 : 84, height: appGridShowLabels ? 72 : 84)
                         .opacity(model.isSigningInProgress ? 0.35 : 1)
                     if model.isSigningInProgress {
                         ProgressView().progressViewStyle(.circular)
+                    }
+                    // Locked overlay for hidden apps in grid view
+                    if appInfo.isLocked && !sharedModel.isHiddenAppUnlocked {
+                        RoundedRectangle(cornerRadius: appGridShowLabels ? 18 : 22)
+                            .fill(Color(.systemBackground).opacity(0.6))
+                            .frame(width: appGridShowLabels ? 72 : 84, height: appGridShowLabels ? 72 : 84)
+                            .overlay(
+                                Image(systemName: "lock.fill")
+                                    .font(.system(size: 18, weight: .semibold))
+                                    .foregroundColor(.secondary)
+                            )
                     }
                 }
                 if appGridShowLabels {
@@ -407,10 +433,10 @@ struct LCAppBanner : View {
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
                         .foregroundColor(.primary)
-                        .frame(width: 76, height: 28, alignment: .top)
+                        .frame(width: 88, height: 28, alignment: .top)
                 }
             }
-            .frame(width: appGridShowLabels ? 76 : 78, height: appGridShowLabels ? 92 : 78, alignment: .top)
+            .frame(width: appGridShowLabels ? 88 : 90, height: appGridShowLabels ? 108 : 90, alignment: .top)
         }
         .buttonStyle(.plain)
         .disabled(model.isAppRunning)
@@ -834,15 +860,15 @@ struct LCAppSkeletonIcon: View {
 
     var body: some View {
         VStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: showLabels ? 16 : 19)
+            RoundedRectangle(cornerRadius: showLabels ? 18 : 22)
                 .fill(Color.gray.opacity(0.3))
-                .frame(width: showLabels ? 58 : 70, height: showLabels ? 58 : 70)
+                .frame(width: showLabels ? 72 : 84, height: showLabels ? 72 : 84)
             if showLabels {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.gray.opacity(0.3))
                     .frame(width: 64, height: 10)
             }
         }
-        .frame(width: showLabels ? 76 : 78, height: showLabels ? 92 : 78, alignment: .top)
+        .frame(width: showLabels ? 88 : 90, height: showLabels ? 108 : 90, alignment: .top)
     }
 }
