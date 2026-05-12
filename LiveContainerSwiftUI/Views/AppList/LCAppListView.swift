@@ -426,11 +426,11 @@ func setMode(_ mode: AppLaunchMode) {
     }
     
     var gridItemWidth: CGFloat {
-        appGridShowLabels ? 76 : 78
+        appGridShowLabels ? 88 : 90
     }
 
     var gridSpacing: CGFloat {
-        appGridShowLabels ? 12 : 10
+        appGridShowLabels ? 10 : 8
     }
 
     @ViewBuilder
@@ -455,7 +455,7 @@ func setMode(_ mode: AppLaunchMode) {
                                 return NSItemProvider(object: NSString(string: sharedAppSortManager.getUniqueIdentifier(for: app) ?? app.displayName))
                             } preview: {
                                 IconImageView(icon: app.appInfo.iconIsDarkIcon(LCUtils.appGroupUserDefault.bool(forKey: "darkModeIcon")))
-                                    .frame(width: appGridShowLabels ? 58 : 70, height: appGridShowLabels ? 58 : 70)
+                                    .frame(width: appGridShowLabels ? 72 : 84, height: appGridShowLabels ? 72 : 84)
                             }
                             .background {
                                 GeometryReader { proxy in
@@ -560,19 +560,31 @@ func setMode(_ mode: AppLaunchMode) {
                     .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredApps)
 
                 VStack {
-                    if sharedModel.hiddenApps.count > 0 && sharedModel.isHiddenAppUnlocked {
+                    if sharedModel.hiddenApps.count > 0 {
                         VStack(spacing: 8) {
                             HStack {
                                 Text("lc.appList.hiddenApps".loc)
                                     .font(.system(.title2).bold())
                                 Spacer()
-                            }
-                            appList(apps: filteredHiddenApps, hidden: false, gridID: "hiddenApps")
-                            .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
-                            .onTapGesture {
-                                if !isMultiSelectMode {
-                                    Task { await authenticateUser() }
+                                if !sharedModel.isHiddenAppUnlocked {
+                                    Image(systemName: "lock.fill")
+                                        .foregroundColor(.secondary)
                                 }
+                            }
+                            if sharedModel.isHiddenAppUnlocked {
+                                appList(apps: filteredHiddenApps, hidden: false, gridID: "hiddenApps")
+                                    .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
+                            } else {
+                                // Show greyed-out placeholders and unlock on tap
+                                appList(apps: sortedHiddenApps, hidden: true, gridID: "hiddenApps")
+                                    .overlay(
+                                        Color.clear
+                                            .contentShape(Rectangle())
+                                            .onTapGesture {
+                                                Task { await authenticateUser() }
+                                            }
+                                    )
+                                    .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
                             }
                         }
                         .padding()
