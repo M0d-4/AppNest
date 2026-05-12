@@ -234,7 +234,60 @@ int LCPatchExecSlice(const char *path, struct mach_header_64 *header, bool doInj
             ans |= PATCH_EXEC_RESULT_NO_SPACE_FOR_TWEAKLOADER;
         }
     }
-    
+
+    // Patch CydiaSubstrate references (must be done after insertDylibCommand calls)
+    // Recalculate imageHeaderPtr to ensure correct offsets after any memmove operations
+    imageHeaderPtr = (uint8_t*)header + sizeof(struct mach_header_64);
+    struct load_command *patchCmd = (struct load_command *)imageHeaderPtr;
+
+    const char* badPaths[] = {
+        "/Library/Frameworks/CydiaSubstrate.framework/CydiaSubstrate",
+        "@executable_path/Frameworks/CydiaSubstrate.framework/CydiaSubstrate",
+        "/usr/lib/libsubstrate.dylib",
+        "/usr/lib/libhooker.dylib",
+        "/usr/local/lib/libellekit.dylib",
+        "@rpath/CydiaSubstrate.framework/CydiaSubstrate"
+    };
+
+    for(int i = 0; i < header->ncmds; i++) {
+        if(patchCmd->cmd == LC_LOAD_DYLIB || patchCmd->cmd == LC_LOAD_WEAK_DYLIB ||
+           patchCmd->cmd == LC_REEXPORT_DYLIB || patchCmd->cmd == LC_LOAD_UPWARD_DYLIB ||
+           patchCmd->cmd == LC_LAZY_LOAD_DYLIB) {
+
+            struct dylib_command *dylib = (struct dylib_command *)patchCmd;
+            char* loadPath = (void *)dylib + dylib->dylib.name.offset;
+            uint32_t cmdSize = dylib->cmdsize;
+            uint32_t nameOffset = dylib->dylib.name.offset;
+            uint32_t availableSize = cmdSize - nameOffset;
+
+            const char* newPath = NULL;
+
+            if(loadPath && availableSize > 0) {
+                for(int pathIdx = 0; pathIdx < 6; pathIdx++) {
+                    const char* badPath = badPaths[pathIdx];
+                    size_t badLen = strlen(badPath);
+
+                    if(availableSize >= badLen && strncmp(loadPath, badPath, badLen) == 0) {
+                        newPath = "@loader_path/CydiaSubstrate.framework/CydiaSubstrate";
+                        break;
+                    }
+                }
+
+                if(newPath) {
+                    size_t newLen = strlen(newPath) + 1;
+                    if(newLen <= availableSize) {
+                        memset(loadPath, 0, availableSize);
+                        memcpy(loadPath, newPath, newLen);
+                        NSLog(@"[LC] patched dylib path: %s -> %s", loadPath, newPath);
+                    } else {
+                        NSLog(@"[LC] replacement path too long");
+                    }
+                }
+            }
+        }
+        patchCmd = (struct load_command *)((void *)patchCmd + patchCmd->cmdsize);
+    }
+
     // Ensure No duplicated dylibs, often caused by incorrect tweak injection
     // https://github.com/LiveContainer/LiveContainer/issues/582
     // https://github.com/apple-oss-distributions/dyld/blob/93bd81f9d7fcf004fcebcb66ec78983882b41e71/mach_o/Header.cpp#L678
@@ -246,7 +299,8 @@ int LCPatchExecSlice(const char *path, struct mach_header_64 *header, bool doInj
             case LC_LOAD_DYLIB:
             case LC_LOAD_WEAK_DYLIB:
             case LC_REEXPORT_DYLIB:
-            case LC_LOAD_UPWARD_DYLIB: {
+            case LC_LOAD_UPWARD_DYLIB:
+            case LC_LAZY_LOAD_DYLIB: {
                 char* loadPath =  (void *)command2 + ((struct dylib_command*)command2)->dylib.name.offset;
                 for ( int i = 0; i < depCount; ++i ) {
                     if ( strcmp(loadPath, depPaths[i]) == 0 ) {
