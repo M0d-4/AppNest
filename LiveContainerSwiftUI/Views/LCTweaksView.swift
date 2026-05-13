@@ -559,6 +559,7 @@ struct LCTweakFolderView : View {
                 if isTweak {
                     LCParseMachO((toPath.path as NSString).utf8String, false) { path, header, _, _ in
                         LCPatchAddRPath(path, header);
+                        LCPatchTweakDylibReferences(header);
                     }
                 }
                 self.tweakItems.append(LCTweakItem(fileUrl: toPath, isFolder: isFramework, isFramework: isFramework, isTweak: isTweak))
