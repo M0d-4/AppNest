@@ -79,12 +79,39 @@
             }
         }
         
-        UIViewController *rootVC = ((UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject).keyWindow.rootViewController;
+        // Find the foreground-active window scene reliably instead of using anyObject
+        UIWindowScene *activeScene = nil;
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if ([scene isKindOfClass:UIWindowScene.class] &&
+                scene.activationState == UISceneActivationStateForegroundActive) {
+                activeScene = (UIWindowScene *)scene;
+                break;
+            }
+        }
+        if (!activeScene) {
+            // Fallback: any foreground scene
+            for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+                if ([scene isKindOfClass:UIWindowScene.class]) {
+                    activeScene = (UIWindowScene *)scene;
+                    break;
+                }
+            }
+        }
+        UIViewController *rootVC = activeScene.keyWindow.rootViewController;
+        if (!rootVC) {
+            NSError *error = [NSError errorWithDomain:displayName code:3 userInfo:@{NSLocalizedDescriptionKey: @"Failed to start app in multitask mode: no active window found."}];
+            if (completionHandler) completionHandler(nil, error);
+            return;
+        }
         DecoratedAppSceneViewController *launcherView = [[DecoratedAppSceneViewController alloc] initWindowName:displayName bundleId:bundleId dataUUID:dataUUID rootVC:rootVC];
         // Wire PID callback
         launcherView.pidAvailableHandler = completionHandler;
         launcherView.view.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
         launcherView.view.center = rootVC.view.center;
+        // Register the running app and show the dock
+        MultitaskDockManager *dock = [MultitaskDockManager shared];
+        [dock addRunningApp:displayName appUUID:dataUUID view:launcherView.view];
+        [dock showDock];
     });
 }
 
