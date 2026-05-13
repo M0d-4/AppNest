@@ -36,6 +36,8 @@
 		DEADBEEF00000012 /* Sandbox+GuestHooks.m in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000010 /* Sandbox+GuestHooks.m */; };
 		DEADBEEF00000014 /* LCGPSLocationListView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000013 /* LCGPSLocationListView.swift */; };
 		DEADBEEF00000020 /* LCSettingSectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000018 /* LCSettingSectionView.swift */; };
+		DEADBEEF00000022 /* TweakLoader.m in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000021 /* TweakLoader.m */; };
+		DEADBEEF00000024 /* NSBundle+TweakBundles.m in Sources */ = {isa = PBXBuildFile; fileRef = DEADBEEF00000023 /* NSBundle+TweakBundles.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -181,6 +183,8 @@
 		DEADBEEF00000011 /* Sandbox+GuestHooks.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "TweakLoader/Sandbox+GuestHooks.h"; sourceTree = SOURCE_ROOT; };
 		DEADBEEF00000013 /* LCGPSLocationListView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiveContainerSwiftUI/Views/LCGPSLocationListView.swift"; sourceTree = SOURCE_ROOT; };
 		DEADBEEF00000018 /* LCSettingSectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = "LiveContainerSwiftUI/Views/LCSettingSectionView.swift"; sourceTree = SOURCE_ROOT; };
+		DEADBEEF00000021 /* TweakLoader.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "TweakLoader/TweakLoader.m"; sourceTree = SOURCE_ROOT; };
+		DEADBEEF00000023 /* NSBundle+TweakBundles.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = "LiveContainer/Tweaks/NSBundle+TweakBundles.m"; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -210,7 +214,6 @@
 			membershipExceptions = (
 				DocumentPicker.m,
 				Notification.m,
-				TweakLoader.m,
 				"UIKit+GuestHooks.m",
 				"WebKit+GuestHooks.m",
 				utils.m,
@@ -1044,6 +1047,8 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				DEADBEEF00000022 /* TweakLoader.m in Sources */,
+				DEADBEEF00000024 /* NSBundle+TweakBundles.m in Sources */,
 				DEADBEEF00000003 /* DeviceCheck+GuestHooks.m in Sources */,
 				DEADBEEF00000006 /* UIDevice+GuestHooks.m in Sources */,
 				DEADBEEF00000009 /* CoreTelephony+GuestHooks.m in Sources */,
