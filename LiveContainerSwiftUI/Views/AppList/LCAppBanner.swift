@@ -246,16 +246,11 @@ struct LCAppBanner : View {
                 }
         }
 
-        // Locked overlay for hidden apps
+        // Locked overlay for hidden apps — solid grey, no lock icon
         if appInfo.isLocked && !sharedModel.isHiddenAppUnlocked {
             RoundedRectangle(cornerRadius: 22)
-                .fill(Color(.systemBackground).opacity(0.55))
+                .fill(Color(.systemGray4))
                 .frame(height: 88)
-                .overlay(
-                    Image(systemName: "lock.fill")
-                        .font(.system(size: 20, weight: .semibold))
-                        .foregroundColor(.secondary)
-                )
                 .allowsHitTesting(false)
         }
         } // end ZStack
@@ -414,17 +409,6 @@ struct LCAppBanner : View {
                         .opacity(model.isSigningInProgress ? 0.35 : 1)
                     if model.isSigningInProgress {
                         ProgressView().progressViewStyle(.circular)
-                    }
-                    // Locked overlay for hidden apps in grid view
-                    if appInfo.isLocked && !sharedModel.isHiddenAppUnlocked {
-                        RoundedRectangle(cornerRadius: appGridShowLabels ? 18 : 22)
-                            .fill(Color(.systemBackground).opacity(0.6))
-                            .frame(width: appGridShowLabels ? 72 : 84, height: appGridShowLabels ? 72 : 84)
-                            .overlay(
-                                Image(systemName: "lock.fill")
-                                    .font(.system(size: 18, weight: .semibold))
-                                    .foregroundColor(.secondary)
-                            )
                     }
                 }
                 if appGridShowLabels {
