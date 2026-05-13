@@ -560,16 +560,21 @@ func setMode(_ mode: AppLaunchMode) {
                     .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredApps)
 
                 VStack {
+                    let appCount = sharedModel.isHiddenAppUnlocked ? filteredApps.count + filteredHiddenApps.count : filteredApps.count
+                    Text(appCount > 0 || searchContext.debouncedQuery != "" ? "lc.appList.appCounter %lld".localizeWithFormat(appCount) : (sharedModel.multiLCStatus == 2 ? "lc.appList.convertToSharedToShowInLC2".loc : "lc.appList.installTip".loc))
+                        .padding(.horizontal)
+                        .foregroundStyle(.gray)
+                        .animation(searchContext.isTyping ? nil : .easeInOut, value: appCount)
+                        .onTapGesture(count: 3) {
+                            Task { await authenticateUser() }
+                        }
+
                     if sharedModel.hiddenApps.count > 0 {
                         VStack(spacing: 8) {
                             HStack {
                                 Text("lc.appList.hiddenApps".loc)
                                     .font(.system(.title2).bold())
                                 Spacer()
-                                if !sharedModel.isHiddenAppUnlocked {
-                                    Image(systemName: "lock.fill")
-                                        .foregroundColor(.secondary)
-                                }
                             }
                             if sharedModel.isHiddenAppUnlocked {
                                 appList(apps: filteredHiddenApps, hidden: false, gridID: "hiddenApps")
@@ -590,15 +595,6 @@ func setMode(_ mode: AppLaunchMode) {
                         .padding()
                         .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredHiddenApps)
                     }
-
-                    let appCount = sharedModel.isHiddenAppUnlocked ? filteredApps.count + filteredHiddenApps.count : filteredApps.count
-                    Text(appCount > 0 || searchContext.debouncedQuery != "" ? "lc.appList.appCounter %lld".localizeWithFormat(appCount) : (sharedModel.multiLCStatus == 2 ? "lc.appList.convertToSharedToShowInLC2".loc : "lc.appList.installTip".loc))
-                        .padding(.horizontal)
-                        .foregroundStyle(.gray)
-                        .animation(searchContext.isTyping ? nil : .easeInOut, value: appCount)
-                        .onTapGesture(count: 3) {
-                            Task { await authenticateUser() }
-                        }
                 }.animation(searchContext.isTyping ? nil : .easeInOut, value: sharedModel.hiddenApps.count)
 
                 if sharedModel.multiLCStatus == 2 {
