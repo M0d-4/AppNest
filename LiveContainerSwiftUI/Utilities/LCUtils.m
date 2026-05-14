@@ -108,10 +108,6 @@
         launcherView.pidAvailableHandler = completionHandler;
         launcherView.view.autoresizingMask = UIViewAutoresizingFlexibleTopMargin | UIViewAutoresizingFlexibleLeftMargin | UIViewAutoresizingFlexibleRightMargin | UIViewAutoresizingFlexibleBottomMargin;
         launcherView.view.center = rootVC.view.center;
-        // Register the running app and show the dock
-        MultitaskDockManager *dock = [MultitaskDockManager shared];
-        [dock addRunningApp:displayName appUUID:dataUUID view:launcherView.view];
-        [dock showDock];
     });
 }
 
