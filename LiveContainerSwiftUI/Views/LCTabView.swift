@@ -113,6 +113,18 @@ struct LCTabView: View {
         }
         .downloadAlert(helper: downloadHelper)
         .environmentObject(downloadHelper)
+
+        // Block tab bar interaction during multiselect
+        if sharedModel.isMultiSelectMode {
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: 83) // covers tab bar + home indicator area
+                .contentShape(Rectangle())
+                .allowsHitTesting(true)
+                .onTapGesture { } // absorb taps
+        }
+
+        } // end ZStack
         .alert("lc.common.error".loc, isPresented: $errorShow){
             Button("lc.common.ok".loc, action: {
             })
