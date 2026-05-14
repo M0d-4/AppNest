@@ -249,7 +249,7 @@ struct LCAppBanner : View {
         // Locked overlay for hidden apps — solid grey, no lock icon
         if appInfo.isLocked && !sharedModel.isHiddenAppUnlocked {
             RoundedRectangle(cornerRadius: 22)
-                .fill(Color(.systemGray4))
+                .fill(Color(.systemGray2))
                 .frame(height: 88)
                 .allowsHitTesting(false)
         }
