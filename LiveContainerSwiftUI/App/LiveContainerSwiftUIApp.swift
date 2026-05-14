@@ -20,6 +20,11 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
         
         var tempApps: [LCAppModel] = []
         var tempHiddenApps: [LCAppModel] = []
+
+        
+        // Cleanup stale export temp artifacts from previous runs/interrupted shares.
+        cleanupStaleExportArtifacts(fileManager: fm)
+
         do {
             // load apps
             try fm.createDirectory(at: LCPath.bundlePath, withIntermediateDirectories: true)
@@ -105,4 +110,29 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
         }
     }
     
+}
+
+private func cleanupStaleExportArtifacts(fileManager: FileManager) {
+    let exportDirectoryURL = fileManager.temporaryDirectory.appendingPathComponent("LCExports", isDirectory: true)
+    if fileManager.fileExists(atPath: exportDirectoryURL.path) {
+        try? fileManager.removeItem(at: exportDirectoryURL)
+    }
+
+    // Legacy staging folders used during export creation.
+    let legacyPrefixes = ["LCAppExport-", "LCDataExport-", "LCBinaryExport-"]
+    let tempRoot = fileManager.temporaryDirectory
+    guard let tempItems = try? fileManager.contentsOfDirectory(
+        at: tempRoot,
+        includingPropertiesForKeys: [.isDirectoryKey],
+        options: [.skipsHiddenFiles]
+    ) else {
+        return
+    }
+
+    for itemURL in tempItems {
+        let name = itemURL.lastPathComponent
+        if legacyPrefixes.contains(where: { name.hasPrefix($0) }) {
+            try? fileManager.removeItem(at: itemURL)
+        }
+    }
 }

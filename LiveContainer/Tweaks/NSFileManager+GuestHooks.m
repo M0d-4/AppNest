@@ -7,6 +7,7 @@
 #include <dlfcn.h>
 
 BOOL isolateAppGroup = NO;
+BOOL strictTestMode = NO;
 static BOOL readOnlyBundle = NO;
 void* webKitHeader = 0;
 
@@ -64,7 +65,8 @@ static void LCEnsureGroupContainerScaffold(NSURL *containerURL) {
 
 void NSFMGuestHooksInit(void) {
     NSDictionary* infoDict = [NSUserDefaults guestContainerInfo];
-    isolateAppGroup = [infoDict[@"isolateAppGroup"] boolValue];
+    strictTestMode = [infoDict[@"strictTestMode"] boolValue];
+    isolateAppGroup = strictTestMode || [infoDict[@"isolateAppGroup"] boolValue];
     readOnlyBundle = [infoDict[@"readOnlyBundle"] boolValue];
     swizzle(NSFileManager.class, @selector(containerURLForSecurityApplicationGroupIdentifier:), @selector(hook_containerURLForSecurityApplicationGroupIdentifier:));
 

@@ -2440,4 +2440,124 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
     [self save];
 }
 
+- (bool)autoCleanCacheOnLaunch {
+    if(_info[@"autoCleanCacheOnLaunch"] != nil) {
+        return [_info[@"autoCleanCacheOnLaunch"] boolValue];
+    } else {
+        return NO;
+    }
+}
+
+- (void)setAutoCleanCacheOnLaunch:(bool)autoCleanCacheOnLaunch {
+    _info[@"autoCleanCacheOnLaunch"] = [NSNumber numberWithBool:autoCleanCacheOnLaunch];
+    [self save];
+}
+
+- (NSDate*)lastAutoCleanDate {
+    return _info[@"lastAutoCleanDate"];
+}
+
+- (void)setLastAutoCleanDate:(NSDate *)lastAutoCleanDate {
+    if(lastAutoCleanDate) {
+        _info[@"lastAutoCleanDate"] = lastAutoCleanDate;
+    } else {
+        [_info removeObjectForKey:@"lastAutoCleanDate"];
+    }
+    [self save];
+}
+
+- (long long)autoCleanTotalBytesSaved {
+    if(_info[@"autoCleanTotalBytesSaved"] != nil) {
+        return [_info[@"autoCleanTotalBytesSaved"] longLongValue];
+    } else {
+        return 0;
+    }
+}
+
+- (void)setAutoCleanTotalBytesSaved:(long long)autoCleanTotalBytesSaved {
+    long long value = autoCleanTotalBytesSaved >= 0 ? autoCleanTotalBytesSaved : 0;
+    _info[@"autoCleanTotalBytesSaved"] = [NSNumber numberWithLongLong:value];
+    [self save];
+}
+
+- (void)recordAutoCleanWithBytesSaved:(long long)bytesSaved {
+    long long clampedBytesSaved = bytesSaved >= 0 ? bytesSaved : 0;
+    NSDate *now = NSDate.date;
+    
+    NSMutableArray<NSDictionary*>* history = [_info[@"autoCleanHistory"] mutableCopy];
+    if(!history) {
+        history = [[NSMutableArray alloc] init];
+    }
+    [history addObject:@{
+        @"date": now,
+        @"bytesSaved": @(clampedBytesSaved)
+    }];
+    
+    const NSUInteger maxHistoryEntries = 180;
+    if(history.count > maxHistoryEntries) {
+        NSRange rangeToDelete = NSMakeRange(0, history.count - maxHistoryEntries);
+        [history removeObjectsInRange:rangeToDelete];
+    }
+    
+    _info[@"autoCleanHistory"] = history;
+    _info[@"lastAutoCleanDate"] = now;
+    _info[@"autoCleanTotalBytesSaved"] = @([self autoCleanTotalBytesSaved] + clampedBytesSaved);
+    [self save];
+}
+
+- (long long)autoCleanBytesSavedInLastDays:(NSInteger)days {
+    if(days <= 0) {
+        return 0;
+    }
+    
+    NSArray<NSDictionary*>* history = _info[@"autoCleanHistory"];
+    if(!history || history.count == 0) {
+        return 0;
+    }
+    
+    NSCalendar *calendar = NSCalendar.currentCalendar;
+    NSDate *now = NSDate.date;
+    NSDate *startDate = [calendar dateByAddingUnit:NSCalendarUnitDay value:-days toDate:now options:0];
+    if(!startDate) {
+        return 0;
+    }
+    
+    long long total = 0;
+    for(NSDictionary *entry in history) {
+        NSDate *entryDate = entry[@"date"];
+        if(![entryDate isKindOfClass:NSDate.class]) {
+            continue;
+        }
+        if([entryDate compare:startDate] != NSOrderedAscending) {
+            NSNumber *saved = entry[@"bytesSaved"];
+            if([saved isKindOfClass:NSNumber.class]) {
+                total += saved.longLongValue;
+            }
+        }
+    }
+    
+    return total;
+}
+
+- (long long)lastAutoCleanBytesSaved {
+    NSArray<NSDictionary*>* history = _info[@"autoCleanHistory"];
+    if(!history || history.count == 0) {
+        return 0;
+    }
+    
+    NSDictionary *lastEntry = history.lastObject;
+    NSNumber *saved = lastEntry[@"bytesSaved"];
+    if(![saved isKindOfClass:NSNumber.class]) {
+        return 0;
+    }
+    return saved.longLongValue;
+}
+
+- (void)resetAutoCleanStats {
+    [_info removeObjectForKey:@"autoCleanHistory"];
+    [_info removeObjectForKey:@"lastAutoCleanDate"];
+    [_info removeObjectForKey:@"autoCleanTotalBytesSaved"];
+    [self save];
+}
+
 @end

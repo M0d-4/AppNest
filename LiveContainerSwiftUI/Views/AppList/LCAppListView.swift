@@ -216,6 +216,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     
     @State var safariViewOpened = false
     @State var safariViewURL = URL(string: "https://google.com")!
+    @State private var didRunAutoCleanOnStartup = false
     
     @State private var navigateTo : AnyView?
     @State private var isNavigationActive = false
@@ -1023,10 +1024,45 @@ func setMode(_ mode: AppLaunchMode) {
         for app in sharedModel.hiddenApps {
             app.delegate = self
         }
+        Task {
+            await autoCleanEnabledAppsOnStartup()
+        }
         didAppear = true
     }
     
-    
+        func autoCleanEnabledAppsOnStartup() async {
+        if didRunAutoCleanOnStartup {
+            return
+        }
+        didRunAutoCleanOnStartup = true
+
+        let appsToConsider = sharedModel.apps + sharedModel.hiddenApps
+        for app in appsToConsider {
+            if !app.uiAutoCleanCacheOnLaunch {
+                continue
+            }
+            guard let bundlePath = app.appInfo.bundlePath() else {
+                continue
+            }
+
+            let containerTargets = app.uiContainers.map { container in
+                LCAppContainerTarget(url: container.containerURL, needsSecurityScope: container.storageBookMark != nil)
+            }
+
+            do {
+                let cleanupResult = try await Task.detached(priority: .utility) {
+                    try lcClearAppCacheAndTemp(bundlePath: bundlePath, containerTargets: containerTargets)
+                }.value
+
+                app.appInfo.clearIconCache()
+                app.appInfo.recordAutoClean(withBytesSaved: cleanupResult.removedBytes)
+                app.objectWillChange.send()
+            } catch {
+                NSLog("[LC] auto-clean failed for %@: %@", app.displayName, error.localizedDescription)
+            }
+        }
+    }
+
     func openWebView(urlString: String) async {
         guard var urlToOpen = URLComponents(string: urlString), urlToOpen.url != nil else {
             errorInfo = "lc.appList.urlInvalidError".loc
@@ -1788,8 +1824,8 @@ func setMode(_ mode: AppLaunchMode) {
                 if jitEnabler == .StosDebug || jitEnabler == .StosDebugLC {
                     let encoded = encodedData.map { "&script=\($0)" } ?? ""
                     if jitEnabler == .StosDebugLC {
-                        if let app = sharedModel.apps.first(where: { app in
-                            return app.appInfo.urlSchemes().contains("stosdebug") &&
+                        if sharedModel.apps.contains(where: { app in
+                            app.appInfo.urlSchemes().contains("stosdebug") &&
                             (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                         }) {
                             let urlString = "stosdebug://enableJIT?bundleId=\(multitaskPIDJITBundleId(for: app))&appName=\(appName)&pid=\(pid)&relaunchApp=false&forcePID=true\(encoded)"
@@ -1810,8 +1846,8 @@ func setMode(_ mode: AppLaunchMode) {
 
                 let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
                 if jitEnabler == .StikJITLC {
-                    if let app = sharedModel.apps.first(where: { app in
-                        return app.appInfo.urlSchemes().contains("stikjit") &&
+                        if sharedModel.apps.contains(where: { app in
+                            app.appInfo.urlSchemes().contains("stikjit") &&
                         (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                     }) {
                         let urlString = "stikjit://enable-jit?bundle-id=\(multitaskPIDJITBundleId(for: app))&pid=\(pid)\(encoded)"

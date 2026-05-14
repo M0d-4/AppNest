@@ -1249,15 +1249,9 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     BOOL hookDlopen = !isSideStore && !isSharedBundle && LCSharedUtils.certificatePassword && isLiveProcess;
     DyldHooksInit([guestAppInfo[@"hideLiveContainer"] boolValue], hookDlopen, [guestAppInfo[@"spoofSDKVersion"] unsignedIntValue]);
     
-    if([guestContainerInfo[@"spoofIdentifierForVendor"] boolValue]) {
-        NSString* idForVendorStr = guestContainerInfo[@"spoofedIdentifierForVendor"];
-        if([idForVendorStr isKindOfClass:NSString.class]) {
-            NSUUID* idForVendorUUID = [[NSUUID UUID] initWithUUIDString:idForVendorStr];
-            if(idForVendorUUID) {
-                IDFVHookInit(idForVendorUUID);
-            }
-        }
-    }
+    // IDFV spoofing is handled by UIKit+GuestHooks.m via UIDevice.identifierForVendor swizzle,
+    // which supports both blocking (blockDeviceInfoReads) and spoofing with a stable public API.
+    // No need to also hook LSApplicationWorkspace.deviceIdentifierForVendor here.
 
 
     LCDeviceSpoofingEndConfiguration();
