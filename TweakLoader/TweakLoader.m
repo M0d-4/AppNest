@@ -165,40 +165,6 @@ void UIDeviceGuestHooksInit(void);
 void CoreTelephonyGuestHooksInit(void);
 void SandboxGuestHooksInit(void);
 
-static NSString *const kDisabledTweaksKey = @"disabledItems";
-
-static NSSet<NSString *> *disabledItemsForFolder(NSURL *folderURL) {
-    if (!folderURL || !folderURL.isFileURL) {
-        return [NSSet set];
-    }
-    NSDictionary *info = [NSDictionary dictionaryWithContentsOfURL:[folderURL URLByAppendingPathComponent:@"TweakInfo.plist"]];
-    NSArray<NSString *> *disabled = info[kDisabledTweaksKey];
-    if (![disabled isKindOfClass:NSArray.class]) {
-        return [NSSet set];
-    }
-    return [NSSet setWithArray:disabled];
-}
-
-static BOOL isTweakURLDisabled(NSURL *url, NSURL *rootFolderURL) {
-    if (!url || !rootFolderURL) {
-        return NO;
-    }
-    NSURL *cursor = url;
-    NSString *rootPath = [rootFolderURL.path stringByStandardizingPath];
-    while (cursor && [[cursor.path stringByStandardizingPath] hasPrefix:rootPath]) {
-        NSURL *parent = cursor.URLByDeletingLastPathComponent;
-        NSSet<NSString *> *disabled = disabledItemsForFolder(parent);
-        if ([disabled containsObject:cursor.lastPathComponent]) {
-            return YES;
-        }
-        if ([[cursor.path stringByStandardizingPath] isEqualToString:rootPath]) {
-            break;
-        }
-        cursor = parent;
-    }
-    return NO;
-}
-
 static NSString *loadTweakAtURL(NSURL *url) {
     NSString *tweakPath = url.path;
     NSString *tweak = tweakPath.lastPathComponent;
