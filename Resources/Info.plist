@@ -138,12 +138,6 @@
 	<string>The guest app is requesting for this permission.</string>
 	<key>NSGKFriendListUsageDescription</key>
 	<string>The guest app is requesting for this permission.</string>
-	<key>NSHealthClinicalHealthRecordsShareUsageDescription</key>
-	<string>The guest app is requesting for this permission.</string>
-	<key>NSHealthShareUsageDescription</key>
-	<string>The guest app is requesting for this permission.</string>
-	<key>NSHealthUpdateUsageDescription</key>
-	<string>The guest app is requesting for this permission.</string>
 	<key>NSHomeKitUsageDescription</key>
 	<string>The guest app is requesting for this permission.</string>
 	<key>NSIdentityUsageDescription</key>

@@ -276,27 +276,7 @@ struct LCAppBanner : View {
             .allowsHitTesting(false)
             Spacer()
             do {
-                Button {
-                    if #available(iOS 16.0, *) {
-                         if let currentDataFolder = model.uiSelectedContainer?.folderName,
-                            MultitaskManager.isUsing(container: currentDataFolder) {
-                             var found = false
-                             if #available(iOS 16.1, *) {
-                                 found = MultitaskWindowManager.openExistingAppWindow(dataUUID: currentDataFolder)
-                             }
-                             if !found {
-                                 found = MultitaskDockManager.shared.bringMultitaskViewToFront(uuid: currentDataFolder)
-                             }
-                             if found {
-                                 return
-                             }
-                         }
-
-                        Task{ await runApp() }
-                    } else {
-                        Task{ await runApp() }
-                    }
-                } label: {
+            ZStack {
                     if !model.isSigningInProgress {
                         Text("lc.appBanner.run".loc).bold().foregroundColor(.white)
                             .lineLimit(1)
@@ -327,6 +307,27 @@ struct LCAppBanner : View {
                 })
                 .clipShape(Capsule())
                 .contentShape(Capsule())
+                .onTapGesture {
+                if #available(iOS 16.0, *) {
+                    if let currentDataFolder = model.uiSelectedContainer?.folderName,
+                       MultitaskManager.isUsing(container: currentDataFolder) {
+                        var found = false
+                        if #available(iOS 16.1, *) {
+                            found = MultitaskWindowManager.openExistingAppWindow(dataUUID: currentDataFolder)
+                        }
+                        if !found {
+                            found = MultitaskDockManager.shared.bringMultitaskViewToFront(uuid: currentDataFolder)
+                        }
+                        if found {
+                            return
+                        }
+                    }
+
+                    Task{ await runApp() }
+                } else {
+                    Task{ await runApp() }
+                }
+            }
                 .disabled(model.isAppRunning)
             }
 

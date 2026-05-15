@@ -4173,38 +4173,64 @@ struct LCAppSettingsView: View {
     }
 
     func moveToAppGroup() async {
+        for container in appInfo.containers {
+            if let runningLC = LCSharedUtils.getContainerUsingLCScheme(withFolderName: container.folderName) {
+                errorInfo = "lc.appSettings.appOpenInOtherLc %@ %@".localizeWithFormat(runningLC, runningLC)
+                errorShow = true
+                return
+            }
+        }
+        
         guard let result = await moveToAppGroupAlert.open(), result else {
             return
         }
         
         do {
             try LCPath.ensureAppGroupPaths()
-            let fm = FileManager()
-            try fm.moveItem(atPath: appInfo.bundlePath(), toPath: LCPath.lcGroupBundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
+
+            var moves: [(URL, URL)] = [];
+            moves.append((
+                URL(fileURLWithPath: appInfo.bundlePath()),
+                LCPath.lcGroupBundlePath.appendingPathComponent(appInfo.relativeBundlePath)
+            ))
             for container in model.uiContainers {
                 if container.storageBookMark != nil {
                     continue
                 }
                 
-                try fm.moveItem(at: LCPath.dataPath.appendingPathComponent(container.folderName),
-                                to: LCPath.lcGroupDataPath.appendingPathComponent(container.folderName))
+                moves.append((
+                    LCPath.dataPath.appendingPathComponent(container.folderName),
+                    LCPath.lcGroupDataPath.appendingPathComponent(container.folderName)
+                ))
+            }
+            if let tweakFolder = appInfo.tweakFolder, tweakFolder.count > 0 {
+                moves.append((
+                    LCPath.tweakPath.appendingPathComponent(tweakFolder),
+                    LCPath.lcGroupTweakPath.appendingPathComponent(tweakFolder)
+                ))
+            }
+            
+            try LCUtils.moveFilesAtomicallyAfterPreflight(moves)
+            
+            for container in model.uiContainers {
+                if container.storageBookMark != nil {
+                    continue
+                }
                 appDataFolders.removeAll(where: { s in
                     return s == container.folderName
                 })
+                container.isShared = true
             }
+            
             if let tweakFolder = appInfo.tweakFolder, tweakFolder.count > 0 {
-                try fm.moveItem(at: LCPath.tweakPath.appendingPathComponent(tweakFolder),
-                                to: LCPath.lcGroupTweakPath.appendingPathComponent(tweakFolder))
                 tweakFolders.removeAll(where: { s in
                     return s == tweakFolder
                 })
             }
+            
             appInfo.setBundlePath(LCPath.lcGroupBundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
             appInfo.isShared = true
             model.uiIsShared = true
-            for container in model.uiContainers {
-                container.isShared = true
-            }
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
@@ -4226,22 +4252,40 @@ struct LCAppSettingsView: View {
         }
         
         do {
-            let fm = FileManager()
-            try fm.moveItem(atPath: appInfo.bundlePath(), toPath: LCPath.bundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
+            var moves: [(URL, URL)] = [];
+            moves.append((
+                URL(fileURLWithPath: appInfo.bundlePath()),
+                LCPath.bundlePath.appendingPathComponent(appInfo.relativeBundlePath)
+            ))
             for container in model.uiContainers {
                 if container.storageBookMark != nil {
                     continue
                 }
-                try fm.moveItem(at: LCPath.lcGroupDataPath.appendingPathComponent(container.folderName),
-                                to: LCPath.dataPath.appendingPathComponent(container.folderName))
+                moves.append((
+                    LCPath.lcGroupDataPath.appendingPathComponent(container.folderName),
+                    LCPath.dataPath.appendingPathComponent(container.folderName)
+                ))
+            }
+            if let tweakFolder = appInfo.tweakFolder, tweakFolder.count > 0 {
+                moves.append((
+                    LCPath.lcGroupTweakPath.appendingPathComponent(tweakFolder),
+                    LCPath.tweakPath.appendingPathComponent(tweakFolder)
+                ))
+            }
+            
+            try LCUtils.moveFilesAtomicallyAfterPreflight(moves)
+            
+            for container in model.uiContainers {
+                if container.storageBookMark != nil {
+                    continue
+                }
                 appDataFolders.append(container.folderName)
             }
             if let tweakFolder = appInfo.tweakFolder, tweakFolder.count > 0 {
-                try fm.moveItem(at: LCPath.lcGroupTweakPath.appendingPathComponent(tweakFolder),
-                                to: LCPath.tweakPath.appendingPathComponent(tweakFolder))
                 tweakFolders.append(tweakFolder)
                 model.uiTweakFolder = tweakFolder
             }
+            
             appInfo.setBundlePath(LCPath.bundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
             appInfo.isShared = false
             model.uiIsShared = false
@@ -4249,8 +4293,8 @@ struct LCAppSettingsView: View {
                 container.isShared = false
             }
         } catch {
-            errorShow = true
             errorInfo = error.localizedDescription
+            errorShow = true
         }
         
     }

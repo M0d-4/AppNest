@@ -401,3 +401,52 @@ public enum LCTabIdentifier: Hashable {
     case search
     case updates
 }
+
+
+enum BatchMoveError: LocalizedError {
+    case emptySource(URL)
+    case sourceDoesNotExist(URL)
+    case sourceIsNotReachable(URL, underlying: Error)
+    case sourceParentIsNotWritable(URL)
+    case destinationAlreadyExists(URL)
+    case destinationParentDoesNotExist(URL)
+    case destinationParentIsNotDirectory(URL)
+    case destinationParentIsNotWritable(URL)
+    case duplicateSource(URL)
+    case duplicateDestination(URL)
+    case sourceEqualsDestination(URL)
+    case moveWouldPlaceDirectoryInsideItself(source: URL, destination: URL)
+    case moveFailed(source: URL, destination: URL, underlying: Error)
+
+    var errorDescription: String? {
+        switch self {
+        case .emptySource(let url):
+            return "Source URL is invalid: \(url)"
+        case .sourceDoesNotExist(let url):
+            return "Source does not exist: \(url.path)"
+        case .sourceIsNotReachable(let url, let error):
+            return "Source is not reachable: \(url.path). \(error)"
+        case .sourceParentIsNotWritable(let url):
+            return "Source parent is not writable: : \(url.path)"
+        case .destinationAlreadyExists(let url):
+            return "Destination already exists: \(url.path). Delete or rename this file/folder to continue."
+        case .destinationParentDoesNotExist(let url):
+            return "Destination parent directory does not exist: \(url.path)"
+        case .destinationParentIsNotDirectory(let url):
+            return "Destination parent is not a directory: \(url.path)"
+        case .destinationParentIsNotWritable(let url):
+            return "Destination parent is not writable: \(url.path)"
+        case .duplicateSource(let url):
+            return "Duplicate source URL in move list: \(url.path)"
+        case .duplicateDestination(let url):
+            return "Duplicate destination URL in move list: \(url.path)"
+        case .sourceEqualsDestination(let url):
+            return "Source and destination are the same: \(url.path)"
+        case .moveWouldPlaceDirectoryInsideItself(let source, let destination):
+            return "Cannot move directory \(source.path) inside itself at \(destination.path)"
+        case .moveFailed(let source, let destination, let error):
+            return "Failed to move \(source.path) to \(destination.path). \(error)"
+        }
+    }
+
+}

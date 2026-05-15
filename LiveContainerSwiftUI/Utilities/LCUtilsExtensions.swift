@@ -530,6 +530,100 @@ extension LCUtils {
         return false
     }
 
+    static func moveFilesAtomicallyAfterPreflight(_ moves: [(URL, URL)]) throws {
+        let fileManager = FileManager.default
+
+        var seenSources = Set<URL>()
+        var seenDestinations = Set<URL>()
+
+        let normalizedMoves = moves.map { source, destination in
+            (
+                source.standardizedFileURL,
+                destination.standardizedFileURL
+            )
+        }
+
+        // MARK: - Preflight
+
+        for (source, destination) in normalizedMoves {
+            guard !source.path.isEmpty else {
+                throw BatchMoveError.emptySource(source)
+            }
+
+            guard source != destination else {
+                throw BatchMoveError.sourceEqualsDestination(source)
+            }
+
+            guard seenSources.insert(source).inserted else {
+                throw BatchMoveError.duplicateSource(source)
+            }
+            
+            guard fileManager.isWritableFile(atPath: source.deletingLastPathComponent().path) else {
+                throw BatchMoveError.sourceParentIsNotWritable(source.deletingLastPathComponent())
+            }
+
+            guard seenDestinations.insert(destination).inserted else {
+                throw BatchMoveError.duplicateDestination(destination)
+            }
+
+            var isDirectory: ObjCBool = false
+
+            guard fileManager.fileExists(atPath: source.path, isDirectory: &isDirectory) else {
+                throw BatchMoveError.sourceDoesNotExist(source)
+            }
+
+            do {
+                _ = try source.checkResourceIsReachable()
+            } catch {
+                throw BatchMoveError.sourceIsNotReachable(source, underlying: error)
+            }
+
+            guard !fileManager.fileExists(atPath: destination.path) else {
+                throw BatchMoveError.destinationAlreadyExists(destination)
+            }
+
+            let parent = destination.deletingLastPathComponent()
+
+            var parentIsDirectory: ObjCBool = false
+            guard fileManager.fileExists(atPath: parent.path, isDirectory: &parentIsDirectory) else {
+                throw BatchMoveError.destinationParentDoesNotExist(parent)
+            }
+
+            guard parentIsDirectory.boolValue else {
+                throw BatchMoveError.destinationParentIsNotDirectory(parent)
+            }
+
+            guard fileManager.isWritableFile(atPath: parent.path) else {
+                throw BatchMoveError.destinationParentIsNotWritable(parent)
+            }
+
+            if isDirectory.boolValue {
+                let sourcePath = source.path.hasSuffix("/") ? source.path : source.path + "/"
+                let destinationPath = destination.path.hasSuffix("/") ? destination.path : destination.path + "/"
+
+                if destinationPath.hasPrefix(sourcePath) {
+                    throw BatchMoveError.moveWouldPlaceDirectoryInsideItself(
+                        source: source,
+                        destination: destination
+                    )
+                }
+            }
+        }
+
+        // MARK: - Execute only after all preflight checks pass
+
+        for (source, destination) in normalizedMoves {
+            do {
+                try fileManager.moveItem(at: source, to: destination)
+            } catch {
+                throw BatchMoveError.moveFailed(
+                    source: source,
+                    destination: destination,
+                    underlying: error
+                )
+            }
+        }
+    }
     
     static func openSideStore(delegate: LCAppModelDelegate? = nil) {
         let sideStoreApp = LCAppModel(appInfo: BuiltInSideStoreAppInfo(), delegate: delegate)
