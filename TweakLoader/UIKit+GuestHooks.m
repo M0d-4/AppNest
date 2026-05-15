@@ -477,44 +477,6 @@ static BOOL LCShouldBlockExternalURL(NSURL *url) {
     return [LCBlockedExternalURLSchemes() containsObject:scheme];
 }
 
-static UIWindowScene *LCForegroundWindowScene(void) {
-    UIWindowScene *fallbackScene = nil;
-    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-        if (![scene isKindOfClass:UIWindowScene.class]) {
-            continue;
-        }
-        UIWindowScene *windowScene = (UIWindowScene *)scene;
-        if (windowScene.activationState == UISceneActivationStateForegroundActive) {
-            return windowScene;
-        }
-        if (!fallbackScene) {
-            fallbackScene = windowScene;
-        }
-    }
-    return fallbackScene;
-}
-
-static UIWindow *LCKeyWindowForScene(UIWindowScene *scene) {
-    if (!scene) {
-        return nil;
-    }
-    UIWindow *keyWindow = scene.keyWindow;
-    if (keyWindow) {
-        return keyWindow;
-    }
-    for (UIWindow *window in scene.windows) {
-        if (window.isKeyWindow) {
-            return window;
-        }
-    }
-    return scene.windows.firstObject;
-}
-
-static UIWindowLevel LCOverlayWindowLevel(void) {
-    UIWindow *keyWindow = LCKeyWindowForScene(LCForegroundWindowScene());
-    return (keyWindow ? keyWindow.windowLevel : UIWindowLevelNormal) + 1;
-}
-
 __attribute__((constructor))
 static void UIKitGuestHooksInit(void) {
     //NSString *AppId = [NSUserDefaults lcGuestAppId];
@@ -596,7 +558,6 @@ static void Real_UIKitGuestHooksInit(void) {
             swizzle(_UIRemoteKeyboards.class, @selector(startConnection), @selector(hook_startConnection));
         }
     }
-}
     NSDictionary* guestContainerInfo = [NSUserDefaults guestContainerInfo];
     strictTestMode = [guestContainerInfo[@"strictTestMode"] boolValue];
     blockDeviceInfoReads = strictTestMode || [guestContainerInfo[@"blockDeviceInfoReads"] boolValue];
