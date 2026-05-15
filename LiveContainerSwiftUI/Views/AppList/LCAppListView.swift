@@ -1824,7 +1824,7 @@ func setMode(_ mode: AppLaunchMode) {
                 if jitEnabler == .StosDebug || jitEnabler == .StosDebugLC {
                     let encoded = encodedData.map { "&script=\($0)" } ?? ""
                     if jitEnabler == .StosDebugLC {
-                        if sharedModel.apps.contains(where: { app in
+                        if let app = sharedModel.apps.first(where: { app in
                             app.appInfo.urlSchemes().contains("stosdebug") &&
                             (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                         }) {
@@ -1846,7 +1846,7 @@ func setMode(_ mode: AppLaunchMode) {
 
                 let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
                 if jitEnabler == .StikJITLC {
-                        if sharedModel.apps.contains(where: { app in
+                        if let app = sharedModel.apps.first(where: { app in
                             app.appInfo.urlSchemes().contains("stikjit") &&
                         (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                     }) {
