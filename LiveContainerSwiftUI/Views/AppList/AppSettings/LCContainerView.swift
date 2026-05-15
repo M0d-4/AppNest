@@ -255,7 +255,7 @@ struct LCContainerView : View {
                             TextField("iOS", text: $typingSpoofSystemName)
                                 .multilineTextAlignment(.trailing)
                                 .onSubmit {
-                                    saveIDFV()
+                                    saveSpoofProfile()
                                 }
                         }
                         HStack {
