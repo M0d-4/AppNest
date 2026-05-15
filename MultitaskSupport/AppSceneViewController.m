@@ -134,26 +134,6 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     LCStrictEnsureContainerDirectoriesAtPath(containerPath);
 }
 
-static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
-    UIWindowScene *windowScene = view.window.windowScene;
-    if (!windowScene) {
-        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
-            if (![scene isKindOfClass:UIWindowScene.class]) {
-                continue;
-            }
-            UIWindowScene *candidateScene = (UIWindowScene *)scene;
-            if (candidateScene.activationState == UISceneActivationStateForegroundActive) {
-                windowScene = candidateScene;
-                break;
-            }
-            if (!windowScene) {
-                windowScene = candidateScene;
-            }
-        }
-    }
-    return windowScene ? windowScene.interfaceOrientation : UIInterfaceOrientationPortrait;
-}
-
 // File-based launch log - written to main app's Documents/Logs for 3uTools access
 static FILE *g_hostLogFile = NULL;
 
