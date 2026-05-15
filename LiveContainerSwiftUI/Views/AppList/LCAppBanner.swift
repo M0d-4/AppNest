@@ -729,27 +729,6 @@ struct LCAppBanner : View {
         }
         sectionChildren.append(cloneAction)
 
-        let exportMenu = UIMenu(
-            title: "Export as IPA",
-            image: UIImage(systemName: "archivebox"),
-            children: [
-                UIAction(
-                    title: "Export IPA (App Only)",
-                    image: UIImage(systemName: "square.and.arrow.up")
-                ) { _ in
-                    Task { await exportIPA(includeData: false) }
-                },
-                UIAction(
-                    title: "Export IPA + Data",
-                    image: UIImage(systemName: "square.and.arrow.up.on.square")
-                ) { _ in
-                    Task { await exportIPA(includeData: true) }
-                }
-            ]
-        )
-
-    sectionChildren.append(exportMenu)
-
         // Settings
         let settingsAction = UIAction(title: "lc.tabView.settings".loc, image: UIImage(systemName: "gear")) { _ in
             openSettings()
@@ -1477,100 +1456,6 @@ struct LCAppBanner : View {
     func copyError() {
         UIPasteboard.general.string = errorInfo
     }
-
-
-
-    // MARK: - Export IPA Functions
-
-    func exportIPA(includeData: Bool) async {
-        do {
-            let exportURL = try await createExportIPA(includeData: includeData)
-
-            // Show share sheet
-            await MainActor.run {
-                let activityVC = UIActivityViewController(
-                    activityItems: [exportURL],
-                    applicationActivities: nil
-                )
-
-                if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
-                   let rootVC = windowScene.windows.first?.rootViewController {
-                    activityVC.popoverPresentationController?.sourceView = rootVC.view
-                    rootVC.present(activityVC, animated: true)
-                }
-            }
-        } catch {
-            errorInfo = error.localizedDescription
-            errorShow = true
-        }
-    }
-
-    func createExportIPA(includeData: Bool) async throws -> URL {
-        let fm = FileManager.default
-        let tmpDir = fm.temporaryDirectory.appendingPathComponent("IPAExport-\(UUID().uuidString)")
-        try fm.createDirectory(at: tmpDir, withIntermediateDirectories: true)
-
-        let payloadDir = tmpDir.appendingPathComponent("Payload")
-        try fm.createDirectory(at: payloadDir, withIntermediateDirectories: true)
-
-        let appBundlePath = URL(fileURLWithPath: appInfo.bundlePath()!)
-        let destAppPath = payloadDir.appendingPathComponent(appBundlePath.lastPathComponent)
-
-        // Copy app bundle
-        try fm.copyItem(at: appBundlePath, to: destAppPath)
-
-        if includeData, let containerFolder = model.uiSelectedContainer?.folderName {
-            // Create data folder inside app bundle
-            let dataPath = LCPath.dataPath.appendingPathComponent(containerFolder)
-            let destDataPath = destAppPath.appendingPathComponent("LCUserData")
-
-            if fm.fileExists(atPath: dataPath.path) {
-                try fm.copyItem(at: dataPath, to: destDataPath)
-            }
-        }
-
-        // Zip it
-        let ipaName = "\(appInfo.displayName()!)-\(includeData ? "WithData" : "AppOnly").ipa"
-        let ipaPath = fm.temporaryDirectory.appendingPathComponent(ipaName)
-
-        // Remove old IPA if exists
-        try? fm.removeItem(at: ipaPath)
-
-        // Create ZIP using NSFileCoordinator
-        try await zipDirectory(sourceURL: tmpDir, destinationURL: ipaPath)
-
-        // Cleanup
-        try? fm.removeItem(at: tmpDir)
-
-        return ipaPath
-    }
-
-    func zipDirectory(sourceURL: URL, destinationURL: URL) async throws {
-        return try await withCheckedThrowingContinuation { continuation in
-            let coordinator = NSFileCoordinator()
-            var error: NSError?
-
-            coordinator.coordinate(readingItemAt: sourceURL, options: [.forUploading], error: &error) { zippedURL in
-                do {
-                    // Remove old destination if exists
-                    if FileManager.default.fileExists(atPath: destinationURL.path) {
-                        try FileManager.default.removeItem(at: destinationURL)
-                    }
-
-                    // Copy the zip to final destination
-                    try FileManager.default.copyItem(at: zippedURL, to: destinationURL)
-                    continuation.resume()
-                } catch {
-                    continuation.resume(throwing: error)
-                }
-            }
-
-            if let error = error {
-                continuation.resume(throwing: error)
-            }
-        }
-    }
-
 
     
     private var locationDisplayText: String {
