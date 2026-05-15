@@ -118,10 +118,10 @@ struct LCTabView: View {
         if sharedModel.isMultiSelectMode {
             Color.clear
                 .frame(maxWidth: .infinity)
-                .frame(height: 83) // covers tab bar + home indicator area
+                .frame(height: 83)
                 .contentShape(Rectangle())
                 .allowsHitTesting(true)
-                .onTapGesture { } // absorb taps
+                .onTapGesture { }
         }
 
         } // end ZStack
@@ -194,7 +194,6 @@ struct LCTabView: View {
             }
         }
 
-        } // end ZStack
     }
     
     func dispatchURL(url: URL) {
