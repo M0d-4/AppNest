@@ -239,7 +239,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     
     @State private var isViewAppeared = false
     
-    @ObservedObject var searchContext = SearchContext()
+    @ObservedObject var searchContext: SearchContext
     private var downloadHelper: DownloadHelper { sharedModel.downloadHelper }
 
     
@@ -420,10 +420,11 @@ func setMode(_ mode: AppLaunchMode) {
         }
     }
 
-    init(appDataFolderNames: Binding<[String]>, tweakFolderNames: Binding<[String]>) {
+    init(appDataFolderNames: Binding<[String]>, tweakFolderNames: Binding<[String]>, searchContext: SearchContext) {
         _installOptions = State(initialValue: [])
         _appDataFolderNames = appDataFolderNames
         _tweakFolderNames = tweakFolderNames
+        self.searchContext = searchContext
     }
     
     var gridItemWidth: CGFloat {
