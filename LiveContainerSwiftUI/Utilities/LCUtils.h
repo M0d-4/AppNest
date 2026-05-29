@@ -36,6 +36,7 @@ int dyld_get_program_sdk_version(void);
 
 + (NSProgress *)signAppBundleWithURL:(NSURL *)path completionHandler:(void (^)(BOOL success, NSError *error))completionHandler;
 + (NSProgress *)signAppBundleWithURL:(NSURL *)path entitlements:(NSDictionary *)entitlements completionHandler:(void (^)(BOOL success, NSError *error))completionHandler;
++ (NSProgress *)signFilesWithURLs:(NSArray<NSURL *> *)urls completionHandler:(void (^)(BOOL success, NSError *error))completionHandler;
 + (int)validateCertificateWithCompletionHandler:(void(^)(int status, NSDate *expirationDate, NSString *organizationalUnitName, NSString *error))completionHandler;
 
 + (BOOL)isAppGroupAltStoreLike;

@@ -70,117 +70,61 @@ extension LCUtils {
             return
         }
         
-        // check if re-sign is needed
-        // if sign is expired, or inode number of any file changes, we need to re-sign
-        let tweakSignInfo = NSMutableDictionary(contentsOf: tweakFolderUrl.appendingPathComponent("TweakInfo.plist")) ?? NSMutableDictionary()
-        var signNeeded = false
-        if !force {
-            let tweakFileINodeRecord = tweakSignInfo["files"] as? [String:NSNumber] ?? [String:NSNumber]()
-            let fileURLs = try fm.contentsOfDirectory(at: tweakFolderUrl, includingPropertiesForKeys: nil)
-            for fileURL in fileURLs {
-                let attributes = try fm.attributesOfItem(atPath: fileURL.path)
-                let fileType = attributes[.type] as? FileAttributeType
-                if(fileType != FileAttributeType.typeDirectory && fileType != FileAttributeType.typeRegular) {
-                    continue
-                }
-                if(fileType == FileAttributeType.typeDirectory && !fileURL.lastPathComponent.hasSuffix(".framework")) {
-                    continue
-                }
-                if(fileType == FileAttributeType.typeRegular && !fileURL.lastPathComponent.hasSuffix(".dylib")) {
-                    continue
-                }
-                
-                if(fileURL.lastPathComponent == "TweakInfo.plist"){
-                    continue
-                }
-                let inodeNumber = try fm.attributesOfItem(atPath: fileURL.path)[.systemFileNumber] as? NSNumber
-                if let fileInodeNumber = tweakFileINodeRecord[fileURL.lastPathComponent] {
-                    if(fileInodeNumber != inodeNumber || !checkCodeSignature((fileURL.path as NSString).utf8String)) {
-                        signNeeded = true
-                        break
-                    }
-                } else {
-                    signNeeded = true
-                    break
-                }
-                
-                print(fileURL.lastPathComponent) // Prints the file name
-            }
-            
-        } else {
-            signNeeded = true
-        }
-        
-        guard signNeeded else {
-            return
-        }
-        // sign start
-        
-        let tmpDir = fm.temporaryDirectory.appendingPathComponent("TweakTmp.app")
-        if fm.fileExists(atPath: tmpDir.path) {
-            try fm.removeItem(at: tmpDir)
-        }
-        try fm.createDirectory(at: tmpDir, withIntermediateDirectories: true)
-        
-        var tmpPaths : [URL] = []
-        // copy items to tmp folders
+        // check if signature is invalid, we need to re-sign. dylib and framework's main binary are supported
         let fileURLs = try fm.contentsOfDirectory(at: tweakFolderUrl, includingPropertiesForKeys: nil)
+
+        var filesToSign: [URL] = []
+        
         for fileURL in fileURLs {
+            var fileURL = fileURL
             let attributes = try fm.attributesOfItem(atPath: fileURL.path)
             let fileType = attributes[.type] as? FileAttributeType
             if(fileType != FileAttributeType.typeDirectory && fileType != FileAttributeType.typeRegular) {
                 continue
             }
-            if(fileType == FileAttributeType.typeDirectory && !fileURL.lastPathComponent.hasSuffix(".framework")) {
+            if(fileType == FileAttributeType.typeDirectory) {
+                if(!fileURL.lastPathComponent.hasSuffix(".framework")) {
+                    continue
+                }
+                guard let frameworkBundle = Bundle(url: fileURL), let executableURL = frameworkBundle.executableURL else {
+                    continue
+                }
+                fileURL = executableURL
+            } else if (fileType == FileAttributeType.typeRegular && !fileURL.lastPathComponent.hasSuffix(".dylib")) {
                 continue
             }
-            if(fileType == FileAttributeType.typeRegular && !fileURL.lastPathComponent.hasSuffix(".dylib")) {
+
+            if !force, checkCodeSignature((fileURL.path as NSString).utf8String) {
                 continue
             }
             
-            let tmpPath = tmpDir.appendingPathComponent(fileURL.lastPathComponent)
-            tmpPaths.append(tmpPath)
-            try fm.copyItem(at: fileURL, to: tmpPath)
+            filesToSign.append(fileURL)
         }
         
-        if tmpPaths.isEmpty {
-            try fm.removeItem(at: tmpDir)
+        if filesToSign.isEmpty {
             return
         }
         
-        let error = await LCUtils.signFilesInFolder(url: tmpDir) { p in
-            if let progressHandler {
-                progressHandler(p)
-            }
-        }
-        if let error = error {
-            throw error
+        for fileURL in filesToSign {
+            LCPatchAppBundleFixupARM64eSlice(fileURL)
         }
         
-        // move signed files back and rebuild TweakInfo.plist
-        let disabledTweaks = tweakSignInfo["disabledItems"]
-        tweakSignInfo.removeAllObjects()
-        var fileInodes = [String:NSNumber]()
-        for tmpFile in tmpPaths {
-            let toPath = tweakFolderUrl.appendingPathComponent(tmpFile.lastPathComponent)
-            // remove original item and move the signed ones back
-            if fm.fileExists(atPath: toPath.path) {
-                try fm.removeItem(at: toPath)
-                
+        try await withUnsafeThrowingContinuation({ (c: UnsafeContinuation<Void, Error>) in
+            let progress = LCUtils.signFiles(withURLs: filesToSign) { success, error in
+                if success {
+                    c.resume()
+                    return
+                }
+                guard let error else {
+                    c.resume()
+                    return
+                }
+                c.resume(throwing: error)
             }
-            try fm.moveItem(at: tmpFile, to: toPath)
-            if let inodeNumber = try fm.attributesOfItem(atPath: toPath.path)[.systemFileNumber] as? NSNumber {
-                fileInodes[tmpFile.lastPathComponent] = inodeNumber
+            if let progress {
+                progressHandler?(progress)
             }
-        }
-        try fm.removeItem(at: tmpDir)
-
-        tweakSignInfo["files"] = fileInodes
-        if let disabledTweaks {
-            tweakSignInfo["disabledItems"] = disabledTweaks
-        }
-        try tweakSignInfo.write(to: tweakFolderUrl.appendingPathComponent("TweakInfo.plist"))
-        
+        })
     }
         
     private static func authenticateUser(completion: @escaping (Bool, Error?) -> Void) {

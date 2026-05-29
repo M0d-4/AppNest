@@ -381,6 +381,67 @@ NSError *codesign_adhoc(NSURL *fileURL, NSString* bundleId, NSData* xmlData) {
     return codesign_adhoc(fileURL, bundleId, entitlementData) == nil;
 }
 
++ (NSProgress*)signMachOURLArray:(NSArray<NSURL *> *)urls key:(NSData *)key pass:(NSString *)pass completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
+    NSProgress *progress = [NSProgress progressWithTotalUnitCount:(int64_t)urls.count];
+
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        NSError *initError = nil;
+        SecIdentityRef identity = readP12Certificate(key, pass, &initError);
+        if (initError || !identity) {
+            if (!initError) {
+                initError = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                               code:407
+                                           userInfo:@{ NSLocalizedDescriptionKey: @"Failed to initialize identity. Maybe wrong password?" }];
+            }
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(NO, initError);
+            });
+            return;
+        }
+
+        NSMutableArray<NSString *> *errorList = [NSMutableArray new];
+        // serialQueue serializes errorList writes and progress updates from concurrent tasks
+        dispatch_queue_t serialQueue = dispatch_queue_create("com.appnest.signqueue", DISPATCH_QUEUE_SERIAL);
+        dispatch_group_t group = dispatch_group_create();
+        dispatch_queue_t concurrentQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+
+        for (NSURL *fileURL in urls) {
+            dispatch_group_async(group, concurrentQueue, ^{
+                NSString *errorMsg = nil;
+                refreshFile(fileURL.path);
+                NSError *signError = codesign_sign_with_p12(fileURL, identity, YES, nil);
+                if (signError) {
+                    errorMsg = [NSString stringWithFormat:@"Failed to sign %@: %@", fileURL.lastPathComponent, signError.localizedDescription];
+                } else {
+                    refreshFile(fileURL.path);
+                }
+
+                // Serialize errorList mutation and progress counter increment
+                dispatch_sync(serialQueue, ^{
+                    if (errorMsg) {
+                        [errorList addObject:errorMsg];
+                    }
+                    progress.completedUnitCount++;
+                });
+            });
+        }
+
+        dispatch_group_notify(group, dispatch_get_main_queue(), ^{
+            CFRelease(identity);
+            if (errorList.count > 0) {
+                NSError *signingError = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                                           code:407
+                                                       userInfo:@{ NSLocalizedDescriptionKey: [errorList componentsJoinedByString:@"\n"] }];
+                completionHandler(NO, signingError);
+            } else {
+                completionHandler(YES, nil);
+            }
+        });
+    });
+
+    return progress;
+}
+
 @end
 
 

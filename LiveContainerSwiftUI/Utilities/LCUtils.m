@@ -246,6 +246,16 @@
     return ans;
 }
 
++ (NSProgress *)signFilesWithURLs:(NSArray<NSURL *> *)urls completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
+    NSError *error;
+    [self loadStoreFrameworksWithError2:&error];
+    if (error) {
+        completionHandler(NO, error);
+        return nil;
+    }
+    return [SecuritySigner signMachOURLArray:urls key:self.certificateData pass:LCSharedUtils.certificatePassword completionHandler:completionHandler];
+}
+
 #pragma mark Setup
 
 + (Store) store {
