@@ -35,7 +35,6 @@ static void initLogFile(void) {
     g_logFile = fopen(logPath.fileSystemRepresentation, "w");
 }
 
-extern int LiveContainerMain(int argc, char *argv[]);
 static int g_savedArgc;
 static char **g_savedArgv;
 
