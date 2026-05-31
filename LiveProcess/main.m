@@ -13,7 +13,6 @@
 #import "../LiveContainer/Tweaks/Tweaks.h"
 #import "../MultitaskSupport/LCMultitaskXPCService.h"
 #import "../SideStore/XPCServer.h"
-#import "../fishhook/fishhook.h"
 
 // File-based logging so the launch trace is accessible without Xcode
 static FILE *g_logFile = NULL;
@@ -157,27 +156,25 @@ int LiveProcessMain(int argc, char *argv[]) {
     return LiveContainerMain(argc, argv);
 }
 
-// Hook UIApplicationMain via dyld image callback + fishhook rebind on UIKit's GOT.
-// This intercepts UIKit's internal call to UIApplicationMain reliably on all iOS versions.
-static int (*orig_UIApplicationMain)(int argc, char *argv[], NSString *cls, NSString *delCls);
-
-static int hook_UIApplicationMain(int argc, char *argv[], NSString *cls, NSString *delCls) {
-    LCLOG(@"[LC-LP] hook_UIApplicationMain called - routing to LiveProcessMain");
-    return LiveProcessMain(argc, argv);
+static uint32_t g_dlopenHookOffset = 0;
+static void* (*orig_dlopen)(void* dyldApiInstancePtr, const char* path, int mode);
+static void* hook_dlopen(void* dyldApiInstancePtr, const char* path, int mode) {
+    const char *UIKitFrameworkPath = "/System/Library/Frameworks/UIKit.framework/UIKit";
+    if(path && !strncmp(path, UIKitFrameworkPath, strlen(UIKitFrameworkPath))) {
+        // unhook and let UIKit load via RTLD_MAIN_ONLY so our UIApplicationMain is used
+        performHookDyldApi("dlopen", g_dlopenHookOffset, (void**)&orig_dlopen, orig_dlopen);
+        return RTLD_MAIN_ONLY;
+    } else {
+        __attribute__((musttail)) return orig_dlopen(dyldApiInstancePtr, path, mode);
+    }
 }
 
-static void onImageAdded(const struct mach_header *mh, intptr_t slide) {
-    Dl_info info;
-    if (dladdr(mh, &info) && info.dli_fname && strstr(info.dli_fname, "UIKit.framework")) {
-        LCLOG(@"[LC-LP] UIKit loaded at %s - rebinding UIApplicationMain in UIKit GOT", info.dli_fname);
-        struct rebinding rb = {
-            "UIApplicationMain",
-            (void *)hook_UIApplicationMain,
-            (void **)&orig_UIApplicationMain
-        };
-        rebind_symbols_image((void *)mh, slide, &rb, 1);
-        LCLOG(@"[LC-LP] rebind_symbols_image done, orig=%p", orig_UIApplicationMain);
-    }
+// Our UIApplicationMain interposes UIKit's - routes to LiveProcessMain.
+// This is the fallback path when the dlopen hook fails.
+__attribute__((visibility("default")))
+int UIApplicationMain(int argc, char * argv[], NSString * principalClassName, NSString * delegateClassName) {
+    LCLOG(@"[LC-LP] UIApplicationMain interpose called - routing to LiveProcessMain");
+    return LiveProcessMain(argc, argv);
 }
 
 // Extension entry point
@@ -190,11 +187,20 @@ int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
     _envp = envp;
     _apple = apple;
 
-    // Register dyld callback to hook UIApplicationMain when UIKit loads.
-    // This intercepts UIKit's internal call to UIApplicationMain and routes it
-    // to LiveProcessMain, which then runs the guest app.
-    LCLOG(@"[LC-LP] Registering dyld image add callback");
-    _dyld_register_func_for_add_image(onImageAdded);
+    // Try offsets 0-6 to find the correct ADRP pattern for dlopen on this iOS version.
+    // On success the hook intercepts UIKit's load and returns RTLD_MAIN_ONLY.
+    // On failure UIKit loads normally and calls our interposing UIApplicationMain above.
+    BOOL hooked = NO;
+    for (uint32_t offset = 0; offset <= 6 && !hooked; offset++) {
+        if (performHookDyldApi("dlopen", offset, (void**)&orig_dlopen, hook_dlopen)) {
+            g_dlopenHookOffset = offset;
+            NSLog(@"[LC] NSExtensionMain: dlopen hooked at adrpOffset=%u", offset);
+            hooked = YES;
+        }
+    }
+    if (!hooked) {
+        NSLog(@"[LC] NSExtensionMain: dlopen hook failed, relying on UIApplicationMain interpose");
+    }
 
     LCLOG(@"[LC-LP] Calling orig_NSExtensionMain");
     int (*orig_NSExtensionMain)(int argc, char * argv[]) = dlsym(RTLD_NEXT, "NSExtensionMain");
