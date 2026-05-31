@@ -291,22 +291,12 @@ class AppInfoProvider {
     }
 
     private var safeAreaHeight: CGFloat {
-        (keyWindow?.bounds.height ?? UIScreen.main.bounds.height) - safeAreaInsets.top - safeAreaInsets.bottom
+        keyWindow!.bounds.height - safeAreaInsets.top - safeAreaInsets.bottom
     }
     
     override init() {
         super.init()
-        if let rootView = keyWindow?.rootViewController?.view.subviews.first {
-            rootView.addSubview(self.windowHostingView)
-        } else {
-            // Fallback: defer adding to window hierarchy until it's available
-            DispatchQueue.main.async { [weak self] in
-                guard let self else { return }
-                if let rootView = self.keyWindow?.rootViewController?.view.subviews.first {
-                    rootView.addSubview(self.windowHostingView)
-                }
-            }
-        }
+        keyWindow!.rootViewController!.view.subviews.first!.addSubview(self.windowHostingView)
         setupDockView()
         NotificationCenter.default.addObserver(
             self,
@@ -358,7 +348,7 @@ class AppInfoProvider {
     private func updateDockFrame(animated: Bool = true) {
         guard let hostingController = hostingController else { return }
 
-        let screenBounds = keyWindow?.bounds ?? UIScreen.main.bounds
+        let screenBounds = keyWindow!.bounds
         let currentDockWidth = self.dockWidth
         
         let dockHeight = calculateTargetDockHeight(forWidth: currentDockWidth)
@@ -526,7 +516,7 @@ class AppInfoProvider {
                 let finalScale = Constants.initialScale
                 hostingController.view.transform = CGAffineTransform(scaleX: finalScale, y: finalScale)
                 // Move off-screen to hide, but keep in view hierarchy
-                let screenBounds = self.keyWindow?.bounds ?? UIScreen.main.bounds
+                let screenBounds = self.keyWindow!.bounds
                 let currentDockWidth = self.dockWidth
                 let targetX = self.calculateTargetX(isDockHidden: true, isOnRightSide: hostingController.view.frame.midX > screenBounds.width / 2, dockWidth: currentDockWidth, screenWidth: screenBounds.width)
                 let targetY = hostingController.view.frame.origin.y // Keep current Y
@@ -561,7 +551,7 @@ class AppInfoProvider {
     }
 
     func handleSwipeToHideOrShowGesture(for originalFrame: CGRect, translation: CGSize) -> Bool {
-        let screenWidth = keyWindow?.bounds.width ?? UIScreen.main.bounds.width
+        let screenWidth = keyWindow!.bounds.width
         let isOnRightSide = originalFrame.origin.x > screenWidth / 2
         let isSwipingAway = (isOnRightSide && translation.width > 0) || (!isOnRightSide && translation.width < 0)
         
@@ -583,7 +573,7 @@ class AppInfoProvider {
     // Check if gesture is for cross-screen movement (left to right or vice versa)
     func isPositionChangeGesture(for originalFrame: CGRect, translation: CGSize) -> Bool {
         
-        let screenWidth = keyWindow?.bounds.width ?? UIScreen.main.bounds.width
+        let screenWidth = keyWindow!.bounds.width
         let isOnRightSide = originalFrame.origin.x > screenWidth / 2
         
         guard !self.isDockHidden else { return false }
