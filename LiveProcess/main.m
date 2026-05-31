@@ -78,11 +78,9 @@ static NSDictionary *retrievedAppInfo;
     extensionContext = context;
     retrievedAppInfo = [context.inputItems.firstObject userInfo];
     LCLOG(@"[LC-LP] retrievedAppInfo keys: %@", retrievedAppInfo.allKeys);
-    // Signal the background thread to proceed with LiveContainerMain
-    LCLOG(@"[LC-LP] Signaling semaphore to unblock LiveContainerMain thread");
-    if (g_appInfoSemaphore) {
-        dispatch_semaphore_signal(g_appInfoSemaphore);
-    }
+    // Return control to LiveContainerMain
+    LCLOG(@"[LC-LP] Calling CFRunLoopStop");
+    CFRunLoopStop(CFRunLoopGetMain());
 }
 
 - (void)initializeMultitaskEndpoint:(NSXPCListenerEndpoint *)endpoint {
@@ -101,24 +99,16 @@ static NSDictionary *retrievedAppInfo;
 
 extern int LiveContainerMain(int argc, char *argv[]);
 static char **_envp, **_apple = NULL;
-static dispatch_semaphore_t g_appInfoSemaphore;
-
 int LiveProcessMain(int argc, char *argv[]) {
-    LCLOG(@"[LC-LP] LiveProcessMain started - ServiceType=Application, using semaphore approach");
-    g_appInfoSemaphore = dispatch_semaphore_create(0);
-
-    // Run LiveContainerMain on a background thread so we don't block the main thread.
-    // UIKit needs the main thread free to call beginRequestWithExtensionContext.
-    int capturedArgc = argc;
-    char **capturedArgv = argv;
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
-        LCLOG(@"[LC-LP] Background thread: waiting for beginRequestWithExtensionContext");
-        dispatch_semaphore_wait(g_appInfoSemaphore, DISPATCH_TIME_FOREVER);
-        LCLOG(@"[LC-LP] Background thread: semaphore signaled, running LiveContainerMain");
-
-        NSDictionary *appInfo = LiveProcessHandler.retrievedAppInfo;
-        LCLOG(@"[LC-LP] appInfo=%@", appInfo);
-        NSCAssert(appInfo, @"Failed to retrieve app info");
+    LCLOG(@"[LC-LP] LiveProcessMain started");
+    // Let NSExtensionContext initialize, once it's done it will call CFRunLoopStop
+    LCLOG(@"[LC-LP] CFRunLoopRun - waiting for beginRequestWithExtensionContext");
+    CFRunLoopRun();
+    LCLOG(@"[LC-LP] CFRunLoopRun returned");
+    // Ensure app info is delivered
+    NSDictionary *appInfo = LiveProcessHandler.retrievedAppInfo;
+    LCLOG(@"[LC-LP] appInfo=%@", appInfo);
+    NSCAssert(appInfo, @"Failed to retrieve app info");
 
     // Check if we received a request to execute a custom payload
     NSString *customPayloadDylib = appInfo[@"customPayloadDylib"];
@@ -165,14 +155,7 @@ int LiveProcessMain(int argc, char *argv[]) {
     }
 
     
-        LiveContainerMain(capturedArgc, capturedArgv);
-        LCLOG(@"[LC-LP] Background thread: LiveContainerMain returned");
-    });
-
-    // Return 0 immediately - let UIKit's run loop take over the main thread.
-    // beginRequestWithExtensionContext will be called by UIKit and will signal the semaphore.
-    LCLOG(@"[LC-LP] LiveProcessMain returning 0 - main thread free for UIKit");
-    return 0;
+    return LiveContainerMain(argc, argv);
 }
 
 // this is our fake UIApplicationMain called from _xpc_objc_uimain (xpc_main)
