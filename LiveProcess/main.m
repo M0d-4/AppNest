@@ -20,27 +20,53 @@ static void lcLogToFile(NSString *msg) {
     if (g_logFile) {
         NSDateFormatter *df = [NSDateFormatter new];
         df.dateFormat = @"hh:mm:ss.SSS a";
-        fprintf(g_logFile, "[%s] %s
-", [df stringFromDate:[NSDate date]].UTF8String, msg.UTF8String);
+        NSString *_line = [NSString stringWithFormat:@"[%@] %@\n", [df stringFromDate:[NSDate date]], msg]; fputs(_line.UTF8String, g_logFile);
         fflush(g_logFile);
     }
 }
 #define LCLOG(fmt, ...) do { NSString *_m = [NSString stringWithFormat:fmt, ##__VA_ARGS__]; NSLog(@"%@", _m); lcLogToFile(_m); } while(0)
 
 static void initLogFile(void) {
-    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-    NSString *logsDir = [docs stringByAppendingPathComponent:@"Logs"];
-    [[NSFileManager defaultManager] createDirectoryAtPath:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
-    NSString *logPath = [logsDir stringByAppendingPathComponent:@"liveprocess_launch.log"];
+    // Try to write to app group container (accessible to main app)
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSString *logPath = nil;
+    // Try each possible app group
+    // Enumerate all app groups from the process entitlements
+    // Use SecTaskCopyValueForEntitlement to read at runtime
+    NSArray *bundleGroups = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"com.apple.security.application-groups"];
+    // Also try common patterns with the team ID extracted from bundle ID
+    NSString *bundleID = [NSBundle mainBundle].bundleIdentifier ?: @"";
+    NSArray *parts = [bundleID componentsSeparatedByString:@"."];
+    NSString *teamID = parts.count >= 3 ? parts[2] : @"";
+    NSMutableArray *groupsToTry = [NSMutableArray array];
+    if (bundleGroups) [groupsToTry addObjectsFromArray:bundleGroups];
+    if (teamID.length) {
+        [groupsToTry addObject:[@"group.com.SideStore.SideStore." stringByAppendingString:teamID]];
+        [groupsToTry addObject:[@"group.com.rileytestut.AltStore." stringByAppendingString:teamID]];
+    }
+    for (NSString *gid in groupsToTry) {
+        NSURL *url = [fm containerURLForSecurityApplicationGroupIdentifier:gid];
+        if (url) {
+            NSString *logsDir = [url.path stringByAppendingPathComponent:@"Logs"];
+            [fm createDirectoryAtPath:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
+            logPath = [logsDir stringByAppendingPathComponent:@"liveprocess_ext.log"];
+            break;
+        }
+    }
+    if (!logPath) logPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"liveprocess_ext.log"];
     g_logFile = fopen(logPath.fileSystemRepresentation, "w");
+    NSLog(@"[LC-LP] Extension log: %@", logPath);
 }
 
-static int g_savedArgc;
-static char **g_savedArgv;
+static dispatch_semaphore_t g_appInfoSemaphore;
 
 @implementation LiveProcessHandler
 static NSExtensionContext *extensionContext;
 static NSDictionary *retrievedAppInfo;
+
++ (void)load {
+    g_appInfoSemaphore = dispatch_semaphore_create(0);
+}
 + (NSExtensionContext *)extensionContext {
     return extensionContext;
 }
@@ -58,13 +84,11 @@ static NSDictionary *retrievedAppInfo;
     extensionContext = context;
     retrievedAppInfo = [context.inputItems.firstObject userInfo];
     LCLOG(@"[LC-LP] retrievedAppInfo keys: %@", retrievedAppInfo.allKeys);
-    // Launch LiveContainerMain on a background thread so UIKit's main thread stays free
-    LCLOG(@"[LC-LP] Launching LiveContainerMain on background thread");
-    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
-        LCLOG(@"[LC-LP] Background thread: calling LiveContainerMain");
-        (void)LiveContainerMain(g_savedArgc, g_savedArgv);
-        LCLOG(@"[LC-LP] Background thread: LiveContainerMain returned");
-    });
+    // Signal the background thread to proceed with LiveContainerMain
+    LCLOG(@"[LC-LP] Signaling semaphore to unblock LiveContainerMain thread");
+    if (g_appInfoSemaphore) {
+        dispatch_semaphore_signal(g_appInfoSemaphore);
+    }
 }
 
 - (void)initializeMultitaskEndpoint:(NSXPCListenerEndpoint *)endpoint {
@@ -83,19 +107,27 @@ static NSDictionary *retrievedAppInfo;
 
 extern int LiveContainerMain(int argc, char *argv[]);
 static char **_envp, **_apple = NULL;
+static dispatch_semaphore_t g_appInfoSemaphore;
+
 int LiveProcessMain(int argc, char *argv[]) {
-    LCLOG(@"[LC-LP] LiveProcessMain started - saving args, returning immediately");
-    // Save args for use in beginRequestWithExtensionContext callback
-    g_savedArgc = argc;
-    g_savedArgv = argv;
-    // Return immediately - don't block the main thread.
-    // LiveContainerMain will be called from beginRequestWithExtensionContext.
-    return 0;
-    // The code below is kept for reference but runs in the background thread instead:
-    if (0) {
-    NSDictionary *appInfo = LiveProcessHandler.retrievedAppInfo;
-    LCLOG(@"[LC-LP] appInfo=%@", appInfo);
-    if (!appInfo) { return 0; }
+    LCLOG(@"[LC-LP] LiveProcessMain started - ServiceType=Application, using semaphore approach");
+    // semaphore initialized via +load below
+
+    // Run LiveContainerMain on a background thread so we don't block the main thread.
+    // UIKit needs the main thread free to call beginRequestWithExtensionContext.
+    int capturedArgc = argc;
+    char **capturedArgv = argv;
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_HIGH, 0), ^{
+        LCLOG(@"[LC-LP] Background thread: waiting for beginRequestWithExtensionContext");
+        dispatch_semaphore_wait(g_appInfoSemaphore, DISPATCH_TIME_FOREVER);
+        LCLOG(@"[LC-LP] Background thread: semaphore signaled, running LiveContainerMain");
+
+        NSDictionary *appInfo = LiveProcessHandler.retrievedAppInfo;
+        LCLOG(@"[LC-LP] appInfo=%@", appInfo);
+        if (!appInfo) {
+            LCLOG(@"[LC-LP] ERROR: appInfo is nil - aborting launch");
+            return;
+        }
 
     // Check if we received a request to execute a custom payload
     NSString *customPayloadDylib = appInfo[@"customPayloadDylib"];
@@ -106,7 +138,7 @@ int LiveProcessMain(int argc, char *argv[]) {
         NSString *customPayloadEntry = appInfo[@"customPayloadEntry"];
         NSCAssert(customPayloadEntry, @"Missing customPayloadEntry");
         int (*payloadEntry)(int, char **, char **, char **) = dlsym(handle, customPayloadEntry.UTF8String);
-        return payloadEntry(argc, argv, _envp, _apple);
+        (void)payloadEntry(capturedArgc, capturedArgv, _envp, _apple);
     }
 
     NSLog(@"Retrieved app info: %@", appInfo);
@@ -142,8 +174,14 @@ int LiveProcessMain(int argc, char *argv[]) {
     }
 
     
+        (void)LiveContainerMain(capturedArgc, capturedArgv);
+        LCLOG(@"[LC-LP] Background thread: LiveContainerMain returned");
+    });
+
+    // Return 0 immediately - let UIKit's run loop take over the main thread.
+    // beginRequestWithExtensionContext will be called by UIKit and will signal the semaphore.
+    LCLOG(@"[LC-LP] LiveProcessMain returning 0 - main thread free for UIKit");
     return 0;
-    } // end if(0)
 }
 
 // this is our fake UIApplicationMain called from _xpc_objc_uimain (xpc_main)
