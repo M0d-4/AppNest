@@ -29,27 +29,15 @@ static void lcLogToFile(NSString *msg) {
 #define LCLOG(fmt, ...) do { NSString *_m = [NSString stringWithFormat:fmt, ##__VA_ARGS__]; NSLog(@"%@", _m); lcLogToFile(_m); } while(0)
 
 static void initLogFile(void) {
-    // Try each known app group prefix until we find a writable container
-    NSArray *prefixes = @[
-        @"group.com.SideStore.SideStore.",
-        @"group.com.rileytestut.AltStore.",
-    ];
-    NSString *teamID = nil;
-    // Extract team ID from the main bundle identifier's provisioning
-    NSString *bundleID = [NSBundle mainBundle].bundleIdentifier ?: @"";
-    // Try to find the group container by probing known prefixes + any suffix
-    NSURL *groupURL = nil;
-    NSFileManager *fm = [NSFileManager defaultManager];
-    // Probe all app groups the process is entitled to
-    NSDictionary *entitlements = [NSBundle mainBundle].infoDictionary;
-    NSArray *groups = entitlements[@"com.apple.security.application-groups"];
-    for (NSString *g in groups) {
-        NSURL *url = [fm containerURLForSecurityApplicationGroupIdentifier:g];
-        if (url) { groupURL = url; break; }
+    // Write to the shared app group container - accessible from main app's Documents via 3uTools
+    NSString *groupID = [LCSharedUtils appGroupID];
+    NSURL *groupURL = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:groupID];
+    if (!groupURL) {
+        // Fallback: write next to the extension binary so it shows up somewhere
+        groupURL = [NSURL fileURLWithPath:NSTemporaryDirectory()];
     }
-    if (!groupURL) groupURL = [NSURL fileURLWithPath:NSTemporaryDirectory()];
     NSURL *logsDir = [groupURL URLByAppendingPathComponent:@"Logs"];
-    [fm createDirectoryAtURL:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
+    [[NSFileManager defaultManager] createDirectoryAtURL:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
     NSURL *logURL = [logsDir URLByAppendingPathComponent:@"liveprocess_launch.log"];
     g_logFile = fopen(logURL.fileSystemRepresentation, "w");
     NSLog(@"[LC-LP] Writing launch log to: %@", logURL.path);
