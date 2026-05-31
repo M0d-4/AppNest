@@ -1332,10 +1332,7 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
         return;
     }
 
-    // When running as built-in SideStore, pass ALL URLs straight through — including
-    // livecontainer:// which is otherwise in the blocked list. relaunchLC needs it.
-    // This check must come BEFORE LCShouldBlockExternalURL.
-    if(NSUserDefaults.isSideStore) {
+    if(NSUserDefaults.isSideStore && ![url.scheme isEqualToString:@"livecontainer"]) {
         [self hook_openURL:url options:options completionHandler:completion];
         return;
     }
@@ -1364,14 +1361,13 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
     if(strictTestMode) {
         return strictModeAllowsOpenURL(url);
     }
-    // When running as built-in SideStore pass through directly — livecontainer://
-    // is in the blocked list but SideStore needs it for relaunchLC.
-    // This check must come BEFORE LCShouldBlockExternalURL.
-    if (NSUserDefaults.isSideStore) {
-        return [self hook_canOpenURL:url];
-    }
     if (LCShouldBlockExternalURL(url)) {
         return NO;
+    }
+    // When running as built-in SideStore, skip the LC-scheme checks so
+    // livecontainer:// URLs are evaluated by the real system canOpenURL.
+    if (NSUserDefaults.isSideStore) {
+        return [self hook_canOpenURL:url];
     }
     return canAppOpenItself(url) || shouldRedirectOpenURLToHost(url) || [self hook_canOpenURL:url];
 }
