@@ -110,7 +110,7 @@ extension LCUtils {
         }
         
         try await withUnsafeThrowingContinuation({ (c: UnsafeContinuation<Void, Error>) in
-            let progress = LCUtils.signFiles(withURLs: filesToSign) { success, error in
+            let progress = LCUtils.signFiles(with: filesToSign) { success, error in
                 if success {
                     c.resume()
                     return

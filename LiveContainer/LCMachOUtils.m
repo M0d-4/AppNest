@@ -320,8 +320,6 @@ int LCPatchExecSlice(const char *path, struct mach_header_64 *header, bool doInj
     }
 
 
-    // Patch CydiaSubstrate references (must be done after insertDylibCommand calls)
-    LCPatchTweakDylibReferences(header);
     imageHeaderPtr = (uint8_t*)header + sizeof(struct mach_header_64);
 
     // Ensure No duplicated dylibs, often caused by incorrect tweak injection
