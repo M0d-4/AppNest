@@ -426,17 +426,22 @@ NSError *codesign_adhoc(NSURL *fileURL, NSString* bundleId, NSData* xmlData) {
             });
         }
 
-        dispatch_group_notify(group, dispatch_get_main_queue(), ^{
-            CFRelease(identity);
-            if (errorList.count > 0) {
-                NSError *signingError = [NSError errorWithDomain:NSOSStatusErrorDomain
-                                                           code:407
-                                                       userInfo:@{ NSLocalizedDescriptionKey: [errorList componentsJoinedByString:@"\n"] }];
+        dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+
+        CFRelease(identity);
+        if (errorList.count > 0) {
+            NSError *signingError = [NSError errorWithDomain:NSOSStatusErrorDomain
+                                                       code:407
+                                                   userInfo:@{ NSLocalizedDescriptionKey: [errorList componentsJoinedByString:@"\n"] }];
+            dispatch_async(dispatch_get_main_queue(), ^{
                 completionHandler(NO, signingError);
-            } else {
+            });
+        } else {
+            dispatch_async(dispatch_get_main_queue(), ^{
                 completionHandler(YES, nil);
-            }
-        });
+            });
+        }
+
     });
 
     return progress;

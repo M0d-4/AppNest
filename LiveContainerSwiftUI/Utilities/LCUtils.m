@@ -247,12 +247,6 @@
 }
 
 + (NSProgress *)signFilesWithURLs:(NSArray<NSURL *> *)urls completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
-    NSError *error;
-    [self loadStoreFrameworksWithError2:&error];
-    if (error) {
-        completionHandler(NO, error);
-        return nil;
-    }
     return [SecuritySigner signMachOURLArray:urls key:self.certificateData pass:LCSharedUtils.certificatePassword completionHandler:completionHandler];
 }
 
@@ -342,7 +336,7 @@
         } else {
             completionHandler(NO, [NSError errorWithDomain:NSBundle.mainBundle.bundleIdentifier code:2 userInfo:@{NSLocalizedDescriptionKey: @"lc.signer.latestCertificateInvalidErr"}]);
         }
-        
+        [NSFileManager.defaultManager removeItemAtPath:tmpLibPath error:nil];
     });
     
 
