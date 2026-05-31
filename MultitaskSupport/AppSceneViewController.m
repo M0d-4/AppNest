@@ -447,7 +447,7 @@ static void hostLog(NSString *msg) {
     // a false "terminated" screen even when the app is launching normally.
     if(self.presenterReady && !self.isAppRunning) {
         UIMutableApplicationSceneSettings *checkSettings = diff ? [diff settingsByApplyingToMutableCopyOfSettings:settings] : nil;
-        BOOL isGoingToBackground = checkSettings ? !checkSettings.isForeground : !settings.isForeground;
+        BOOL isGoingToBackground = checkSettings ? !checkSettings.foreground : !settings.foreground;
         if(isGoingToBackground) {
             [self appTerminationCleanUp];
         }
