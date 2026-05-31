@@ -20,43 +20,18 @@ static void lcLogToFile(NSString *msg) {
     if (g_logFile) {
         NSDateFormatter *df = [NSDateFormatter new];
         df.dateFormat = @"hh:mm:ss.SSS a";
-        fprintf(g_logFile, "[%s] %s
-", [df stringFromDate:[NSDate date]].UTF8String, msg.UTF8String);
+        fprintf(g_logFile, "[%s] %s\n", [df stringFromDate:[NSDate date]].UTF8String, msg.UTF8String);
         fflush(g_logFile);
     }
 }
 #define LCLOG(fmt, ...) do { NSString *_m = [NSString stringWithFormat:fmt, ##__VA_ARGS__]; NSLog(@"%@", _m); lcLogToFile(_m); } while(0)
 
 static void initLogFile(void) {
-    // Try to write to app group container (accessible to main app)
-    NSFileManager *fm = [NSFileManager defaultManager];
-    NSString *logPath = nil;
-    // Try each possible app group
-    // Enumerate all app groups from the process entitlements
-    // Use SecTaskCopyValueForEntitlement to read at runtime
-    NSArray *bundleGroups = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"com.apple.security.application-groups"];
-    // Also try common patterns with the team ID extracted from bundle ID
-    NSString *bundleID = [NSBundle mainBundle].bundleIdentifier ?: @"";
-    NSArray *parts = [bundleID componentsSeparatedByString:@"."];
-    NSString *teamID = parts.count >= 3 ? parts[2] : @"";
-    NSMutableArray *groupsToTry = [NSMutableArray array];
-    if (bundleGroups) [groupsToTry addObjectsFromArray:bundleGroups];
-    if (teamID.length) {
-        [groupsToTry addObject:[@"group.com.SideStore.SideStore." stringByAppendingString:teamID]];
-        [groupsToTry addObject:[@"group.com.rileytestut.AltStore." stringByAppendingString:teamID]];
-    }
-    for (NSString *gid in groupsToTry) {
-        NSURL *url = [fm containerURLForSecurityApplicationGroupIdentifier:gid];
-        if (url) {
-            NSString *logsDir = [url.path stringByAppendingPathComponent:@"Logs"];
-            [fm createDirectoryAtPath:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
-            logPath = [logsDir stringByAppendingPathComponent:@"liveprocess_ext.log"];
-            break;
-        }
-    }
-    if (!logPath) logPath = [NSTemporaryDirectory() stringByAppendingPathComponent:@"liveprocess_ext.log"];
+    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *logsDir = [docs stringByAppendingPathComponent:@"Logs"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
+    NSString *logPath = [logsDir stringByAppendingPathComponent:@"liveprocess_launch.log"];
     g_logFile = fopen(logPath.fileSystemRepresentation, "w");
-    NSLog(@"[LC-LP] Extension log: %@", logPath);
 }
 
 @implementation LiveProcessHandler
