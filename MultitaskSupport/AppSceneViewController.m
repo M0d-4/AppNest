@@ -442,15 +442,8 @@ static void hostLog(NSString *msg) {
 }
 //⭐️⭐️⭐️Real iPhone mode + multitask mode
 - (void)_performActionsForUIScene:(UIScene *)scene withUpdatedFBSScene:(id)fbsScene settingsDiff:(FBSSceneSettingsDiff *)diff fromSettings:(UIApplicationSceneSettings *)settings transitionContext:(id)context lifecycleActionType:(uint32_t)actionType {
-    // Only check for process death when the scene is transitioning to background/inactive.
-    // Checking during activation (foreground=YES) races with process startup and causes
-    // a false "terminated" screen even when the app is launching normally.
     if(self.presenterReady && !self.isAppRunning) {
-        UIMutableApplicationSceneSettings *checkSettings = diff ? [diff settingsByApplyingToMutableCopyOfSettings:settings] : nil;
-        BOOL isGoingToBackground = checkSettings ? !checkSettings.foreground : !settings.foreground;
-        if(isGoingToBackground) {
-            [self appTerminationCleanUp];
-        }
+        [self appTerminationCleanUp];
     }
     if(!diff) return;
     
