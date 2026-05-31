@@ -29,18 +29,12 @@ static void lcLogToFile(NSString *msg) {
 #define LCLOG(fmt, ...) do { NSString *_m = [NSString stringWithFormat:fmt, ##__VA_ARGS__]; NSLog(@"%@", _m); lcLogToFile(_m); } while(0)
 
 static void initLogFile(void) {
-    // Write to the shared app group container - accessible from main app's Documents via 3uTools
-    NSString *groupID = [LCSharedUtils appGroupID];
-    NSURL *groupURL = [[NSFileManager defaultManager] containerURLForSecurityApplicationGroupIdentifier:groupID];
-    if (!groupURL) {
-        // Fallback: write next to the extension binary so it shows up somewhere
-        groupURL = [NSURL fileURLWithPath:NSTemporaryDirectory()];
-    }
-    NSURL *logsDir = [groupURL URLByAppendingPathComponent:@"Logs"];
-    [[NSFileManager defaultManager] createDirectoryAtURL:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
-    NSURL *logURL = [logsDir URLByAppendingPathComponent:@"liveprocess_launch.log"];
-    g_logFile = fopen(logURL.fileSystemRepresentation, "w");
-    NSLog(@"[LC-LP] Writing launch log to: %@", logURL.path);
+    // Write to the shared app group Documents so it's accessible via 3uTools
+    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    if (!docs) docs = NSTemporaryDirectory();
+    NSString *logPath = [docs stringByAppendingPathComponent:@"liveprocess_launch.log"];
+    g_logFile = fopen(logPath.fileSystemRepresentation, "w");
+    NSLog(@"[LC-LP] Writing launch log to: %@", logPath);
 }
 
 @implementation LiveProcessHandler
