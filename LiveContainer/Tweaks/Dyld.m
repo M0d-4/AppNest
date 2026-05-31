@@ -731,11 +731,7 @@ bool initGuestSDKVersionInfo(void) {
     // we assume the size is 10K so we won't need to change this line until maybe iOS 40
     uint32_t* versionMapEnd = versionMapPtr + 2560;
     // ensure the first is versionSet and the third is iOS version (5.0.0)
-    // Use a soft check — if dyld internals changed (e.g. iOS 26+) skip rather than crash
-    if (!(versionMapPtr[0] == 0x07db0901 && versionMapPtr[2] == 0x00050000)) {
-        NSLog(@"[LC] initGuestSDKVersionInfo: sVersionMap magic mismatch (dyld may have changed), skipping SDK spoof");
-        return false;
-    }
+    assert(versionMapPtr[0] == 0x07db0901 && versionMapPtr[2] == 0x00050000);
     // get struct size. we assume size is smaller then 128. appearently Apple won't have so many platforms
     uint32_t size = 0;
     for(int i = 1; i < 128; ++i) {
