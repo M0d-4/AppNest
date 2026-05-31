@@ -27,11 +27,8 @@ struct MultitaskAppInfo {
     @objc class func openAppWindow(displayName: String, dataUUID: String, bundleId: String, pidCallback: ((NSNumber, Error?) -> Void)?) {
         DataManager.shared.model.enableMultipleWindow = true
         DataManager.shared.model.pidCallback = pidCallback
-        // Use a unique scene key each launch so iOS always creates a fresh scene window,
-        // preventing reactivation of a dead/terminated scene from a previous launch.
-        let sceneKey = "\(dataUUID)-\(Date().timeIntervalSince1970)"
-        appDict[sceneKey] = MultitaskAppInfo(displayName: displayName, dataUUID: dataUUID, bundleId: bundleId)
-        openWindow(id: "appView", value: sceneKey)
+        appDict[dataUUID] = MultitaskAppInfo(displayName: displayName, dataUUID: dataUUID, bundleId: bundleId)
+        openWindow(id: "appView", value: dataUUID)
     }
     
     @objc class func openExistingAppWindow(dataUUID: String) -> Bool {
@@ -77,10 +74,6 @@ struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
     func makeCoordinator() -> Coordinator {
         Coordinator(onAppInitialize: onAppInitialize, onExit: {
             show = false
-            // Remove the stale appDict entry so the next launch always creates a fresh scene
-            if let uuid = appInfo?.dataUUID {
-                MultitaskWindowManager.appDict.removeValue(forKey: uuid)
-            }
         })
     }
     
