@@ -280,12 +280,7 @@ class AppInfoProvider {
     }
 
     public var keyWindow: UIWindow? {
-        // Prefer the foreground-active window scene
-        let scenes = UIApplication.shared.connectedScenes
-        if let active = scenes.first(where: { $0.activationState == .foregroundActive }) as? UIWindowScene {
-            return active.windows.first(where: { $0.isKeyWindow }) ?? active.windows.first
-        }
-        return (scenes.first as? UIWindowScene)?.windows.first
+        (UIApplication.shared.connectedScenes.first as? UIWindowScene)?.windows.first
     }
 
     public var safeAreaInsets: UIEdgeInsets {
@@ -301,7 +296,17 @@ class AppInfoProvider {
     
     override init() {
         super.init()
-        attachWindowHostingView()
+        if let rootView = keyWindow?.rootViewController?.view.subviews.first {
+            rootView.addSubview(self.windowHostingView)
+        } else {
+            // Fallback: defer adding to window hierarchy until it's available
+            DispatchQueue.main.async { [weak self] in
+                guard let self else { return }
+                if let rootView = self.keyWindow?.rootViewController?.view.subviews.first {
+                    rootView.addSubview(self.windowHostingView)
+                }
+            }
+        }
         setupDockView()
         NotificationCenter.default.addObserver(
             self,
@@ -339,34 +344,6 @@ class AppInfoProvider {
         }
     }
     
-    private func attachWindowHostingView() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            if let rootView = self.keyWindow?.rootViewController?.view.subviews.first {
-                rootView.addSubview(self.windowHostingView)
-            } else {
-                // Window not ready yet — observe for scene activation
-                NotificationCenter.default.addObserver(
-                    self,
-                    selector: #selector(self.sceneDidActivate),
-                    name: UIScene.didActivateNotification,
-                    object: nil
-                )
-            }
-        }
-    }
-
-    @objc private func sceneDidActivate() {
-        DispatchQueue.main.async { [weak self] in
-            guard let self else { return }
-            guard self.windowHostingView.superview == nil else { return }
-            if let rootView = self.keyWindow?.rootViewController?.view.subviews.first {
-                rootView.addSubview(self.windowHostingView)
-                NotificationCenter.default.removeObserver(self, name: UIScene.didActivateNotification, object: nil)
-            }
-        }
-    }
-
     private func setupDockView() {
         DispatchQueue.main.async {
             let dockView = AnyView(MultitaskDockSwiftView()
@@ -375,11 +352,6 @@ class AppInfoProvider {
             self.hostingController = UIHostingController(rootView: dockView)
             self.hostingController?.view.autoresizingMask = [.flexibleTopMargin, .flexibleLeftMargin, .flexibleRightMargin, .flexibleBottomMargin]
             self.hostingController?.view.backgroundColor = .clear
-            
-            // If apps were added before hostingController was ready, show the dock now
-            if !self.apps.isEmpty && !self.isVisible {
-                self.showDock()
-            }
         }
     }
 
