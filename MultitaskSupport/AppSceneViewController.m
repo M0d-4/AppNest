@@ -137,16 +137,13 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
 // File-based launch log - written to main app's Documents/Logs for 3uTools access
 static FILE *g_hostLogFile = NULL;
 
-static void hostLog(NSString *msg);
-#define LCLOG_HOST(fmt, ...) hostLog([NSString stringWithFormat:fmt, ##__VA_ARGS__])
-
 static void hostLogInit(void) {
     NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
     NSString *logsDir = [docs stringByAppendingPathComponent:@"Logs"];
     [[NSFileManager defaultManager] createDirectoryAtPath:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
     NSString *logPath = [logsDir stringByAppendingPathComponent:@"multitask_launch.log"];
     g_hostLogFile = fopen(logPath.fileSystemRepresentation, "w");
-    NSLog(@"[LC-Host] Writing launch log to: %@", logPath);
+    LCLOG_HOST(@"[LC-Host] Writing launch log to: %@", logPath);
 }
 
 static void hostLog(NSString *msg) {
@@ -159,6 +156,9 @@ static void hostLog(NSString *msg) {
         fflush(g_hostLogFile);
     }
 }
+
+#undef LCLOG_HOST
+#define LCLOG_HOST(fmt, ...) hostLog([NSString stringWithFormat:fmt, ##__VA_ARGS__])
 
 
 
