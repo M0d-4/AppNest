@@ -155,15 +155,13 @@ int UIApplicationMain(int argc, char * argv[], NSString * principalClassName, NS
 }
 
 // NSExtensionMain will load UIKit and call UIApplicationMain, so we need to redirect it to our fake one
-// Track the adrpOffset at which the dlopen vtable hook was installed,
-// so we can unhook from the exact same slot.
-static uint32_t g_dlopenHookAdrpOffset = 2;
 static void* (*orig_dlopen)(void* dyldApiInstancePtr, const char* path, int mode);
 static void* hook_dlopen(void* dyldApiInstancePtr, const char* path, int mode) {
-    // Accept any path containing UIKit.framework to handle iOS 26 path variants
-    if(path && strstr(path, "UIKit.framework")) {
-        // Unhook using the same offset we installed at, to patch the right vtable slot
-        performHookDyldApi("dlopen", g_dlopenHookAdrpOffset, (void**)&orig_dlopen, orig_dlopen);
+    const char *UIKitFrameworkPath = "/System/Library/Frameworks/UIKit.framework/UIKit";
+    if(path && !strncmp(path, UIKitFrameworkPath, strlen(UIKitFrameworkPath))) {
+        // switch back to original dlopen
+        performHookDyldApi("dlopen", 2, (void**)&orig_dlopen, orig_dlopen);
+        // FIXME: may be incompatible with jailbreak tweaks?
         return RTLD_MAIN_ONLY;
     } else {
         __attribute__((musttail)) return orig_dlopen(dyldApiInstancePtr, path, mode);
@@ -176,17 +174,13 @@ int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
     LCLOG(@"[LC-LP] NSExtensionMain called");
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"
-    Method xpcDecoderMethod = class_getInstanceMethod(NSClassFromString(@"NSXPCDecoder"), @selector(_validateAllowedClass:forKey:allowingInvocations:));
-    if (xpcDecoderMethod) {
-        method_setImplementation(xpcDecoderMethod, (IMP)hook_do_nothing);
-    }
+    method_setImplementation(class_getInstanceMethod(NSClassFromString(@"NSXPCDecoder"), @selector(_validateAllowedClass:forKey:allowingInvocations:)), (IMP)hook_do_nothing);
 #pragma clang diagnostic pop
     // Try offsets 0-20 to find the correct ADRP pattern for dlopen on this iOS version.
     // iOS 26 / dyld 1000+ moved the pattern beyond offset 8, so we extend the range.
     BOOL hooked = NO;
     for (uint32_t offset = 0; offset <= 20 && !hooked; offset++) {
         if (performHookDyldApi("dlopen", offset, (void**)&orig_dlopen, hook_dlopen)) {
-            g_dlopenHookAdrpOffset = offset;
             LCLOG(@"[LC-LP] dlopen hooked at adrpOffset=%u", offset);
             hooked = YES;
         }
