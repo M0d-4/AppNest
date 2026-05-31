@@ -30,14 +30,10 @@ static NSDictionary *retrievedAppInfo;
 }
 
 - (void)beginRequestWithExtensionContext:(NSExtensionContext *)context {
-    NSLog(@"[LC-LP] beginRequestWithExtensionContext called");
     extensionContext = context;
     retrievedAppInfo = [context.inputItems.firstObject userInfo];
-    NSLog(@"[LC-LP] retrievedAppInfo keys: %@", retrievedAppInfo.allKeys);
     // Return control to LiveContainerMain
-    NSLog(@"[LC-LP] Calling CFRunLoopStop");
     CFRunLoopStop(CFRunLoopGetMain());
-    NSLog(@"[LC-LP] CFRunLoopStop called");
 }
 
 - (void)initializeMultitaskEndpoint:(NSXPCListenerEndpoint *)endpoint {
@@ -57,14 +53,10 @@ static NSDictionary *retrievedAppInfo;
 extern int LiveContainerMain(int argc, char *argv[]);
 static char **_envp, **_apple = NULL;
 int LiveProcessMain(int argc, char *argv[]) {
-    NSLog(@"[LC-LP] LiveProcessMain started");
     // Let NSExtensionContext initialize, once it's done it will call CFRunLoopStop
-    NSLog(@"[LC-LP] Waiting for beginRequestWithExtensionContext via CFRunLoopRun...");
     CFRunLoopRun();
-    NSLog(@"[LC-LP] CFRunLoopRun returned");
     // Ensure app info is delivered
     NSDictionary *appInfo = LiveProcessHandler.retrievedAppInfo;
-    NSLog(@"[LC-LP] appInfo = %@", appInfo);
     NSCAssert(appInfo, @"Failed to retrieve app info");
 
     // Check if we received a request to execute a custom payload
@@ -132,7 +124,6 @@ static void* hook_dlopen(void* dyldApiInstancePtr, const char* path, int mode) {
 // This is the fallback path when the dlopen hook fails.
 __attribute__((visibility("default")))
 int UIApplicationMain(int argc, char * argv[], NSString * principalClassName, NSString * delegateClassName) {
-    NSLog(@"[LC-LP] UIApplicationMain interpose called - routing to LiveProcessMain");
     return LiveProcessMain(argc, argv);
 }
 
@@ -160,9 +151,6 @@ int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
         NSLog(@"[LC] NSExtensionMain: dlopen hook failed, relying on UIApplicationMain interpose");
     }
 
-    NSLog(@"[LC-LP] Calling orig_NSExtensionMain");
     int (*orig_NSExtensionMain)(int argc, char * argv[]) = dlsym(RTLD_NEXT, "NSExtensionMain");
-    int ret = orig_NSExtensionMain(argc, argv);
-    NSLog(@"[LC-LP] orig_NSExtensionMain returned: %d", ret);
-    return ret;
+    return orig_NSExtensionMain(argc, argv);
 }
