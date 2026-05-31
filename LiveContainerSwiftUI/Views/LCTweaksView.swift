@@ -44,6 +44,11 @@ struct LCTweakItem : Hashable {
     }
 }
 
+struct LCTweakCopyMode {
+    let onClose: () -> Void
+    let onCopyHere: (URL) -> Void
+}
+
 struct LCTweakHelpView: View {
     @Binding var isPresent: Bool
 
@@ -76,6 +81,7 @@ struct LCTweakFolderView : View {
     @State var baseUrl : URL
     @State var tweakItems : [LCTweakItem]
     private var isRoot : Bool
+    private let copyMode: LCTweakCopyMode?
     @Binding var tweakFolders : [String]
     
     @State private var errorShow = false
@@ -95,11 +101,16 @@ struct LCTweakFolderView : View {
     @State private var disabledTweaks: Set<String>
     
     @EnvironmentObject private var moveContext: LCTweakMoveContext
+    
+    private var isCopyMode: Bool {
+        copyMode != nil
+    }
 
-    init(baseUrl: URL, isRoot: Bool = false, tweakFolders: Binding<[String]>) {
+    init(baseUrl: URL, isRoot: Bool = false, tweakFolders: Binding<[String]>, copyMode: LCTweakCopyMode? = nil) {
         _baseUrl = State(initialValue: baseUrl)
         _tweakFolders = tweakFolders
         self.isRoot = isRoot
+        self.copyMode = copyMode
         _tweakItems = State(initialValue: LCTweakFolderView.loadTweakItems(baseUrl))
         _disabledTweaks = State(initialValue: LCTweakFolderView.loadDisabledTweaks(baseUrl))
     }
@@ -126,53 +137,59 @@ struct LCTweakFolderView : View {
                 }
             }
             Section {
-                ForEach(tweakItems, id:\.self) { tweakItem in
-                    rowView(for: tweakItem)
-                        .contentShape(Rectangle())
-                        .highPriorityGesture(TapGesture(count: 2).onEnded {
-                            toggleTweakDisabled(tweakItem)
-                        })
-                        .onDrag {
-                            moveContext.beginDrag(tweakItem.fileUrl)
-                            return NSItemProvider(object: tweakItem.fileUrl.path as NSString)
-                        }
-                        .onDrop(of: [.text], isTargeted: nil) { _ in
-                            dropDraggedItem(into: tweakItem)
-                        }
-                    .contextMenu {
-                        Button {
-                            Task { await renameTweakItem(tweakItem: tweakItem)}
-                        } label: {
-                            Label("lc.common.rename".loc, systemImage: "pencil")
-                        }
-
-                        if tweakItem.supportsDisableToggle {
-                            Button {
+                if isCopyMode {
+                    ForEach(tweakItems, id:\.self) { tweakItem in
+                        rowView(for: tweakItem)
+                    }
+                } else {
+                    ForEach(tweakItems, id:\.self) { tweakItem in
+                        rowView(for: tweakItem)
+                            .contentShape(Rectangle())
+                            .highPriorityGesture(TapGesture(count: 2).onEnded {
                                 toggleTweakDisabled(tweakItem)
+                            })
+                            .onDrag {
+                                moveContext.beginDrag(tweakItem.fileUrl)
+                                return NSItemProvider(object: tweakItem.fileUrl.path as NSString)
+                            }
+                            .onDrop(of: [.text], isTargeted: nil) { _ in
+                                dropDraggedItem(into: tweakItem)
+                            }
+                        .contextMenu {
+                            Button {
+                                Task { await renameTweakItem(tweakItem: tweakItem)}
                             } label: {
-                                if isTweakDisabled(tweakItem) {
-                                    Label("lc.tweakView.enable".loc, systemImage: "checkmark.circle")
-                                } else {
-                                    Label("lc.tweakView.disable".loc, systemImage: "nosign")
+                                Label("lc.common.rename".loc, systemImage: "pencil")
+                            }
+
+                            if tweakItem.supportsDisableToggle {
+                                Button {
+                                    toggleTweakDisabled(tweakItem)
+                                } label: {
+                                    if isTweakDisabled(tweakItem) {
+                                        Label("lc.tweakView.enable".loc, systemImage: "checkmark.circle")
+                                    } else {
+                                        Label("lc.tweakView.disable".loc, systemImage: "nosign")
+                                    }
                                 }
+                            }
+
+                            Button {
+                                moveContext.beginMove(tweakItem.fileUrl)
+                            } label: {
+                                Label("lc.common.move".loc, systemImage: "folder")
+                            }
+                            
+                            Button(role: .destructive) {
+                                deleteTweakItem(tweakItem: tweakItem)
+                            } label: {
+                                Label("lc.common.delete".loc, systemImage: "trash")
                             }
                         }
 
-                        Button {
-                            moveContext.beginMove(tweakItem.fileUrl)
-                        } label: {
-                            Label("lc.common.move".loc, systemImage: "folder")
-                        }
-                        
-                        Button(role: .destructive) {
-                            deleteTweakItem(tweakItem: tweakItem)
-                        } label: {
-                            Label("lc.common.delete".loc, systemImage: "trash")
-                        }
+                    }.onDelete { indexSet in
+                        deleteTweakItem(indexSet: indexSet)
                     }
-
-                }.onDelete { indexSet in
-                    deleteTweakItem(indexSet: indexSet)
                 }
             }
             Section {
@@ -202,54 +219,74 @@ struct LCTweakFolderView : View {
         .navigationTitle(isRoot ? "lc.tabView.tweaks".loc : baseUrl.lastPathComponent)
         .toolbar {
             ToolbarItem(placement: .topBarLeading) {
-                Button("lc.tweakView.helpButton".loc, systemImage: "questionmark") {
-                    helpPresent = true
+                if isCopyMode {
+                    if isRoot, let copyMode {
+                        Button("lc.common.close".loc) {
+                            copyMode.onClose()
+                        }
+                    } else {
+                        EmptyView()
+                    }
+                } else {
+                    Button("lc.tweakView.helpButton".loc, systemImage: "questionmark") {
+                        helpPresent = true
+                    }
                 }
             }
+            
             ToolbarItem(placement: .topBarTrailing) {
-                if !isTweakSigning && LCSharedUtils.certificatePassword() != nil {
+                if let copyMode {
+                    Button("Copy Here") {
+                        copyMode.onCopyHere(baseUrl)
+                    }
+                } else if !isTweakSigning && LCSharedUtils.certificatePassword() != nil {
                     Button {
                         Task { await signAllTweaks() }
                     } label: {
                         Label("sign".loc, systemImage: "signature")
                     }
+                } else {
+                    EmptyView()
                 }
-
             }
+            
             ToolbarItem(placement: .topBarTrailing) {
-                if !isTweakSigning && !isInstallingFromURL {
-                    Menu {
-                        Button {
-                            if choosingTweak {
-                                choosingTweak = false
-                                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: {
+                if !isCopyMode {
+                    if !isTweakSigning && !isInstallingFromURL {
+                        Menu {
+                            Button {
+                                if choosingTweak {
+                                    choosingTweak = false
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.1, execute: {
+                                        choosingTweak = true
+                                    })
+                                } else {
                                     choosingTweak = true
-                                })
-                            } else {
-                                choosingTweak = true
+                                }
+                            } label: {
+                                Label("lc.tweakView.importTweak".loc, systemImage: "square.and.arrow.down")
+                            }
+
+                            Button {
+                                Task { await startInstallFromUrl() }
+                            } label: {
+                                Label("lc.appList.installFromUrl".loc, systemImage: "link.badge.plus")
+                            }
+                            
+                            Button {
+                                Task { await createNewFolder() }
+                            } label: {
+                                Label("lc.tweakView.newFolder".loc, systemImage: "folder.badge.plus")
                             }
                         } label: {
-                            Label("lc.tweakView.importTweak".loc, systemImage: "square.and.arrow.down")
+                            Label("add", systemImage: "plus")
                         }
-
-                        Button {
-                            Task { await startInstallFromUrl() }
-                        } label: {
-                            Label("lc.appList.installFromUrl".loc, systemImage: "link.badge.plus")
-                        }
-                        
-                        Button {
-                            Task { await createNewFolder() }
-                        } label: {
-                            Label("lc.tweakView.newFolder".loc, systemImage: "folder.badge.plus")
-                        }
-                    } label: {
-                        Label("add", systemImage: "plus")
+                    } else {
+                        ProgressView().progressViewStyle(.circular)
                     }
                 } else {
-                    ProgressView().progressViewStyle(.circular)
+                    EmptyView()
                 }
-
             }
         }
         .sheet(isPresented: $helpPresent) {
@@ -309,7 +346,7 @@ struct LCTweakFolderView : View {
     private func rowView(for tweakItem: LCTweakItem) -> some View {
         if tweakItem.isFolder || tweakItem.isFramework {
             NavigationLink {
-                LCTweakFolderView(baseUrl: tweakItem.fileUrl, isRoot: false, tweakFolders: $tweakFolders)
+                LCTweakFolderView(baseUrl: tweakItem.fileUrl, isRoot: false, tweakFolders: $tweakFolders, copyMode: copyMode)
                     .environmentObject(moveContext)
             } label: {
                 tweakItemLabel(tweakItem)
@@ -559,6 +596,7 @@ struct LCTweakFolderView : View {
                 if isTweak {
                     LCParseMachO((toPath.path as NSString).utf8String, false) { path, header, _, _ in
                         LCPatchAddRPath(path, header);
+                        LCPatchTweakDylibReferences(header);
                     }
                 }
                 self.tweakItems.append(LCTweakItem(fileUrl: toPath, isFolder: isFramework, isFramework: isFramework, isTweak: isTweak))
@@ -965,5 +1003,25 @@ struct LCTweaksView: View {
         .environmentObject(moveContext)
         .navigationViewStyle(StackNavigationViewStyle())
 
+    }
+}
+
+struct LCTweaksCopyDestinationView: View {
+    @Binding var tweakFolders: [String]
+    let onClose: () -> Void
+    let onCopyHere: (URL) -> Void
+    @StateObject private var moveContext = LCTweakMoveContext()
+    
+    var body: some View {
+        NavigationView {
+            LCTweakFolderView(
+                baseUrl: LCPath.tweakPath,
+                isRoot: true,
+                tweakFolders: $tweakFolders,
+                copyMode: LCTweakCopyMode(onClose: onClose, onCopyHere: onCopyHere)
+            )
+        }
+        .environmentObject(moveContext)
+        .navigationViewStyle(StackNavigationViewStyle())
     }
 }

@@ -8,6 +8,101 @@
 import Combine
 import SwiftUI
 import UniformTypeIdentifiers
+
+private func scheduleGridDragCleanup(draggingApp: Binding<LCAppModel?>, cleanupID: Binding<UUID>, delay: TimeInterval = 0.7) {
+    let newID = UUID()
+    cleanupID.wrappedValue = newID
+    DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+        if cleanupID.wrappedValue == newID {
+            draggingApp.wrappedValue = nil
+        }
+    }
+}
+
+private func cancelGridDrag(draggingApp: Binding<LCAppModel?>, cleanupID: Binding<UUID>) {
+    cleanupID.wrappedValue = UUID()
+    draggingApp.wrappedValue = nil
+}
+
+private struct LCGridAppFramePreferenceKey: PreferenceKey {
+    static var defaultValue: [String: CGRect] = [:]
+
+    static func reduce(value: inout [String: CGRect], nextValue: () -> [String: CGRect]) {
+        value.merge(nextValue()) { _, newValue in newValue }
+    }
+}
+
+private struct LCGridDropDelegate: DropDelegate {
+    let apps: [LCAppModel]
+    let appFrames: [String: CGRect]
+    @Binding var draggingApp: LCAppModel?
+    @Binding var dragCleanupID: UUID
+    @ObservedObject var sortManager: LCAppSortManager
+
+    func performDrop(info: DropInfo) -> Bool {
+        cancelGridDrag(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
+        return true
+    }
+
+    func dropExited(info: DropInfo) {
+        cancelGridDrag(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        moveDraggingApp(to: info.location)
+        scheduleGridDragCleanup(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
+        return DropProposal(operation: .move)
+    }
+
+    private func moveDraggingApp(to location: CGPoint) {
+        guard let draggingApp else {
+            return
+        }
+
+        let destinationIndex = gridDestinationIndex(for: location)
+        withAnimation(.easeInOut(duration: 0.18)) {
+            sortManager.moveCustomSortApp(draggingApp, toDestinationIndex: destinationIndex, in: apps, visibleApps: DataManager.shared.model.apps, hiddenApps: DataManager.shared.model.hiddenApps)
+        }
+    }
+
+    private func gridDestinationIndex(for location: CGPoint) -> Int {
+        let indexedFrames = apps.enumerated().compactMap { index, app -> (index: Int, frame: CGRect)? in
+            guard let uniqueIdentifier = sortManager.getUniqueIdentifier(for: app),
+                  let frame = appFrames[uniqueIdentifier] else {
+                return nil
+            }
+
+            return (index, frame)
+        }
+
+        guard !indexedFrames.isEmpty else {
+            return apps.count
+        }
+
+        if let lowestFrame = indexedFrames.map(\.frame).max(by: { $0.maxY < $1.maxY }),
+           location.y > lowestFrame.maxY {
+            return apps.count
+        }
+
+        let closestRowMidY = indexedFrames
+            .min(by: { abs($0.frame.midY - location.y) < abs($1.frame.midY - location.y) })?
+            .frame
+            .midY ?? 0
+
+        let rowFrames = indexedFrames
+            .filter { abs($0.frame.midY - closestRowMidY) < ($0.frame.height / 2) }
+            .sorted { $0.frame.minX < $1.frame.minX }
+
+        for indexedFrame in rowFrames {
+            if location.x < indexedFrame.frame.midX {
+                return indexedFrame.index
+            }
+        }
+
+        return (rowFrames.last?.index ?? apps.count - 1) + 1
+    }
+}
+
 import Intents
 
 enum AppLaunchMode: Int {
@@ -121,6 +216,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     
     @State var safariViewOpened = false
     @State var safariViewURL = URL(string: "https://google.com")!
+    @State private var didRunAutoCleanOnStartup = false
     
     @State private var navigateTo : AnyView?
     @State private var isNavigationActive = false
@@ -128,16 +224,22 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @State private var helpPresent = false
     
     @State private var customSortViewPresent = false
+    @State private var draggingApp: LCAppModel?
+    @State private var dragCleanupID = UUID()
+    @State private var visibleGridAppFrames: [String: CGRect] = [:]
+    @State private var hiddenGridAppFrames: [String: CGRect] = [:]
     
     @EnvironmentObject private var sharedModel : SharedModel
     @EnvironmentObject private var sharedAppSortManager : LCAppSortManager
     
     @AppStorage("LCMultitaskMode", store: LCUtils.appGroupUserDefault) var multitaskMode: MultitaskMode = .virtualWindow
+    @AppStorage("LCAppListInterfaceStyle", store: LCUtils.appGroupUserDefault) var appListInterfaceStyle: LCAppListInterfaceStyle = .list
+    @AppStorage("LCAppGridShowLabels", store: LCUtils.appGroupUserDefault) var appGridShowLabels = false
     @AppStorage("LCLaunchInMultitaskMode") var launchInMultitaskMode = false
     
     @State private var isViewAppeared = false
     
-    @ObservedObject var searchContext = SearchContext()
+    @ObservedObject var searchContext: SearchContext
     private var downloadHelper: DownloadHelper { sharedModel.downloadHelper }
 
     
@@ -163,7 +265,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     }
 
     return .native 
-}
+    }
 
 
 
@@ -197,7 +299,7 @@ func setMode(_ mode: AppLaunchMode) {
         }
     }
     sharedModel.objectWillChange.send()
-}
+    }
 
 
 
@@ -318,11 +420,119 @@ func setMode(_ mode: AppLaunchMode) {
         }
     }
 
-    init(appDataFolderNames: Binding<[String]>, tweakFolderNames: Binding<[String]>) {
+    init(appDataFolderNames: Binding<[String]>, tweakFolderNames: Binding<[String]>, searchContext: SearchContext) {
         _installOptions = State(initialValue: [])
         _appDataFolderNames = appDataFolderNames
         _tweakFolderNames = tweakFolderNames
+        self.searchContext = searchContext
     }
+    
+    var gridItemWidth: CGFloat {
+        appGridShowLabels ? 88 : 90
+    }
+
+    var gridSpacing: CGFloat {
+        appGridShowLabels ? 10 : 8
+    }
+
+    @ViewBuilder
+    func appList(apps: [LCAppModel], hidden: Bool, gridID: String) -> some View {
+        if appListInterfaceStyle == .grid {
+            let isHiddenAppGrid = gridID == "hiddenApps"
+            let gridCoordinateSpace = isHiddenAppGrid ? "LCHiddenAppGrid" : "LCVisibleAppGrid"
+            let appFrames = isHiddenAppGrid ? hiddenGridAppFrames : visibleGridAppFrames
+
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: gridItemWidth), spacing: gridSpacing)], spacing: appGridShowLabels ? 22 : 12) {
+                ForEach(apps, id: \.self) { app in
+                    if hidden {
+                        LCAppSkeletonIcon(showLabels: appGridShowLabels)
+                    } else {
+                        ZStack {
+                        LCAppBanner(appModel: app, delegate: self, appDataFolders: $appDataFolderNames, tweakFolders: $tweakFolderNames, interfaceStyle: .grid) { _ in
+                            cancelGridDrag(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
+                        }
+                            .onDrag {
+                                draggingApp = app
+                                scheduleGridDragCleanup(draggingApp: $draggingApp, cleanupID: $dragCleanupID, delay: 30)
+                                return NSItemProvider(object: NSString(string: sharedAppSortManager.getUniqueIdentifier(for: app) ?? app.displayName))
+                            } preview: {
+                                IconImageView(icon: app.appInfo.iconIsDarkIcon(LCUtils.appGroupUserDefault.bool(forKey: "darkModeIcon")))
+                                    .frame(width: appGridShowLabels ? 72 : 84, height: appGridShowLabels ? 72 : 84)
+                            }
+                            .background {
+                                GeometryReader { proxy in
+                                    Color.clear
+                                        .preference(key: LCGridAppFramePreferenceKey.self, value: gridFramePreference(for: app, proxy: proxy, coordinateSpace: gridCoordinateSpace))
+                                }
+                            }
+                            .opacity(isMultiSelectMode && selectedAppsForDeletion.contains(app) ? 0.5 : 1.0)
+                            .animation(.easeInOut(duration: 0.15), value: isMultiSelectMode)
+                            .allowsHitTesting(!isMultiSelectMode)
+
+                        // Multiselect badge — centered
+                        if isMultiSelectMode {
+                            let isSelected = selectedAppsForDeletion.contains(app)
+                            Group {
+                                if isLockHideMode {
+                                    Image(systemName: isSelected
+                                          ? (app.appInfo.isHidden ? "lock.open.fill" : "lock.fill")
+                                          : (app.appInfo.isHidden ? "lock.open" : "lock.open"))
+                                        .foregroundColor(isSelected ? (app.appInfo.isHidden ? .green : .orange) : .white)
+                                } else if isDeleteMode {
+                                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(isSelected ? .red : .white)
+                                } else {
+                                    Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                                        .foregroundColor(isSelected ? .green : .white)
+                                }
+                            }
+                            .font(.system(size: 22, weight: .semibold))
+                            .shadow(color: .black.opacity(0.4), radius: 2, x: 0, y: 1)
+                            .transition(.scale.combined(with: .opacity))
+                        }
+                        }
+                        .contentShape(Rectangle())
+                        .onTapGesture {
+                            guard isMultiSelectMode, !isDeleting else { return }
+                            withAnimation(.easeInOut(duration: 0.1)) {
+                                if selectedAppsForDeletion.contains(app) {
+                                    selectedAppsForDeletion.remove(app)
+                                } else {
+                                    selectedAppsForDeletion.insert(app)
+                                }
+                            }
+                        }
+                    }
+                }
+                .transition(.scale)
+            }
+            .coordinateSpace(name: gridCoordinateSpace)
+            .frame(maxWidth: .infinity)
+            .onPreferenceChange(LCGridAppFramePreferenceKey.self) { value in
+                if isHiddenAppGrid {
+                    hiddenGridAppFrames = value
+                } else {
+                    visibleGridAppFrames = value
+                }
+            }
+            .onDrop(of: [.text], delegate: LCGridDropDelegate(apps: apps, appFrames: appFrames, draggingApp: $draggingApp, dragCleanupID: $dragCleanupID, sortManager: sharedAppSortManager))
+        } else {
+            LazyVStack(spacing: 8) {
+                ForEach(apps, id: \.self) { app in
+                    appRow(app: app, isHidden: hidden)
+                }
+            }
+    }
+    }
+
+    func gridFramePreference(for app: LCAppModel, proxy: GeometryProxy, coordinateSpace: String) -> [String: CGRect] {
+        guard let uniqueIdentifier = sharedAppSortManager.getUniqueIdentifier(for: app) else {
+            return [:]
+        }
+
+        return [uniqueIdentifier: proxy.frame(in: .named(coordinateSpace))]
+    }
+
     
     var body: some View {
         ZStack(alignment: .bottom) {
@@ -347,15 +557,23 @@ func setMode(_ mode: AppLaunchMode) {
                 .hidden()
                 .disabled(isMultiSelectMode)
                 
-                VStack(spacing: 8) {
-                    ForEach(filteredApps, id: \.self) { app in
-                        appRow(app: app, isHidden: false)
-                    }
-                }
-                .padding()
-                .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredApps)
+                    appList(apps: filteredApps, hidden: false, gridID: "apps")
+                    .padding()
+                    .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredApps)
 
                 VStack {
+                    // App count shown above hidden section (when locked) or hidden until unlocked
+                    if !sharedModel.isHiddenAppUnlocked {
+                        let appCount = filteredApps.count
+                        Text(appCount > 0 || searchContext.debouncedQuery != "" ? "lc.appList.appCounter %lld".localizeWithFormat(appCount) : (sharedModel.multiLCStatus == 2 ? "lc.appList.convertToSharedToShowInLC2".loc : "lc.appList.installTip".loc))
+                            .padding(.horizontal)
+                            .foregroundStyle(.gray)
+                            .animation(searchContext.isTyping ? nil : .easeInOut, value: appCount)
+                            .onTapGesture(count: 3) {
+                                Task { await authenticateUser() }
+                            }
+                    }
+
                     if sharedModel.hiddenApps.count > 0 {
                         VStack(spacing: 8) {
                             HStack {
@@ -363,32 +581,38 @@ func setMode(_ mode: AppLaunchMode) {
                                     .font(.system(.title2).bold())
                                 Spacer()
                             }
-                            ForEach(filteredHiddenApps, id: \.self) { app in
-                                if sharedModel.isHiddenAppUnlocked {
-                                    appRow(app: app, isHidden: true)
-                                } else {
-                                    LCAppSkeletonBanner()
-                                }
-                            }
-                            .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
-                            .onTapGesture {
-                                if !isMultiSelectMode {
-                                    Task { await authenticateUser() }
-                                }
+                            if sharedModel.isHiddenAppUnlocked {
+                                appList(apps: filteredHiddenApps, hidden: false, gridID: "hiddenApps")
+                                    .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
+                            } else {
+                                // Show greyed-out placeholders; multiselect disabled; tap anywhere to unlock
+                                appList(apps: sortedHiddenApps, hidden: true, gridID: "hiddenApps")
+                                    .allowsHitTesting(!isMultiSelectMode)
+                                    .overlay(
+                                        Color.clear
+                                            .contentShape(Rectangle())
+                                            .onTapGesture {
+                                                Task { await authenticateUser() }
+                                            }
+                                    )
+                                    .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
                             }
                         }
                         .padding()
                         .animation(searchContext.isTyping ? nil : .easeInOut, value: filteredHiddenApps)
-                    }
 
-                    let appCount = sharedModel.isHiddenAppUnlocked ? filteredApps.count + filteredHiddenApps.count : filteredApps.count
-                    Text(appCount > 0 || searchContext.debouncedQuery != "" ? "lc.appList.appCounter %lld".localizeWithFormat(appCount) : (sharedModel.multiLCStatus == 2 ? "lc.appList.convertToSharedToShowInLC2".loc : "lc.appList.installTip".loc))
-                        .padding(.horizontal)
-                        .foregroundStyle(.gray)
-                        .animation(searchContext.isTyping ? nil : .easeInOut, value: appCount)
-                        .onTapGesture(count: 3) {
-                            Task { await authenticateUser() }
+                        // App count shown below hidden section only when unlocked
+                        if sharedModel.isHiddenAppUnlocked {
+                            let appCount = filteredApps.count + filteredHiddenApps.count
+                            Text(appCount > 0 || searchContext.debouncedQuery != "" ? "lc.appList.appCounter %lld".localizeWithFormat(appCount) : (sharedModel.multiLCStatus == 2 ? "lc.appList.convertToSharedToShowInLC2".loc : "lc.appList.installTip".loc))
+                                .padding(.horizontal)
+                                .foregroundStyle(.gray)
+                                .animation(searchContext.isTyping ? nil : .easeInOut, value: appCount)
+                                .onTapGesture(count: 3) {
+                                    Task { await authenticateUser() }
+                                }
                         }
+                    }
                 }.animation(searchContext.isTyping ? nil : .easeInOut, value: sharedModel.hiddenApps.count)
 
                 if sharedModel.multiLCStatus == 2 {
@@ -518,11 +742,11 @@ func setMode(_ mode: AppLaunchMode) {
                                 }
                             }
                             .onChange(of: sharedAppSortManager.appSortType) { newValue in
-                                if sharedAppSortManager.appSortType == .custom {
+                                if sharedAppSortManager.appSortType == .custom && appListInterfaceStyle != .grid {
                                     customSortViewPresent = true
                                 }
                             }
-                            if sharedAppSortManager.appSortType == .custom {
+                            if sharedAppSortManager.appSortType == .custom && appListInterfaceStyle != .grid {
                                 Divider()
                                 Button {
                                     customSortViewPresent = true
@@ -801,10 +1025,45 @@ func setMode(_ mode: AppLaunchMode) {
         for app in sharedModel.hiddenApps {
             app.delegate = self
         }
+        Task {
+            await autoCleanEnabledAppsOnStartup()
+        }
         didAppear = true
     }
     
-    
+        func autoCleanEnabledAppsOnStartup() async {
+        if didRunAutoCleanOnStartup {
+            return
+        }
+        didRunAutoCleanOnStartup = true
+
+        let appsToConsider = sharedModel.apps + sharedModel.hiddenApps
+        for app in appsToConsider {
+            if !app.uiAutoCleanCacheOnLaunch {
+                continue
+            }
+            guard let bundlePath = app.appInfo.bundlePath() else {
+                continue
+            }
+
+            let containerTargets = app.uiContainers.map { container in
+                LCAppContainerTarget(url: container.containerURL, needsSecurityScope: container.storageBookMark != nil)
+            }
+
+            do {
+                let cleanupResult = try await Task.detached(priority: .utility) {
+                    try lcClearAppCacheAndTemp(bundlePath: bundlePath, containerTargets: containerTargets)
+                }.value
+
+                app.appInfo.clearIconCache()
+                app.appInfo.recordAutoClean(withBytesSaved: cleanupResult.removedBytes)
+                app.objectWillChange.send()
+            } catch {
+                NSLog("[LC] auto-clean failed for %@: %@", app.displayName, error.localizedDescription)
+            }
+        }
+    }
+
     func openWebView(urlString: String) async {
         guard var urlToOpen = URLComponents(string: urlString), urlToOpen.url != nil else {
             errorInfo = "lc.appList.urlInvalidError".loc
@@ -1500,10 +1759,20 @@ func setMode(_ mode: AppLaunchMode) {
             errorShow = true
         }
     } else if UserDefaults.standard.bool(forKey: "LCNativeFullscreen") ||
-          LCUtils.appGroupUserDefault.bool(forKey: "LCRealIPhoneMode") { 
-
-
-        
+          LCUtils.appGroupUserDefault.bool(forKey: "LCRealIPhoneMode") {
+        do {
+            try await appFound.runApp(containerFolderName: container, forceJIT: forceJIT)
+        } catch {
+            errorInfo = error.localizedDescription
+            errorShow = true
+        }
+    } else {
+        do {
+            try await appFound.runApp(containerFolderName: container, forceJIT: forceJIT)
+        } catch {
+            errorInfo = error.localizedDescription
+            errorShow = true
+        }
     }
 }
     
@@ -1546,23 +1815,23 @@ func setMode(_ mode: AppLaunchMode) {
         LCSharedUtils.launchToGuestApp()
 
     }
-    
+
+
     func jitLaunch(withPID pid: Int, withScript script: String? = nil, appName: String) async {
         await MainActor.run {
             let encodedData = script?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-
-
+            
             if let jitEnabler = JITEnablerType(rawValue: LCUtils.appGroupUserDefault.integer(forKey: "LCJITEnablerType")) {
                 if jitEnabler == .StosDebug || jitEnabler == .StosDebugLC {
                     let encoded = encodedData.map { "&script=\($0)" } ?? ""
                     if jitEnabler == .StosDebugLC {
                         if let app = sharedModel.apps.first(where: { app in
-                            return app.appInfo.urlSchemes().contains("stosdebug") &&
+                            app.appInfo.urlSchemes().contains("stosdebug") &&
                             (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                         }) {
-                            if let url = URL(string: "stosdebug://enableJIT?bundleId=\(Bundle.main.bundleIdentifier!)&appName=\(appName)&pid=\(pid)&relaunchApp=false& forcePID=true\(encoded)") {
-                                Task { await openWebView(urlString: url.absoluteString) }
-                            }
+                            let urlString = "stosdebug://enableJIT?bundleId=\(multitaskPIDJITBundleId(for: app))&appName=\(appName)&pid=\(pid)&relaunchApp=false&forcePID=true\(encoded)"
+                            let encodedStr = Data(urlString.utf8).base64EncodedString().addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+                            Task { _ = await openJITInAnotherLC(encodedURL: encodedStr, appToLaunch: app, errorMessage: "No free LiveContainer is available. Please either: \n(1)close one, \n(2)install a new one, \n(3)choose another method to enable JIT.") }
                         } else {
                             errorInfo = "StosDebug is not found. Please install it first and switch it to shared app."
                             errorShow = true
@@ -1577,41 +1846,78 @@ func setMode(_ mode: AppLaunchMode) {
                 }
 
                 let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
-                if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encoded)") {
-                    if jitEnabler == .StikJITLC {
+                if jitEnabler == .StikJITLC {
                         if let app = sharedModel.apps.first(where: { app in
-                            return app.appInfo.urlSchemes().contains("stikjit") &&
-                            (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
-                        }) {
-                            Task { await openWebView(urlString: url.absoluteString) }
-                        } else {
-                        if var url = URL(string: "stosdebug://enableJIT?bundleId=\(Bundle.main.bundleIdentifier!)&appName=\(appName)&pid=\(pid)&forcePID=true\(encoded)") {
-                            UIApplication.shared.open(url)
-                        }
-                    }
-                    return
-                }
-
-                let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
-                if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encoded)") {
-                    if jitEnabler == .StikJITLC {
-                        if let app = sharedModel.apps.first(where: { app in
-                            return app.appInfo.urlSchemes().contains("stikjit") &&
-                            (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
-                        }) {
-                            Task { await openWebView(urlString: url.absoluteString) }
-                        } else {
-                            errorInfo = "StikDebug is not found. Please install it first and switch it to shared app."
-                            errorShow = true
-                            return
-                        }
+                            app.appInfo.urlSchemes().contains("stikjit") &&
+                        (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
+                    }) {
+                        let urlString = "stikjit://enable-jit?bundle-id=\(multitaskPIDJITBundleId(for: app))&pid=\(pid)\(encoded)"
+                        let encodedStr = Data(urlString.utf8).base64EncodedString().addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+                        Task { _ = await openJITInAnotherLC(encodedURL: encodedStr, appToLaunch: app, errorMessage: "No free LiveContainer is available. Please either: \n(1)close one, \n(2)install a new one, \n(3)choose another method to enable JIT.") }
                     } else {
-                        UIApplication.shared.open(url)
+                        errorInfo = "StikDebug is not found. Please install it first and switch it to shared app."
+                        errorShow = true
+                        return
                         }
-                    }
+                } else if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encoded)") {
+                    UIApplication.shared.open(url)
                 }
             }
         }
+    }
+
+    private func multitaskPIDJITBundleId(for appToLaunch: LCAppModel) -> String {
+        appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier
+    }
+
+    private func targetGuestBundleIdForPIDJIT() -> String {
+        if let selectedBundlePath = UserDefaults.standard.string(forKey: "selected") {
+            let appListsToConsider: [[LCAppModel]] = [sharedModel.apps, sharedModel.hiddenApps]
+            for appList in appListsToConsider {
+                if let app = appList.first(where: { $0.appInfo.relativeBundlePath == selectedBundlePath }) {
+                    return app.bundleIdentifier
+                }
+            }
+        }
+        return Bundle.main.bundleIdentifier ?? ""
+    }
+
+    private func multitaskPIDJITRelayScheme(for appToLaunch: LCAppModel) -> String? {
+        let currentScheme = LCUtils.appUrlScheme()?.lowercased()
+        let runningScheme = LCSharedUtils.getContainerUsingLCScheme(withFolderName: appToLaunch.uiDefaultDataFolder)
+        if let runningScheme,
+           runningScheme.lowercased() != currentScheme {
+            return runningScheme
+        }
+
+        var freeScheme: String?
+        LCUtils.forEachInstalledLC(isFree: true) { scheme, shouldBreak in
+            if scheme.lowercased() != currentScheme {
+                freeScheme = scheme
+                shouldBreak = true
+            }
+        }
+        return freeScheme
+    }
+    
+    private func openJITInAnotherLC(encodedURL: String, appToLaunch: LCAppModel, errorMessage: String) async -> Bool {
+        let freeScheme = multitaskPIDJITRelayScheme(for: appToLaunch)
+        guard let freeScheme else {
+            errorInfo = errorMessage
+            errorShow = true
+            return false
+        }
+
+        guard let launchURL = URL(string: "\(freeScheme)://open-url?url=\(encodedURL)") else {
+            errorInfo = "lc.appList.urlInvalidError".loc
+            errorShow = true
+            return false
+        }
+
+        LCUtils.appGroupUserDefault.set(multitaskPIDJITBundleId(for: appToLaunch), forKey: "LCLaunchExtensionBundleID")
+        LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
+        await UIApplication.shared.open(launchURL)
+        return true
     }
 
     func showRunWhenMultitaskAlert() async -> Bool? {

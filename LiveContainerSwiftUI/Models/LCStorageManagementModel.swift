@@ -83,8 +83,6 @@ final class LCStorageManagementModel: ObservableObject {
         var sizesByCategory: [StorageCategory: Int64] = [:]
         
         let knownRoots = uniquePaths([LCPath.docPath, LCPath.lcGroupDocPath])
-        let bundleRoots = uniquePaths([LCPath.bundlePath, LCPath.lcGroupBundlePath])
-        let containerRoots = uniquePaths([LCPath.dataPath, LCPath.lcGroupDataPath])
         let appGroupRoots = uniquePaths([LCPath.appGroupPath, LCPath.lcGroupAppGroupPath])
         let tweakRoots = uniquePaths([LCPath.tweakPath, LCPath.lcGroupTweakPath])
         
@@ -92,12 +90,9 @@ final class LCStorageManagementModel: ObservableObject {
         sizesByCategory[.appBundle] = 0
         sizesByCategory[.containers] = 0
                 
-        var sideStoreContainerSize: Int64 = 0
         for appItem in appItems {
             if !(appItem.appModel.appInfo is BuiltInSideStoreAppInfo) {
                 sizesByCategory[.appBundle]! += appItem.bundleSize ?? 0
-            } else {
-                sideStoreContainerSize = appItem.containersSize
             }
             
             for containerDetail in appItem.containerDetails {

@@ -24,12 +24,15 @@ struct LCTabView: View {
     @Environment(\.scenePhase) var scenePhase
     @StateObject var downloadHelper = DownloadHelper()
 
+    @StateObject var searchContextAppList = SearchContext()
+    @StateObject var searchContextSource = SearchContext()
+
     private var appListView: LCAppListView {
-        LCAppListView(appDataFolderNames: $appDataFolderNames, tweakFolderNames: $tweakFolderNames)
+        LCAppListView(appDataFolderNames: $appDataFolderNames, tweakFolderNames: $tweakFolderNames, searchContext: searchContextAppList)
     }
 
     private var sourcesView: LCSourcesView {
-        LCSourcesView()
+        LCSourcesView(searchContext: searchContextSource)
     }
 
     let pub = NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)
@@ -65,10 +68,10 @@ struct LCTabView: View {
                     Tab("Search".loc, systemImage: "magnifyingglass", value: LCTabIdentifier.search, role: .search) {
                         if previousSelectedTab == .sources {
                             sourcesView
-                                .searchable(text: sourcesView.$searchContext.query)
+                                .searchable(text: $searchContextSource.query)
                         } else {
                             appListView
-                                .searchable(text: appListView.$searchContext.query)
+                                .searchable(text: $searchContextAppList.query)
                         }
 
                     }
@@ -113,6 +116,18 @@ struct LCTabView: View {
         }
         .downloadAlert(helper: downloadHelper)
         .environmentObject(downloadHelper)
+
+        // Block tab bar interaction during multiselect
+        if sharedModel.isMultiSelectMode {
+            Color.clear
+                .frame(maxWidth: .infinity)
+                .frame(height: 83)
+                .contentShape(Rectangle())
+                .allowsHitTesting(true)
+                .onTapGesture { }
+        }
+
+        } // end ZStack
         .alert("lc.common.error".loc, isPresented: $errorShow){
             Button("lc.common.ok".loc, action: {
             })
@@ -182,7 +197,6 @@ struct LCTabView: View {
             }
         }
 
-        } // end ZStack
     }
     
     func dispatchURL(url: URL) {

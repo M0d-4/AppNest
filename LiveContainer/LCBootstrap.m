@@ -29,6 +29,7 @@ NSBundle* lcMainBundle;
 NSDictionary* guestAppInfo;
 NSDictionary* guestContainerInfo;
 NSString* lcGuestAppId;
+NSString* lcLaunchURL;
 bool isLiveProcess = false;
 bool isSharedBundle = false;
 bool isSideStore = false;
@@ -348,6 +349,9 @@ static NSDictionary *LCGuestAppInfoWithMergedAddonSettings(NSDictionary *appInfo
 
 + (NSString*)lcGuestAppId {
     return lcGuestAppId;
+}
++ (NSString*)lcLaunchURL {
+    return lcLaunchURL;
 }
 @end
 
@@ -1245,15 +1249,9 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     BOOL hookDlopen = !isSideStore && !isSharedBundle && LCSharedUtils.certificatePassword && isLiveProcess;
     DyldHooksInit([guestAppInfo[@"hideLiveContainer"] boolValue], hookDlopen, [guestAppInfo[@"spoofSDKVersion"] unsignedIntValue]);
     
-    if([guestContainerInfo[@"spoofIdentifierForVendor"] boolValue]) {
-        NSString* idForVendorStr = guestContainerInfo[@"spoofedIdentifierForVendor"];
-        if([idForVendorStr isKindOfClass:NSString.class]) {
-            NSUUID* idForVendorUUID = [[NSUUID UUID] initWithUUIDString:idForVendorStr];
-            if(idForVendorUUID) {
-                IDFVHookInit(idForVendorUUID);
-            }
-        }
-    }
+    // IDFV spoofing is handled by UIKit+GuestHooks.m via UIDevice.identifierForVendor swizzle,
+    // which supports both blocking (blockDeviceInfoReads) and spoofing with a stable public API.
+    // No need to also hook LSApplicationWorkspace.deviceIdentifierForVendor here.
 
 
     LCDeviceSpoofingEndConfiguration();
@@ -1521,18 +1519,8 @@ int LiveContainerMain(int argc, char *argv[]) {
         NSString *launchUrl = [lcUserDefaults stringForKey:@"launchAppUrlScheme"];
         [lcUserDefaults removeObjectForKey:@"selected"];
         [lcUserDefaults removeObjectForKey:@"selectedContainer"];
-        // wait for app to launch so that it can receive the url
         if(launchUrl) {
-            [lcUserDefaults removeObjectForKey:@"launchAppUrlScheme"];
-            dispatch_time_t delay = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.5 * NSEC_PER_SEC));
-            dispatch_after(delay, dispatch_get_main_queue(), ^{
-                // Base64 encode the data
-                NSData *data = [launchUrl dataUsingEncoding:NSUTF8StringEncoding];
-                NSString *encodedUrl = [data base64EncodedStringWithOptions:0];
-                
-                NSString* finalUrl = [NSString stringWithFormat:@"%@://open-url?url=%@", lcAppUrlScheme, encodedUrl];
-                LCDispatchLaunchURL(finalUrl);
-            });
+            lcLaunchURL = launchUrl;
         }
         NSSetUncaughtExceptionHandler(&exceptionHandler);
         NSString *appError = invokeAppMain(selectedApp, selectedContainer, argc, argv);

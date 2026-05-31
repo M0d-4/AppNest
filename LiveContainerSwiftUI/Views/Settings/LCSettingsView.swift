@@ -31,6 +31,19 @@ enum JITEnablerType : Int, CaseIterable, Identifiable {
     }
 }
 
+enum LCAppListInterfaceStyle : Int, CaseIterable, Identifiable {
+    var id: Int { rawValue }
+    case list = 0
+    case grid = 1
+
+    var displayName: String {
+        switch self {
+        case .list: "lc.settings.interface.list".loc
+        case .grid: "lc.settings.interface.grid".loc
+        }
+    }
+}
+
 struct LCSettingsView: View {
     @State var errorShow = false
     @State var errorInfo = ""
@@ -52,6 +65,8 @@ struct LCSettingsView: View {
     @AppStorage("LCDontSignApp", store: LCUtils.appGroupUserDefault) var dontSignApp = false
     @AppStorage("dynamicColors", store: LCUtils.appGroupUserDefault) var dynamicColors = true
     @AppStorage("darkModeIcon", store: LCUtils.appGroupUserDefault) var darkModeIcon = false
+    @AppStorage("LCAppListInterfaceStyle", store: LCUtils.appGroupUserDefault) var appListInterfaceStyle: LCAppListInterfaceStyle = .list
+    @AppStorage("LCAppGridShowLabels", store: LCUtils.appGroupUserDefault) var appGridShowLabels = false
     
     @AppStorage("LCSideJITServerAddress", store: LCUtils.appGroupUserDefault) var sideJITServerAddress : String = ""
     @AppStorage("LCDeviceUDID", store: LCUtils.appGroupUserDefault) var deviceUDID: String = ""
@@ -230,6 +245,19 @@ struct LCSettingsView: View {
                             Text("lc.settings.darkModeIcon".loc)
                         }
                     }
+                    Picker(selection: $appListInterfaceStyle) {
+                        ForEach(LCAppListInterfaceStyle.allCases) { interfaceStyle in
+                            Text(interfaceStyle.displayName).tag(interfaceStyle)
+                        }
+                    } label: {
+                        Text("lc.settings.interface.appLayout".loc)
+                    }
+                    if appListInterfaceStyle == .grid {
+                        Toggle(isOn: $appGridShowLabels) {
+                            Text("lc.settings.interface.showAppLabels".loc)
+                        }
+                    }
+                    
                 } header: {
                     Text("lc.settings.interface".loc)
                 } footer: {
@@ -264,6 +292,8 @@ struct LCSettingsView: View {
                         Text("lc.settings.dataManagement".loc)
                     }
                 }
+                
+
                 
                 Section {
                     HStack {

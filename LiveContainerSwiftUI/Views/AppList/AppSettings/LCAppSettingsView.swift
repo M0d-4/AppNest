@@ -1880,8 +1880,16 @@ struct LCAppSettingsView: View {
     
     @State private var errorShow = false
     @State private var errorInfo = ""
+    @State private var successShow = false
+    @State private var successInfo = ""
     @State private var selectUnusedContainerSheetShow = false
-    
+
+    @State private var appOriginalSizeBytes: Int64?
+    @State private var appDataSizeBytes: Int64?
+    @State private var appTotalSizeBytes: Int64?
+    @State private var isStorageLoading = false
+    @State private var isClearingCacheAndTemp = false
+
     @EnvironmentObject private var sharedModel : SharedModel
     
     init(model: LCAppModel, appDataFolders: Binding<[String]>, tweakFolders: Binding<[String]>) {
@@ -1913,6 +1921,12 @@ struct LCAppSettingsView: View {
             })
         } message: {
             Text(errorInfo)
+        }
+        .alert("lc.common.success".loc, isPresented: $successShow) {
+            Button("lc.common.ok".loc, action: {
+            })
+        } message: {
+            Text(successInfo)
         }
         .textFieldAlert(
             isPresented: $renameFolderInput.show,
@@ -1996,6 +2010,100 @@ struct LCAppSettingsView: View {
         .fileImporter(isPresented: $choosingStorage, allowedContentTypes: [.folder]) { result in
             Task { await importDataStorage(result: result) }
         }
+        .task(id: model.uiContainers.count) {
+            await refreshAppStorageMetrics()
+        }
+    }
+
+    @ViewBuilder
+    func storageRow(title: String, bytes: Int64?, emphasize: Bool = false) -> some View {
+        HStack {
+            Text(title)
+            Spacer()
+            Text(formatStorageSize(bytes))
+                .font(emphasize ? .body.weight(.semibold) : .body)
+                .foregroundStyle(.secondary)
+        }
+    }
+
+    func formatStorageSize(_ bytes: Int64?) -> String {
+        guard let bytes else {
+            return "lc.common.unknown".loc
+        }
+        return ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file)
+    }
+
+    func refreshAppStorageMetrics() async {
+        guard !isStorageLoading else {
+            return
+        }
+        guard let bundlePath = appInfo.bundlePath() else {
+            appOriginalSizeBytes = nil
+            appDataSizeBytes = nil
+            appTotalSizeBytes = nil
+            return
+        }
+
+        isStorageLoading = true
+        defer { isStorageLoading = false }
+
+        let containerTargets = model.uiContainers.map { container in
+            LCAppContainerTarget(url: container.containerURL, needsSecurityScope: container.storageBookMark != nil)
+        }
+
+        do {
+            let metrics = try await Task.detached(priority: .utility) {
+                try lcCalculateAppStorageMetrics(bundlePath: bundlePath, containerTargets: containerTargets)
+            }.value
+            appOriginalSizeBytes = metrics.appOriginalSize
+            appDataSizeBytes = metrics.appDataSize
+            appTotalSizeBytes = metrics.totalSize
+        } catch {
+            errorInfo = error.localizedDescription
+            errorShow = true
+        }
+    }
+
+    func clearAppCacheAndTemp() async {
+        guard !isClearingCacheAndTemp else {
+            return
+        }
+        guard let bundlePath = appInfo.bundlePath() else {
+            errorInfo = "Cannot locate app bundle path."
+            errorShow = true
+            return
+        }
+
+        isClearingCacheAndTemp = true
+        defer { isClearingCacheAndTemp = false }
+
+        let containerTargets = model.uiContainers.map { container in
+            LCAppContainerTarget(url: container.containerURL, needsSecurityScope: container.storageBookMark != nil)
+        }
+
+        do {
+            let cleanupResult = try await Task.detached(priority: .utility) {
+                try lcClearAppCacheAndTemp(bundlePath: bundlePath, containerTargets: containerTargets)
+            }.value
+            appInfo.clearIconCache()
+            if cleanupResult.removedItemCount > 0 {
+                successInfo = "Cleared \(cleanupResult.removedItemCount) cache/temp item(s), freed \(formatStorageSize(cleanupResult.removedBytes))."
+            } else {
+                successInfo = "No cache/temp files were found."
+            }
+            successShow = true
+            await refreshAppStorageMetrics()
+        } catch {
+            errorInfo = error.localizedDescription
+            errorShow = true
+        }
+    }
+
+    func resetAutoCleanStats() {
+        appInfo.resetAutoCleanStats()
+        model.objectWillChange.send()
+        successInfo = "Auto-clean stats reset."
+        successShow = true
     }
 
 
@@ -2405,6 +2513,60 @@ struct LCAppSettingsView: View {
                 Text("lc.appSettings.forceSignDesc".loc)
             }
             
+            Section {
+                if isStorageLoading {
+                    HStack {
+                        ProgressView()
+                            .progressViewStyle(.circular)
+                        Text("lc.storage.calculating".loc)
+                            .foregroundStyle(.secondary)
+                    }
+                } else {
+                    storageRow(title: "App Original Size", bytes: appOriginalSizeBytes)
+                    storageRow(title: "App Data", bytes: appDataSizeBytes)
+                    storageRow(title: "Total", bytes: appTotalSizeBytes, emphasize: true)
+                }
+
+                Button {
+                    Task { await clearAppCacheAndTemp() }
+                } label: {
+                    if isClearingCacheAndTemp {
+                        HStack {
+                            ProgressView()
+                                .progressViewStyle(.circular)
+                            Text("Clearing...")
+                        }
+                    } else {
+                        Text("Clear Cache & Temp")
+                    }
+                }
+                .disabled(isClearingCacheAndTemp || isStorageLoading)
+
+                Toggle("Auto Clean Cache & Temp on Launch", isOn: $model.uiAutoCleanCacheOnLaunch)
+
+                if model.uiAutoCleanCacheOnLaunch {
+                    storageRow(title: "Saved This Week", bytes: appInfo.autoCleanBytesSaved(inLastDays: 7))
+                    storageRow(title: "Saved This Month", bytes: appInfo.autoCleanBytesSaved(inLastDays: 30))
+                    storageRow(title: "Saved Total", bytes: appInfo.autoCleanTotalBytesSaved)
+                    storageRow(title: "Last Clean Saved", bytes: appInfo.lastAutoCleanBytesSaved())
+                    HStack {
+                        Text("Last Cleaned")
+                        Spacer()
+                        Text(formatDate(date: appInfo.lastAutoCleanDate))
+                            .foregroundStyle(.secondary)
+                    }
+
+                    Button(role: .destructive) {
+                        resetAutoCleanStats()
+                    } label: {
+                        Text("Reset Auto-Clean Stats")
+                    }
+                }
+            } header: {
+                Text("App Storage")
+            } footer: {
+                Text("Clears app cache files and temporary folders. Auto-clean runs at launch for apps that enable it.")
+            }
             Section {
                 ForEach(model.uiCustomUrlSchemes, id: \.self) { scheme in
                     HStack {
@@ -4011,38 +4173,64 @@ struct LCAppSettingsView: View {
     }
 
     func moveToAppGroup() async {
+        for container in appInfo.containers {
+            if let runningLC = LCSharedUtils.getContainerUsingLCScheme(withFolderName: container.folderName) {
+                errorInfo = "lc.appSettings.appOpenInOtherLc %@ %@".localizeWithFormat(runningLC, runningLC)
+                errorShow = true
+                return
+            }
+        }
+        
         guard let result = await moveToAppGroupAlert.open(), result else {
             return
         }
         
         do {
             try LCPath.ensureAppGroupPaths()
-            let fm = FileManager()
-            try fm.moveItem(atPath: appInfo.bundlePath(), toPath: LCPath.lcGroupBundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
+
+            var moves: [(URL, URL)] = [];
+            moves.append((
+                URL(fileURLWithPath: appInfo.bundlePath()),
+                LCPath.lcGroupBundlePath.appendingPathComponent(appInfo.relativeBundlePath)
+            ))
             for container in model.uiContainers {
                 if container.storageBookMark != nil {
                     continue
                 }
                 
-                try fm.moveItem(at: LCPath.dataPath.appendingPathComponent(container.folderName),
-                                to: LCPath.lcGroupDataPath.appendingPathComponent(container.folderName))
+                moves.append((
+                    LCPath.dataPath.appendingPathComponent(container.folderName),
+                    LCPath.lcGroupDataPath.appendingPathComponent(container.folderName)
+                ))
+            }
+            if let tweakFolder = appInfo.tweakFolder, tweakFolder.count > 0 {
+                moves.append((
+                    LCPath.tweakPath.appendingPathComponent(tweakFolder),
+                    LCPath.lcGroupTweakPath.appendingPathComponent(tweakFolder)
+                ))
+            }
+            
+            try LCUtils.moveFilesAtomicallyAfterPreflight(moves)
+            
+            for container in model.uiContainers {
+                if container.storageBookMark != nil {
+                    continue
+                }
                 appDataFolders.removeAll(where: { s in
                     return s == container.folderName
                 })
+                container.isShared = true
             }
+            
             if let tweakFolder = appInfo.tweakFolder, tweakFolder.count > 0 {
-                try fm.moveItem(at: LCPath.tweakPath.appendingPathComponent(tweakFolder),
-                                to: LCPath.lcGroupTweakPath.appendingPathComponent(tweakFolder))
                 tweakFolders.removeAll(where: { s in
                     return s == tweakFolder
                 })
             }
+            
             appInfo.setBundlePath(LCPath.lcGroupBundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
             appInfo.isShared = true
             model.uiIsShared = true
-            for container in model.uiContainers {
-                container.isShared = true
-            }
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
@@ -4064,22 +4252,40 @@ struct LCAppSettingsView: View {
         }
         
         do {
-            let fm = FileManager()
-            try fm.moveItem(atPath: appInfo.bundlePath(), toPath: LCPath.bundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
+            var moves: [(URL, URL)] = [];
+            moves.append((
+                URL(fileURLWithPath: appInfo.bundlePath()),
+                LCPath.bundlePath.appendingPathComponent(appInfo.relativeBundlePath)
+            ))
             for container in model.uiContainers {
                 if container.storageBookMark != nil {
                     continue
                 }
-                try fm.moveItem(at: LCPath.lcGroupDataPath.appendingPathComponent(container.folderName),
-                                to: LCPath.dataPath.appendingPathComponent(container.folderName))
+                moves.append((
+                    LCPath.lcGroupDataPath.appendingPathComponent(container.folderName),
+                    LCPath.dataPath.appendingPathComponent(container.folderName)
+                ))
+            }
+            if let tweakFolder = appInfo.tweakFolder, tweakFolder.count > 0 {
+                moves.append((
+                    LCPath.lcGroupTweakPath.appendingPathComponent(tweakFolder),
+                    LCPath.tweakPath.appendingPathComponent(tweakFolder)
+                ))
+            }
+            
+            try LCUtils.moveFilesAtomicallyAfterPreflight(moves)
+            
+            for container in model.uiContainers {
+                if container.storageBookMark != nil {
+                    continue
+                }
                 appDataFolders.append(container.folderName)
             }
             if let tweakFolder = appInfo.tweakFolder, tweakFolder.count > 0 {
-                try fm.moveItem(at: LCPath.lcGroupTweakPath.appendingPathComponent(tweakFolder),
-                                to: LCPath.tweakPath.appendingPathComponent(tweakFolder))
                 tweakFolders.append(tweakFolder)
                 model.uiTweakFolder = tweakFolder
             }
+            
             appInfo.setBundlePath(LCPath.bundlePath.appendingPathComponent(appInfo.relativeBundlePath).path)
             appInfo.isShared = false
             model.uiIsShared = false
@@ -4087,8 +4293,8 @@ struct LCAppSettingsView: View {
                 container.isShared = false
             }
         } catch {
-            errorShow = true
             errorInfo = error.localizedDescription
+            errorShow = true
         }
         
     }
@@ -4137,8 +4343,232 @@ struct LCAppSettingsView: View {
 }
 
 
+struct LCAppContainerTarget: Sendable {
+    let url: URL
+    let needsSecurityScope: Bool
+}
+
+struct LCAppStorageMetrics: Sendable {
+    let appOriginalSize: Int64
+    let appDataSize: Int64
+    let totalSize: Int64
+}
+
+struct LCCacheCleanupResult: Sendable {
+    let removedItemCount: Int
+    let removedBytes: Int64
+
+    static let empty = LCCacheCleanupResult(removedItemCount: 0, removedBytes: 0)
+
+    static func +(lhs: LCCacheCleanupResult, rhs: LCCacheCleanupResult) -> LCCacheCleanupResult {
+        LCCacheCleanupResult(
+            removedItemCount: lhs.removedItemCount + rhs.removedItemCount,
+            removedBytes: lhs.removedBytes + rhs.removedBytes
+        )
+    }
+}
+
+func lcCalculateAppStorageMetrics(bundlePath: String, containerTargets: [LCAppContainerTarget]) throws -> LCAppStorageMetrics {
+    let bundleURL = URL(fileURLWithPath: bundlePath, isDirectory: true)
+    let appBundleSize = (try? lcCalculateItemSize(at: bundleURL)) ?? 0
+    let generatedCacheSize = lcCalculateGeneratedBundleCacheSize(bundleURL: bundleURL)
+    let appOriginalSize = max(0, appBundleSize - generatedCacheSize)
+
+    var appDataSize: Int64 = 0
+    for target in containerTargets {
+        let didAccess: Bool
+        if target.needsSecurityScope {
+            didAccess = target.url.startAccessingSecurityScopedResource()
+            if !didAccess {
+                continue
+            }
+        } else {
+            didAccess = false
+        }
+
+        appDataSize += (try? lcCalculateItemSize(at: target.url)) ?? 0
+
+        if didAccess {
+            target.url.stopAccessingSecurityScopedResource()
+        }
+    }
+
+    return LCAppStorageMetrics(
+        appOriginalSize: appOriginalSize,
+        appDataSize: appDataSize,
+        totalSize: appOriginalSize + appDataSize
+    )
+}
+
+func lcCalculateGeneratedBundleCacheSize(bundleURL: URL) -> Int64 {
+    let generatedCacheFileNames = [
+        "LCAppIconLight.png",
+        "LCAppIconDark.png",
+        "zsign_cache.json",
+        "LiveContainer.tmp"
+    ]
+    return generatedCacheFileNames.reduce(into: Int64(0)) { partialResult, fileName in
+        let fileURL = bundleURL.appendingPathComponent(fileName)
+        partialResult += (try? lcCalculateItemSize(at: fileURL)) ?? 0
+    }
+}
+
+func lcCalculateItemSize(at url: URL) throws -> Int64 {
+    let fm = FileManager.default
+    var isDirectory: ObjCBool = false
+    guard fm.fileExists(atPath: url.path, isDirectory: &isDirectory) else {
+        return 0
+    }
+
+    let resourceKeys: Set<URLResourceKey> = [
+        .isRegularFileKey,
+        .totalFileAllocatedSizeKey,
+        .fileAllocatedSizeKey,
+        .fileSizeKey
+    ]
+
+    if !isDirectory.boolValue {
+        do {
+            let values = try url.resourceValues(forKeys: resourceKeys)
+            guard values.isRegularFile == true else {
+                return 0
+            }
+            let fileSize = values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? values.fileSize ?? 0
+            return Int64(fileSize)
+        } catch {
+            if lcIsNoSuchFileError(error) {
+                return 0
+            }
+            throw error
+        }
+    }
+
+    guard let enumerator = fm.enumerator(
+        at: url,
+        includingPropertiesForKeys: Array(resourceKeys),
+        options: [],
+        errorHandler: nil
+    ) else {
+        return 0
+    }
+
+    var totalSize: Int64 = 0
+    for case let fileURL as URL in enumerator {
+        do {
+            let values = try fileURL.resourceValues(forKeys: resourceKeys)
+            guard values.isRegularFile == true else {
+                continue
+            }
+            let fileSize = values.totalFileAllocatedSize ?? values.fileAllocatedSize ?? values.fileSize ?? 0
+            totalSize += Int64(fileSize)
+        } catch {
+            if lcIsNoSuchFileError(error) {
+                continue
+            }
+            throw error
+        }
+    }
+    return totalSize
+}
+
+func lcClearAppCacheAndTemp(bundlePath: String, containerTargets: [LCAppContainerTarget]) throws -> LCCacheCleanupResult {
+    let bundleURL = URL(fileURLWithPath: bundlePath, isDirectory: true)
+    var cleanupResult = LCCacheCleanupResult.empty
+
+    cleanupResult = cleanupResult + (try lcRemoveItemIfExists(at: bundleURL.appendingPathComponent("LCAppIconLight.png")))
+    cleanupResult = cleanupResult + (try lcRemoveItemIfExists(at: bundleURL.appendingPathComponent("LCAppIconDark.png")))
+    cleanupResult = cleanupResult + (try lcRemoveItemIfExists(at: bundleURL.appendingPathComponent("zsign_cache.json")))
+    cleanupResult = cleanupResult + (try lcRemoveItemIfExists(at: bundleURL.appendingPathComponent("LiveContainer.tmp")))
+
+    for target in containerTargets {
+        let didAccess: Bool
+        if target.needsSecurityScope {
+            didAccess = target.url.startAccessingSecurityScopedResource()
+            if !didAccess {
+                continue
+            }
+        } else {
+            didAccess = false
+        }
+
+        cleanupResult = cleanupResult + (try lcClearDirectoryContentsIfExists(at: target.url.appendingPathComponent("Library/Caches", isDirectory: true)))
+        cleanupResult = cleanupResult + (try lcClearDirectoryContentsIfExists(at: target.url.appendingPathComponent("tmp", isDirectory: true)))
+
+        if didAccess {
+            target.url.stopAccessingSecurityScopedResource()
+        }
+    }
+
+    return cleanupResult
+}
+
+func lcClearDirectoryContentsIfExists(at directoryURL: URL) throws -> LCCacheCleanupResult {
+    let fm = FileManager.default
+    guard fm.fileExists(atPath: directoryURL.path) else {
+        return .empty
+    }
+
+    // Some apps expose `tmp`/cache in ways that fail directory enumeration.
+    // Reset the whole path (remove + recreate) instead of opening/listing children.
+    let removedSize = (try? lcCalculateItemSize(at: directoryURL)) ?? 0
+    let removedCount = removedSize > 0 ? 1 : 0
+
+    do {
+        try fm.removeItem(at: directoryURL)
+    } catch {
+        if lcIsNoSuchFileError(error) {
+            return .empty
+        }
+        throw error
+    }
+
+    do {
+        try fm.createDirectory(at: directoryURL, withIntermediateDirectories: true)
+    } catch {
+        // If parent vanished concurrently, treat as already cleared.
+        if lcIsNoSuchFileError(error) {
+            return .empty
+        }
+        throw error
+    }
+
+    return LCCacheCleanupResult(removedItemCount: removedCount, removedBytes: removedSize)
+}
+
+func lcRemoveItemIfExists(at url: URL) throws -> LCCacheCleanupResult {
+    let fm = FileManager.default
+    guard fm.fileExists(atPath: url.path) else {
+        return .empty
+    }
+    let removedSize = (try? lcCalculateItemSize(at: url)) ?? 0
+    do {
+        try fm.removeItem(at: url)
+    } catch {
+        if lcIsNoSuchFileError(error) {
+            return .empty
+        }
+        throw error
+    }
+    return LCCacheCleanupResult(removedItemCount: 1, removedBytes: removedSize)
+}
+
+private func lcIsNoSuchFileError(_ error: Error) -> Bool {
+    let nsError = error as NSError
+    if nsError.domain == NSCocoaErrorDomain {
+        return nsError.code == NSFileNoSuchFileError || nsError.code == NSFileReadNoSuchFileError
+    }
+    if nsError.domain == NSPOSIXErrorDomain {
+        return nsError.code == Int(POSIXErrorCode.ENOENT.rawValue)
+    }
+    return false
+}
+
 
 extension LCAppSettingsView : LCContainerViewDelegate {
+    func isTweakLoaderInjectionDisabled() -> Bool {
+        model.uiDontInjectTweakLoader
+    }
+
     func getBundleId() -> String {
         return model.appInfo.bundleIdentifier()!
     }

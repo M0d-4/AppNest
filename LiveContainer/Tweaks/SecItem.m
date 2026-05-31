@@ -356,30 +356,9 @@ OSStatus new_SecKeyGeneratePair(CFDictionaryRef parameters, SecKeyRef *publicKey
 void SecItemGuestHooksInit(void)  {
 
     NSDictionary* infoDict = [NSUserDefaults guestContainerInfo];
-    NSString *plistContainerId = [infoDict[@"folderName"] isKindOfClass:NSString.class] ? infoDict[@"folderName"] : nil;
-    if (plistContainerId.length > 0) {
-        containerId = plistContainerId;
-    } else {
-        const char *homePath = getenv("HOME");
-        containerId = homePath ? [NSString stringWithUTF8String:homePath].lastPathComponent : nil;
-    }
-
-    NSInteger keychainGroupId = [infoDict[@"keychainGroupId"] integerValue];
-    if (keychainGroupId < 0) {
-        keychainGroupId = 0;
-    }
-
-    NSString* groupId = [LCSharedUtils teamIdentifier];
-    if (groupId.length == 0) {
-        NSLog(@"[LC] failed to detect team identifier for keychain isolation");
-        return;
-    }
-
-    if(keychainGroupId == 0) {
-        accessGroup = [NSString stringWithFormat:@"%@.com.kdt.livecontainer.shared", groupId];
-    } else {
-        accessGroup = [NSString stringWithFormat:@"%@.com.kdt.livecontainer.shared.%ld", groupId, (long)keychainGroupId];
-    }
+    containerId = [NSString stringWithUTF8String:getenv("HOME")].lastPathComponent;
+    NSString* teamId = [LCSharedUtils teamIdentifier];
+    accessGroup = [NSString stringWithFormat:@"%@.com.kdt.livecontainer.container.%@", teamId, containerId];
     
     // check if the keychain access group is available
     NSDictionary *query = @{

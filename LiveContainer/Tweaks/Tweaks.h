@@ -17,6 +17,9 @@ void IDFVHookInit(NSUUID* uuid);
 // Device spoofing
 void DeviceSpoofingGuestHooksInit(void);
 
+// Bundle registry function
+void registerTweakBundle(NSString *bundleName, NSString *bundlePath);
+
 @interface NSBundle(LiveContainer)
 - (instancetype)initWithPathForMainBundle:(NSString *)path;
 @end

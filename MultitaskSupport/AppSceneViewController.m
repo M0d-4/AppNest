@@ -37,6 +37,7 @@
 @property(nonatomic) NSString *sceneID;
 @property(nonatomic) NSExtension* extension;
 @property(nonatomic) bool isAppTerminationCleanUpCalled;
+@property(nonatomic) BOOL presenterReady;
 @end
 
 static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
@@ -59,10 +60,114 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     return windowScene ? windowScene.interfaceOrientation : UIInterfaceOrientationPortrait;
 }
 
+static NSString *const kLCStrictContainerInfoFileName = @"LCContainerInfo.plist";
+
+static NSString *LCContainerPathForDataUUID(NSString *dataUUID) {
+    if(dataUUID.length == 0) {
+        return nil;
+    }
+
+    NSFileManager *fm = NSFileManager.defaultManager;
+    NSURL *docURL = [fm URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].lastObject;
+    NSMutableArray<NSURL *> *candidateURLs = [NSMutableArray array];
+    if(docURL) {
+        [candidateURLs addObject:[docURL URLByAppendingPathComponent:[NSString stringWithFormat:@"Data/Application/%@", dataUUID]]];
+    }
+    NSURL *appGroupPath = [LCSharedUtils appGroupPath];
+    if(appGroupPath) {
+        [candidateURLs addObject:[appGroupPath URLByAppendingPathComponent:[NSString stringWithFormat:@"LiveContainer/Data/Application/%@", dataUUID]]];
+    }
+
+    for(NSURL *candidateURL in candidateURLs) {
+        NSString *containerInfoPath = [[candidateURL path] stringByAppendingPathComponent:kLCStrictContainerInfoFileName];
+        if([fm fileExistsAtPath:containerInfoPath]) {
+            return candidateURL.path;
+        }
+    }
+    return nil;
+}
+
+static BOOL LCStrictShouldAutoWipeContainerAtPath(NSString *containerPath) {
+    if(containerPath.length == 0) {
+        return NO;
+    }
+    NSString *containerInfoPath = [containerPath stringByAppendingPathComponent:kLCStrictContainerInfoFileName];
+    NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:containerInfoPath];
+    if(![info isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    return [info[@"strictTestMode"] boolValue] && [info[@"strictAutoWipeOnExit"] boolValue];
+}
+
+static void LCStrictEnsureContainerDirectoriesAtPath(NSString *containerPath) {
+    NSFileManager *fm = NSFileManager.defaultManager;
+    NSArray<NSString *> *directories = @[@"Library/Caches", @"Library/Cookies", @"Documents", @"SystemData", @"tmp"];
+    for(NSString *directory in directories) {
+        NSString *path = [containerPath stringByAppendingPathComponent:directory];
+        [fm createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+}
+
+static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
+    NSString *containerPath = LCContainerPathForDataUUID(dataUUID);
+    if(containerPath.length == 0 || !LCStrictShouldAutoWipeContainerAtPath(containerPath)) {
+        return;
+    }
+
+    NSFileManager *fm = NSFileManager.defaultManager;
+    NSError *listError = nil;
+    NSArray<NSString *> *entries = [fm contentsOfDirectoryAtPath:containerPath error:&listError];
+    if(!entries) {
+        NSLog(@"[LC][StrictMode] Failed to enumerate container %@ for auto-wipe: %@", dataUUID, listError.localizedDescription);
+        return;
+    }
+
+    for(NSString *entry in entries) {
+        if([entry isEqualToString:kLCStrictContainerInfoFileName]) {
+            continue;
+        }
+        NSError *removeError = nil;
+        NSString *entryPath = [containerPath stringByAppendingPathComponent:entry];
+        if(![fm removeItemAtPath:entryPath error:&removeError] && removeError) {
+            NSLog(@"[LC][StrictMode] Failed to remove %@ in container %@: %@", entry, dataUUID, removeError.localizedDescription);
+        }
+    }
+    LCStrictEnsureContainerDirectoriesAtPath(containerPath);
+}
+
+// File-based launch log - written to main app's Documents/Logs for 3uTools access
+static FILE *g_hostLogFile = NULL;
+
+static void hostLog(NSString *msg) {
+    NSLog(@"%@", msg);
+    if (g_hostLogFile) {
+        NSDateFormatter *df = [NSDateFormatter new];
+        df.dateFormat = @"HH:mm:ss.SSS";
+        NSString *ts = [df stringFromDate:[NSDate date]];
+        fprintf(g_hostLogFile, "[%s] %s\n", ts.UTF8String, msg.UTF8String);
+        fflush(g_hostLogFile);
+    }
+}
+
+#undef LCLOG_HOST
+#define LCLOG_HOST(fmt, ...) hostLog([NSString stringWithFormat:fmt, ##__VA_ARGS__])
+
+static void hostLogInit(void) {
+    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *logsDir = [docs stringByAppendingPathComponent:@"Logs"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
+    NSString *logPath = [logsDir stringByAppendingPathComponent:@"multitask_launch.log"];
+    g_hostLogFile = fopen(logPath.fileSystemRepresentation, "w");
+    LCLOG_HOST(@"[LC-Host] Writing launch log to: %@", logPath);
+}
+
+
+
 @implementation AppSceneViewController
 
 
 - (instancetype)initWithBundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID hostScene:(UIWindowScene *)hostScene delegate:(id<AppSceneViewControllerDelegate>)delegate {
+    hostLogInit();
     self = [super initWithNibName:nil bundle:nil];
     self.view = [[UIView alloc] init];
     self.contentView = [[UIView alloc] init];
@@ -72,6 +177,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     self.bundleId = bundleId;
     self.scaleRatio = 1.0;
     self.isAppTerminationCleanUpCalled = false;
+    self.presenterReady = false;
     self.settings = [UIMutableApplicationSceneSettings new];
     // init extension
     NSError* error = nil;
@@ -94,6 +200,12 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
         @"bookmarks": bookmarks,
         @"lcHomePath": NSHomeDirectory(),
     }.mutableCopy;
+    
+    NSString* launchAppUrlScheme = [NSUserDefaults.standardUserDefaults stringForKey:@"launchAppUrlScheme"];
+    [NSUserDefaults.lcUserDefaults removeObjectForKey:@"launchAppUrlScheme"];
+    if(launchAppUrlScheme) {
+        [userInfo setValue:launchAppUrlScheme forKey:@"launchAppUrlScheme"];
+    }
     
     NSURL *docURL = [NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].lastObject;
     if ([NSUserDefaults.standardUserDefaults boolForKey:@"LCSharePrivateDataWithLiveProcess"]) {
@@ -118,22 +230,29 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     
     __weak typeof(self) weakSelf = self;
     [_extension setRequestCancellationBlock:^(NSUUID *uuid, NSError *error) {
+        LCLOG_HOST(@"[LC-Host] setRequestCancellationBlock fired: %@", error.localizedDescription);
         [weakSelf appTerminationCleanUp];
         [weakSelf.delegate appSceneVC:weakSelf didInitializeWithError:error];
     }];
     [_extension setRequestInterruptionBlock:^(NSUUID *uuid) {
+        LCLOG_HOST(@"[LC-Host] setRequestInterruptionBlock fired");
         [weakSelf appTerminationCleanUp];
     }];
+    LCLOG_HOST(@"[LC-Host] beginExtensionRequestWithInputItems called for bundleId=%@ dataUUID=%@", bundleId, dataUUID);
     [_extension beginExtensionRequestWithInputItems:@[item] completion:^(NSUUID *identifier) {
+        LCLOG_HOST(@"[LC-Host] beginExtensionRequest completion: identifier=%@", identifier);
         if(identifier) {
             [MultitaskManager registerMultitaskContainerWithContainer:self.dataUUID];
             self.identifier = identifier;
             self.pid = [self.extension pidForRequestIdentifier:self.identifier];
+            LCLOG_HOST(@"[LC-Host] Extension started with pid=%d", self.pid);
             [delegate appSceneVC:self didInitializeWithError:nil];
             dispatch_async(dispatch_get_main_queue(), ^{
+                LCLOG_HOST(@"[LC-Host] Starting setUpAppPresenter");
                 [self setUpAppPresenter];
             });
         } else {
+            LCLOG_HOST(@"[LC-Host] beginExtensionRequest failed - identifier is nil");
             NSError* error = [NSError errorWithDomain:@"LiveProcess" code:2 userInfo:@{NSLocalizedDescriptionKey: @"Failed to start app. Child process has unexpectedly crashed"}];
             [delegate appSceneVC:self didInitializeWithError:error];
         }
@@ -147,11 +266,13 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 }
 //⭐️⭐️⭐️Real iPhone mode + multitask mode
 - (void)setUpAppPresenter {
+    LCLOG_HOST(@"[LC-Host] setUpAppPresenter: pid=%d", self.pid);
     RBSProcessPredicate* predicate = [PrivClass(RBSProcessPredicate) predicateMatchingIdentifier:@(self.pid)];
     
     FBProcessManager *manager = [PrivClass(FBProcessManager) sharedInstance];
     // At this point, the process is spawned and we're ready to create a scene to render in our app
     RBSProcessHandle* processHandle = [PrivClass(RBSProcessHandle) handleForPredicate:predicate error:nil];
+    LCLOG_HOST(@"[LC-Host] processHandle=%@ (nil=%d)", processHandle, processHandle == nil);
     [manager registerProcessForAuditToken:processHandle.auditToken];
     // NSString *identifier = [NSString stringWithFormat:@"sceneID:%@-%@", bundleID, @"default"];
     self.sceneID = [NSString stringWithFormat:@"sceneID:%@-%@", @"LiveProcess", self.dataUUID];
@@ -207,8 +328,10 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     parameters.clientSettings = clientSettings;
     
     FBScene *scene = [[PrivClass(FBSceneManager) sharedInstance] createSceneWithDefinition:definition initialParameters:parameters];
+    LCLOG_HOST(@"[LC-Host] createSceneWithDefinition: scene=%@ identifier=%@", scene, self.sceneID);
     
     self.presenter = [scene.uiPresentationManager createPresenterWithIdentifier:self.sceneID];
+    LCLOG_HOST(@"[LC-Host] createPresenter: presenter=%@", self.presenter);
     [self.presenter modifyPresentationContext:^(UIMutableScenePresentationContext *context) {
         context.appearanceStyle = 2;
     }];
@@ -255,6 +378,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 
 
     [self.view.window.windowScene _registerSettingsDiffActionArray:@[self] forKey:self.sceneID];
+    LCLOG_HOST(@"[LC-Host] _registerSettingsDiffActionArray done for key=%@", self.sceneID);
 
     // Disable background notifications so WebKit doesn't pause media in multitasking
     [self setBackgroundNotificationEnabled:false];
@@ -262,6 +386,33 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     // Acquire foreground assertions for WebKit child processes (WebContent, GPU)
     // to prevent iOS 17+ from throttling their display link / rendering pipeline
     [self acquireForegroundAssertionForChildProcesses];
+    self.presenterReady = true;
+    LCLOG_HOST(@"[LC-Host] setUpAppPresenter COMPLETE - presenterReady=true");
+
+    // After 3s, read and relay the extension-side log into the host log
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 3 * NSEC_PER_SEC), dispatch_get_main_queue(), ^{
+        NSFileManager *fm = [NSFileManager defaultManager];
+        NSString *teamID = @"";
+        NSArray *parts = [[NSBundle mainBundle].bundleIdentifier componentsSeparatedByString:@"."];
+        if (parts.count >= 3) teamID = parts[2];
+        NSArray *groupsToTry = @[
+            [@"group.com.SideStore.SideStore." stringByAppendingString:teamID],
+            [@"group.com.rileytestut.AltStore." stringByAppendingString:teamID],
+        ];
+        for (NSString *gid in groupsToTry) {
+            NSURL *url = [fm containerURLForSecurityApplicationGroupIdentifier:gid];
+            if (!url) continue;
+            NSString *extLog = [[url.path stringByAppendingPathComponent:@"Logs"] stringByAppendingPathComponent:@"liveprocess_ext.log"];
+            NSString *extContent = [NSString stringWithContentsOfFile:extLog encoding:NSUTF8StringEncoding error:nil];
+            if (extContent) {
+                LCLOG_HOST(@"[LC-Host] --- Extension log from %@ ---", gid);
+                LCLOG_HOST(@"%@", extContent);
+                LCLOG_HOST(@"[LC-Host] --- End extension log ---");
+                return;
+            }
+        }
+        LCLOG_HOST(@"[LC-Host] Extension log not found in any app group");
+    });
 }
 
 - (void)setEnableVisibility:(BOOL)visible {
@@ -292,7 +443,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
 }
 //⭐️⭐️⭐️Real iPhone mode + multitask mode
 - (void)_performActionsForUIScene:(UIScene *)scene withUpdatedFBSScene:(id)fbsScene settingsDiff:(FBSSceneSettingsDiff *)diff fromSettings:(UIApplicationSceneSettings *)settings transitionContext:(id)context lifecycleActionType:(uint32_t)actionType {
-    if(!self.isAppRunning) {
+    if(self.presenterReady && !self.isAppRunning) {
         [self appTerminationCleanUp];
     }
     if(!diff) return;
@@ -407,6 +558,8 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
             [self.presenter invalidate];
             self.presenter = nil;
         }
+        
+        LCStrictAutoWipeContainerForDataUUIDIfNeeded(self.dataUUID);
         
         [self.delegate appSceneVCAppDidExit:self];
         [MultitaskManager unregisterMultitaskContainerWithContainer:self.dataUUID];

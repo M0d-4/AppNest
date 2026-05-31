@@ -212,13 +212,19 @@
 }
 
 + (NSProgress *)signAppBundleWithURL:(NSURL *)path completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
-    NSError *error;
+    return [self signAppBundleWithURL:path entitlements:nil completionHandler:completionHandler];
+}
 
++ (NSProgress *)signAppBundleWithURL:(NSURL *)path entitlements:(NSDictionary *)entitlements completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
     NSLog(@"[LC] starting signing...");
-    
-    NSProgress* ans = [SecuritySigner signWithAppURL:path key:[LCUtils certificateData] pass:[LCSharedUtils certificatePassword] completionHandler:completionHandler];
-    
+
+    NSProgress* ans = [SecuritySigner signWithAppURL:path key:[LCUtils certificateData] pass:[LCSharedUtils certificatePassword] entitlements:entitlements completionHandler:completionHandler];
+
     return ans;
+}
+
++ (NSProgress *)signFilesWithURLs:(NSArray<NSURL *> *)urls completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
+    return [SecuritySigner signMachOURLArray:urls key:self.certificateData pass:LCSharedUtils.certificatePassword completionHandler:completionHandler];
 }
 
 #pragma mark Setup
@@ -307,7 +313,7 @@
         } else {
             completionHandler(NO, [NSError errorWithDomain:NSBundle.mainBundle.bundleIdentifier code:2 userInfo:@{NSLocalizedDescriptionKey: @"lc.signer.latestCertificateInvalidErr"}]);
         }
-        
+        [NSFileManager.defaultManager removeItemAtPath:tmpLibPath error:nil];
     });
     
 

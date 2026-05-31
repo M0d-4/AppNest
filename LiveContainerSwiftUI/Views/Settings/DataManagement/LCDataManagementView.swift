@@ -417,6 +417,14 @@ struct LCDataManagementView : View {
                     }
                 }
             }
+            if let lcCaches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first,
+                fm.fileExists(atPath: lcCaches.path) {
+                let cacheItems = try fm.contentsOfDirectory(at: lcCaches, includingPropertiesForKeys: nil)
+                for item in cacheItems {
+                    try fm.removeItem(at: item)
+                }
+                cleanedCount += 1
+            }
 
             if cleanedCount == 0 {
                 successInfo = "lc.settings.noCacheToClean".loc

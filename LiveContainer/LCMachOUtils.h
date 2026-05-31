@@ -8,6 +8,7 @@ typedef void (^LCParseMachOCallback)(const char *path, struct mach_header_64 *he
 void LCPatchAppBundleFixupARM64eSlice(NSURL *bundleURL);
 NSString *LCParseMachO(const char *path, bool readOnly, NS_NOESCAPE LCParseMachOCallback callback);
 void LCPatchAddRPath(const char *path, struct mach_header_64 *header);
+void LCPatchTweakDylibReferences(struct mach_header_64 *header);
 int LCPatchExecSlice(const char *path, struct mach_header_64 *header, bool doInject);
 void LCChangeMachOUUID(struct mach_header_64 *header);
 const uint8_t* LCGetMachOUUID(struct mach_header_64 *header);
