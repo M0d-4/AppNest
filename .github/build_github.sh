@@ -71,8 +71,5 @@ find payloadlc/Payload -type d -name "_CodeSignature" -exec rm -r {} +
 
 ldid -S.github/sidelc/LiveWidgetExtension_adhoc.xml ./Payload/LiveContainer.app/PlugIns/LiveWidgetExtension.appex/LiveWidgetExtension
 
-# Sign LiveProcess extension so iOS doesn't kill it immediately on launch
-ldid -S.github/sidelc/LiveProcess_adhoc.xml ./Payload/LiveContainer.app/PlugIns/LiveProcess.appex/LiveProcess
-
 # package
 zip -r "$scheme+SideStore.ipa" "Payload" -x "._*" -x ".DS_Store" -x "__MACOSX"
