@@ -58,8 +58,6 @@ static void initLogFile(void) {
     NSLog(@"[LC-LP] Extension log: %@", logPath);
 }
 
-static dispatch_semaphore_t g_appInfoSemaphore;
-
 @implementation LiveProcessHandler
 static NSExtensionContext *extensionContext;
 static NSDictionary *retrievedAppInfo;
@@ -107,7 +105,7 @@ static dispatch_semaphore_t g_appInfoSemaphore;
 
 int LiveProcessMain(int argc, char *argv[]) {
     LCLOG(@"[LC-LP] LiveProcessMain started - ServiceType=Application, using semaphore approach");
-    if (!g_appInfoSemaphore) g_appInfoSemaphore = dispatch_semaphore_create(0);
+    g_appInfoSemaphore = dispatch_semaphore_create(0);
 
     // Run LiveContainerMain on a background thread so we don't block the main thread.
     // UIKit needs the main thread free to call beginRequestWithExtensionContext.
@@ -167,7 +165,7 @@ int LiveProcessMain(int argc, char *argv[]) {
     }
 
     
-        (void)LiveContainerMain(capturedArgc, capturedArgv);
+        LiveContainerMain(capturedArgc, capturedArgv);
         LCLOG(@"[LC-LP] Background thread: LiveContainerMain returned");
     });
 
