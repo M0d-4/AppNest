@@ -37,6 +37,7 @@
 @property(nonatomic) NSString *sceneID;
 @property(nonatomic) NSExtension* extension;
 @property(nonatomic) bool isAppTerminationCleanUpCalled;
+@property(nonatomic) BOOL presenterReady;
 @end
 
 static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
@@ -137,15 +138,6 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
 // File-based launch log - written to main app's Documents/Logs for 3uTools access
 static FILE *g_hostLogFile = NULL;
 
-static void hostLogInit(void) {
-    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-    NSString *logsDir = [docs stringByAppendingPathComponent:@"Logs"];
-    [[NSFileManager defaultManager] createDirectoryAtPath:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
-    NSString *logPath = [logsDir stringByAppendingPathComponent:@"multitask_launch.log"];
-    g_hostLogFile = fopen(logPath.fileSystemRepresentation, "w");
-    LCLOG_HOST(@"[LC-Host] Writing launch log to: %@", logPath);
-}
-
 static void hostLog(NSString *msg) {
     NSLog(@"%@", msg);
     if (g_hostLogFile) {
@@ -159,6 +151,15 @@ static void hostLog(NSString *msg) {
 
 #undef LCLOG_HOST
 #define LCLOG_HOST(fmt, ...) hostLog([NSString stringWithFormat:fmt, ##__VA_ARGS__])
+
+static void hostLogInit(void) {
+    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
+    NSString *logsDir = [docs stringByAppendingPathComponent:@"Logs"];
+    [[NSFileManager defaultManager] createDirectoryAtPath:logsDir withIntermediateDirectories:YES attributes:nil error:nil];
+    NSString *logPath = [logsDir stringByAppendingPathComponent:@"multitask_launch.log"];
+    g_hostLogFile = fopen(logPath.fileSystemRepresentation, "w");
+    LCLOG_HOST(@"[LC-Host] Writing launch log to: %@", logPath);
+}
 
 
 
