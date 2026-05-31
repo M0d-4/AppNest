@@ -635,10 +635,7 @@ uint32_t hook_dyld_get_program_sdk_version(void* dyldApiInstancePtr) {
 bool performHookDyldApi(const char* functionName, uint32_t adrpOffset, void** origFunction, void* hookFunction) {
 
     uint32_t* baseAddr = dlsym(RTLD_DEFAULT, functionName);
-    if (!baseAddr) {
-        NSLog(@"[LC] performHookDyldApi: dlsym failed for %s", functionName);
-        return false;
-    }
+    assert(baseAddr != 0);
     /*
      arm64e 26.4b1+ has extra 20 instructions between adrpOffset and adrp
      arm64e
@@ -670,16 +667,11 @@ bool performHookDyldApi(const char* functionName, uint32_t adrpOffset, void** or
         adrpOffset += 20;
         adrpInstPtr = baseAddr + adrpOffset;
     }
-    if ((*adrpInstPtr & 0x9f000000) != 0x90000000) {
-        NSLog(@"[LC] performHookDyldApi: ADRP instruction not found for %s (offset %u)", functionName, adrpOffset);
-        return false;
-    }
+    assert ((*adrpInstPtr & 0x9f000000) == 0x90000000);
     void* gdyldPtr = (void*)aarch64_emulate_adrp_ldr(*adrpInstPtr, *(baseAddr + adrpOffset + 1), (uint64_t)(baseAddr + adrpOffset));
     
-    if (!gdyldPtr || !*(void**)gdyldPtr) {
-        NSLog(@"[LC] performHookDyldApi: gDyld pointer invalid for %s", functionName);
-        return false;
-    }
+    assert(gdyldPtr != 0);
+    assert(*(void**)gdyldPtr != 0);
     void* vtablePtr = **(void***)gdyldPtr;
 
     void* vtableFunctionPtr = 0;
@@ -696,10 +688,7 @@ bool performHookDyldApi(const char* functionName, uint32_t adrpOffset, void** or
     } else {
         // arm64
         uint32_t* ldrInstPtr2 = baseAddr + adrpOffset + 3;
-        if ((*ldrInstPtr2 & 0xBFC00000) != 0xB9400000) {
-            NSLog(@"[LC] performHookDyldApi: LDR instruction not found for %s", functionName);
-            return false;
-        }
+        assert((*ldrInstPtr2 & 0xBFC00000) == 0xB9400000);
         uint32_t size2 = (*ldrInstPtr2 & 0xC0000000) >> 30;
         uint32_t imm12_2 = (*ldrInstPtr2 & 0x3FFC00) >> 10;
         vtableFunctionPtr = vtablePtr + (imm12_2 << size2);
