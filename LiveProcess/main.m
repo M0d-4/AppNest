@@ -14,29 +14,6 @@
 #import "../MultitaskSupport/LCMultitaskXPCService.h"
 #import "../SideStore/XPCServer.h"
 
-// File-based logging so the launch trace is accessible without Xcode
-static FILE *g_logFile = NULL;
-static void lcLogToFile(NSString *msg) {
-    if (g_logFile) {
-        NSDateFormatter *df = [NSDateFormatter new];
-        df.dateFormat = @"HH:mm:ss.SSS";
-        NSString *ts = [df stringFromDate:[NSDate date]];
-        fprintf(g_logFile, "[%s] %s\n", ts.UTF8String, msg.UTF8String);
-        fflush(g_logFile);
-    }
-}
-
-#define LCLOG(fmt, ...) do { NSString *_m = [NSString stringWithFormat:fmt, ##__VA_ARGS__]; NSLog(@"%@", _m); lcLogToFile(_m); } while(0)
-
-static void initLogFile(void) {
-    // Write to the shared app group Documents so it's accessible via 3uTools
-    NSString *docs = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES).firstObject;
-    if (!docs) docs = NSTemporaryDirectory();
-    NSString *logPath = [docs stringByAppendingPathComponent:@"liveprocess_launch.log"];
-    g_logFile = fopen(logPath.fileSystemRepresentation, "w");
-    NSLog(@"[LC-LP] Writing launch log to: %@", logPath);
-}
-
 @implementation LiveProcessHandler
 static NSExtensionContext *extensionContext;
 static NSDictionary *retrievedAppInfo;
@@ -53,14 +30,14 @@ static NSDictionary *retrievedAppInfo;
 }
 
 - (void)beginRequestWithExtensionContext:(NSExtensionContext *)context {
-    LCLOG(@"[LC-LP] beginRequestWithExtensionContext called");
+    NSLog(@"[LC-LP] beginRequestWithExtensionContext called");
     extensionContext = context;
     retrievedAppInfo = [context.inputItems.firstObject userInfo];
-    LCLOG(@"[LC-LP] retrievedAppInfo keys: %@", retrievedAppInfo.allKeys);
+    NSLog(@"[LC-LP] retrievedAppInfo keys: %@", retrievedAppInfo.allKeys);
     // Return control to LiveContainerMain
-    LCLOG(@"[LC-LP] Calling CFRunLoopStop");
+    NSLog(@"[LC-LP] Calling CFRunLoopStop");
     CFRunLoopStop(CFRunLoopGetMain());
-    LCLOG(@"[LC-LP] CFRunLoopStop called");
+    NSLog(@"[LC-LP] CFRunLoopStop called");
 }
 
 - (void)initializeMultitaskEndpoint:(NSXPCListenerEndpoint *)endpoint {
@@ -80,14 +57,14 @@ static NSDictionary *retrievedAppInfo;
 extern int LiveContainerMain(int argc, char *argv[]);
 static char **_envp, **_apple = NULL;
 int LiveProcessMain(int argc, char *argv[]) {
-    LCLOG(@"[LC-LP] LiveProcessMain started");
+    NSLog(@"[LC-LP] LiveProcessMain started");
     // Let NSExtensionContext initialize, once it's done it will call CFRunLoopStop
-    LCLOG(@"[LC-LP] Waiting for beginRequestWithExtensionContext via CFRunLoopRun...");
+    NSLog(@"[LC-LP] Waiting for beginRequestWithExtensionContext via CFRunLoopRun...");
     CFRunLoopRun();
-    LCLOG(@"[LC-LP] CFRunLoopRun returned");
+    NSLog(@"[LC-LP] CFRunLoopRun returned");
     // Ensure app info is delivered
     NSDictionary *appInfo = LiveProcessHandler.retrievedAppInfo;
-    LCLOG(@"[LC-LP] appInfo = %@", appInfo);
+    NSLog(@"[LC-LP] appInfo = %@", appInfo);
     NSCAssert(appInfo, @"Failed to retrieve app info");
 
     // Check if we received a request to execute a custom payload
@@ -155,13 +132,12 @@ static void* hook_dlopen(void* dyldApiInstancePtr, const char* path, int mode) {
 // This is the fallback path when the dlopen hook fails.
 __attribute__((visibility("default")))
 int UIApplicationMain(int argc, char * argv[], NSString * principalClassName, NSString * delegateClassName) {
-    LCLOG(@"[LC-LP] UIApplicationMain interpose called - routing to LiveProcessMain");
+    NSLog(@"[LC-LP] UIApplicationMain interpose called - routing to LiveProcessMain");
     return LiveProcessMain(argc, argv);
 }
 
 // Extension entry point
 int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
-    initLogFile();
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Wundeclared-selector"
     method_setImplementation(class_getInstanceMethod(NSClassFromString(@"NSXPCDecoder"), @selector(_validateAllowedClass:forKey:allowingInvocations:)), (IMP)hook_do_nothing);
@@ -184,9 +160,9 @@ int NSExtensionMain(int argc, char *argv[], char *envp[], char *apple[]) {
         NSLog(@"[LC] NSExtensionMain: dlopen hook failed, relying on UIApplicationMain interpose");
     }
 
-    LCLOG(@"[LC-LP] Calling orig_NSExtensionMain");
+    NSLog(@"[LC-LP] Calling orig_NSExtensionMain");
     int (*orig_NSExtensionMain)(int argc, char * argv[]) = dlsym(RTLD_NEXT, "NSExtensionMain");
     int ret = orig_NSExtensionMain(argc, argv);
-    LCLOG(@"[LC-LP] orig_NSExtensionMain returned: %d", ret);
+    NSLog(@"[LC-LP] orig_NSExtensionMain returned: %d", ret);
     return ret;
 }
