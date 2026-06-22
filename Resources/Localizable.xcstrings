@@ -19999,19 +19999,11 @@
       }
     },
     "lc.settings.hideCollapsedDock": {
-      "comment": "lc.settings.hideCollapsedDock",
-      "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
             "value": "Hide Collapsed Dock"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "隐藏折叠 Dock"
           }
         }
       }
@@ -31442,16 +31434,6 @@
         }
       }
     },
-    "lc.settings.hideCollapsedDock": {
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hide Collapsed Dock"
-          }
-        }
-      }
-    },
     "lc.tabView.updates": {
       "localizations": {
         "en": {
@@ -31578,6 +31560,72 @@
           "stringUnit": {
             "state": "translated",
             "value": "Confirm"
+          }
+        }
+      }
+    },
+    "lc.settings.interface.appLayout": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Layout"
+          }
+        }
+      }
+    },
+    "lc.settings.interface.list": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "List (Default)"
+          }
+        }
+      }
+    },
+    "lc.settings.interface.grid": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grid"
+          }
+        }
+      }
+    },
+    "lc.settings.interface.showAppLabels": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show app labels"
+          }
+        }
+      }
+    },
+    "lc.settings.interface.appList": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App list"
+          }
+        }
+      }
+    },
+    "lc.appList.gridIconStyle": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grid icons"
           }
         }
       }

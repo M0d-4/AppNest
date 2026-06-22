@@ -1319,6 +1319,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         // MARK: Force iPhone Mode
         if self.uiForceIPhoneMode {
             LCUtils.appGroupUserDefault.set(true, forKey: "LCRealIPhoneMode")
+            UserDefaults.standard.set(false, forKey: "LCNativeFullscreen")
         }
     
         // Reset Real iPhone Mode if force mode is off
