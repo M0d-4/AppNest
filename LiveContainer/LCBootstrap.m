@@ -795,18 +795,20 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     LCSetSpoofedKernelVersion(nil);
     LCSetSpoofedKernelRelease(nil);
 
+    // MARK: Force iPhone Mode - independent of device spoofing
+    BOOL forceIPhoneMode = [guestAppInfo[@"forceIPhoneMode"] boolValue];
+    if (forceIPhoneMode) {
+        [lcSharedDefaults setBool:YES forKey:@"LCRealIPhoneMode"];
+    } else {
+        [lcSharedDefaults setBool:NO forKey:@"LCRealIPhoneMode"];
+    }
+
     if(useProfileSpoofing) {
         NSString *deviceProfile = guestAppInfo[@"deviceSpoofProfile"];
         if (deviceProfile.length == 0) {
             deviceProfile = @"iPhone 17";
         }
         LCSetDeviceProfile(deviceProfile);
-        // MARK: Force iPhone Mode - Use Real iPhone Mode
-        BOOL forceIPhoneMode = [guestAppInfo[@"forceIPhoneMode"] boolValue];
-        if (forceIPhoneMode) {
-            // Automatically enable the Real iPhone Mode (9:16)
-            [lcSharedDefaults setBool:YES forKey:@"LCRealIPhoneMode"];
-        }
         // Always derive CPU core count and RAM from selected device profile.
         // Clearing custom overrides prevents stale cross-launch mismatches.
         LCSetSpoofedCPUCount(0);
@@ -1603,6 +1605,10 @@ int LiveContainerMain(int argc, char *argv[]) {
             tweakFolder = [docPath stringByAppendingPathComponent:@"Tweaks"];
         }
         setenv("LC_GLOBAL_TWEAKS_FOLDER", tweakFolder.UTF8String, 1);
+#if TARGET_OS_MACCATALYST || TARGET_OS_SIMULATOR
+        extern void DyldHookLoadableIntoProcess(void);
+        DyldHookLoadableIntoProcess();
+#endif
         dlopen("@executable_path/Frameworks/TweakLoader.dylib", RTLD_LAZY);
     }
 

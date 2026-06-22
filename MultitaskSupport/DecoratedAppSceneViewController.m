@@ -83,20 +83,19 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
 @synthesize mainStackView = _mainStackView;
 - (instancetype)initWindowName:(NSString*)windowName bundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID rootVC:(UIViewController*)rootVC {
     self = [super initWithNibName:nil bundle:nil];
+    self.view = [[UIStackView alloc] initWithFrame:self.view.frame];
+    [MultitaskDockManager.shared.windowHostingView addSubview:self.view];
+    [rootVC addChildViewController:self];
+    
+    _dataUUID = dataUUID;
+    _windowName = windowName;
     _scaleRatio = 1.0;
     _isMaximized = [NSUserDefaults.lcUserDefaults boolForKey:@"LCLaunchMultitaskMaximized"];
     _appSceneVC = [[AppSceneViewController alloc] initWithBundleId:bundleId dataUUID:dataUUID hostScene:rootVC.view.window.windowScene delegate:self];
-    [rootVC addChildViewController:self];
-    [MultitaskDockManager.shared.windowHostingView addSubview:self.view];
     [self setupDecoratedView];
-   
-    
     
     [MultitaskDockManager.shared addRunningApp:windowName appUUID:dataUUID view:self.view];
     
-    self.dataUUID = dataUUID;
-    self.windowName = windowName;
-    self.navigationItem.title = windowName;
     
     NSArray *menuItems = @[
         [UIAction actionWithTitle:@"🐞 Toggle Visibility Grant" image:[UIImage systemImageNamed:@"doc.on.doc"] identifier:nil handler:^(UIAction * _Nonnull action) {
@@ -168,19 +167,20 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     NSInteger toolbarMode = [NSUserDefaults.lcSharedDefaults integerForKey:@"LCMultitaskToolbarMode"];
     CGFloat navBarHeight = (toolbarMode == 2) ? 0 : 44.0; 
     
-    UIStackView *stackView = [UIStackView new];
+    UIStackView *stackView = (UIStackView *)self.view;
     stackView.axis = UILayoutConstraintAxisVertical;
     stackView.backgroundColor = UIColor.systemBackgroundColor;
     stackView.layer.cornerRadius = 10;
     stackView.layer.masksToBounds = YES;
-    self.view = stackView; 
     self.mainStackView = stackView;
     
     BOOL isLandscape = UIInterfaceOrientationIsLandscape(LCCurrentInterfaceOrientation());
     CGRect frame = CGRectMake(0, 0, isLandscape ? 480 : 320, (isLandscape ? 320 : 480) + navBarHeight);
     
     if(_isMaximized) {
-        [self updateMaximizedFrameWithSettings:self.appSceneVC.settings];
+        [self.appSceneVC updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
+            [self updateMaximizedFrameWithSettings:settings];
+        }];
         CGRect maxFrame = UIEdgeInsetsInsetRect(self.view.window.frame, self.view.window.safeAreaInsets);
         frame.origin.x /= maxFrame.size.width;
         frame.origin.y /= maxFrame.size.height;
@@ -195,7 +195,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     
     UINavigationBar *navigationBar = [[UINavigationBar alloc] initWithFrame:CGRectMake(0, 0, self.view.frame.size.width, navBarHeight)];
     navigationBar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
-    UINavigationItem *navigationItem = [[UINavigationItem alloc] initWithTitle:@"Unnamed window"];
+    UINavigationItem *navigationItem = [[UINavigationItem alloc] initWithTitle:self.windowName];
     navigationBar.items = @[navigationItem];
     self.navigationBar = navigationBar;
     self.navigationItem = navigationBar.items.firstObject;
@@ -311,7 +311,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     self.appSceneVC.contentView.layer.sublayerTransform = CATransform3DMakeScale(_scaleRatio, _scaleRatio, 1.0);
     __weak typeof(self) weakSelf = self;
     [self.appSceneVC updateFrameWithSettingsBlock:^(UIMutableApplicationSceneSettings *settings) {
-        if(_isMaximized) {
+        if(weakSelf.isMaximized) {
             [weakSelf updateMaximizedSafeAreaWithSettings:settings];
         } else {
             // it seems some apps don't honor these settings so we don't cover the top of the app
@@ -370,7 +370,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
             self.view.layer.borderWidth = 1;
             self.resizeHandle.alpha = 1;
             self.moveHandle.alpha = 1;
-            [self.appSceneVC.presenter.scene updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
+            [self.appSceneVC updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
                 [self updateWindowedFrameWithSettings:settings];
             }];
         } completion:^(BOOL finished) {
@@ -390,7 +390,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
             self.view.layer.borderWidth = 0;
             self.resizeHandle.alpha = 0;
             self.moveHandle.alpha = 0;
-            [self.appSceneVC.presenter.scene updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
+            [self.appSceneVC updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
                 [self updateMaximizedFrameWithSettings:settings];
             }];
         } completion:^(BOOL finished) {
@@ -599,7 +599,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     
     
     if ([keyPath isEqualToString:@"LCMultitaskMaximized"] || _isMaximized) {
-        [self.appSceneVC.presenter.scene updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
+        [self.appSceneVC updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
             [self updateMaximizedFrameWithSettings:settings];
         }];
     }

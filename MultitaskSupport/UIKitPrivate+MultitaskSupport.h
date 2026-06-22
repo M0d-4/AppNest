@@ -9,6 +9,7 @@
 #import "UIKitPrivate.h"
 
 #define PrivClass(NAME) NSClassFromString(@#NAME)
+extern const UIApplication *UIApp;
 
 @interface LSResourceProxy : NSObject
     @property (setter=_setLocalizedName:,nonatomic,copy) NSString *localizedName;
@@ -374,18 +375,18 @@ API_AVAILABLE(ios(17.4))
 - (instancetype)initWithProcessIdentity:(RBSProcessIdentity *)identity;
 @end
 
-API_AVAILABLE(ios(17.4)) // 17.0
+API_AVAILABLE(ios(17.0))
 @interface _UISceneHostingView : UIView
 - (_UIScenePresenter *)_scenePresenter;
 @end
-API_AVAILABLE(ios(17.4)) // 17.0
+// Keep the class available on all versions for quick null check
 @interface _UISceneHostingController : NSObject
 - (instancetype)initWithAdvancedConfiguration:(_UISceneHostingControllerAdvancedConfiguration *)config API_AVAILABLE(ios(17.4));
-- (instancetype)initWithProcessIdentity:(RBSProcessIdentity *)identity sceneSpecification:(FBSSceneSpecification *)spec;
-- (_UISceneEventDeferringHostComponent *)_eventDeferringComponent;
-- (_UISceneHostingView *)sceneView;
-- (UIViewController *)sceneViewController;
-- (void)invalidate;
+//- (instancetype)initWithProcessIdentity:(RBSProcessIdentity *)identity sceneSpecification:(FBSSceneSpecification *)spec API_AVAILABLE(ios(17.0));
+- (_UISceneEventDeferringHostComponent *)_eventDeferringComponent API_AVAILABLE(ios(17.4));
+- (_UISceneHostingView *)sceneView API_AVAILABLE(ios(17.0));
+- (UIViewController *)sceneViewController; // API_AVAILABLE(ios(17.0))
+- (void)invalidate; // API_AVAILABLE(ios(17.0))
 @end
 
 API_AVAILABLE(ios(17.4)) // 17.0

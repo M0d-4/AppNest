@@ -1228,10 +1228,12 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
 
        let multitask = multitask ?? shouldLaunchInMultitaskMode;
 
-        if multitask,
-           let currentDataFolder,
-           await bringExistingMultitaskWindowIfNeeded(dataUUID: currentDataFolder) {
-            return
+        if MultitaskManager.isMultitasking() || multitask,
+           let currentDataFolder {
+            if await bringExistingMultitaskWindowIfNeeded(dataUUID: currentDataFolder, urlScheme: urlStr) {
+                return
+            }
+            
         }
         
         // this is rerouted to bringing app to front, so not needed here?
@@ -1262,11 +1264,6 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         
         // find a free lc to run non-multitasking shared app. If none, ask user if they want to terminate all multitasking apps
         if MultitaskManager.isMultitasking() && !multitask {
-            if let currentDataFolder,
-               await bringExistingMultitaskWindowIfNeeded(dataUUID: currentDataFolder) {
-                return
-            }
-            
             if self.uiIsShared {
                 var freeScheme: String? = nil
                 LCUtils.forEachInstalledLC(isFree: true) { scheme, shouldBreak in
@@ -1529,15 +1526,21 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         
     }
     
-    private func bringExistingMultitaskWindowIfNeeded(dataUUID: String) async -> Bool {
+    private func bringExistingMultitaskWindowIfNeeded(dataUUID: String, urlScheme: String?) async -> Bool {
         guard #available(iOS 16.0, *) else { return false }
         return await MainActor.run {
+            if let urlScheme {
+                UserDefaults.standard.setValue(urlScheme, forKey: "launchAppUrlScheme")
+            }
             var found = false
             if #available(iOS 16.1, *) {
                 found = MultitaskWindowManager.openExistingAppWindow(dataUUID: dataUUID)
             }
             if !found {
                 found = MultitaskDockManager.shared.bringMultitaskViewToFront(uuid: dataUUID)
+            }
+            if let urlScheme, !found  {
+                UserDefaults.standard.removeObject(forKey: "launchAppUrlScheme")
             }
             return found
         }
