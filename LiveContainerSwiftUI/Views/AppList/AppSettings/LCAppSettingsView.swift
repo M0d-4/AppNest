@@ -1883,13 +1883,13 @@ struct LCAppSettingsView: View {
     @State private var successShow = false
     @State private var successInfo = ""
     @State private var selectUnusedContainerSheetShow = false
-    
+
     @State private var appOriginalSizeBytes: Int64?
     @State private var appDataSizeBytes: Int64?
     @State private var appTotalSizeBytes: Int64?
     @State private var isStorageLoading = false
     @State private var isClearingCacheAndTemp = false
-    
+
     @EnvironmentObject private var sharedModel : SharedModel
     
     init(model: LCAppModel, appDataFolders: Binding<[String]>, tweakFolders: Binding<[String]>) {
@@ -1899,32 +1899,36 @@ struct LCAppSettingsView: View {
         _tweakFolders = tweakFolders
     }
     
-    var body: some View { settingsForm }
-
-    private var settingsFormBase: some View {
+    var body: some View {
+        // NOTE: Previously this was split across three chained computed properties
+        // (settingsFormBase → settingsFormAlerts → settingsForm), which caused SwiftUI's
+        // attribute-graph / Swift type-metadata resolver to blow the thread stack on iOS 26+
+        // (crash: EXC_BAD_ACCESS KERN_PROTECTION_FAILURE hitting the Stack Guard region from
+        // Form.init → swift_getTypeByMangledName recursion).
+        // Fix: flatten all modifiers directly onto the Form so SwiftUI sees a single concrete
+        // type rather than a deeply-nested modifier chain.
+        // Each section is wrapped in AnyView to erase the concrete SwiftUI type.
+        // Without this, the Swift runtime's TypeDecoder recurses deeply enough on iOS 26+
+        // to overflow the thread stack when instantiating the Form's generic content type
+        // (crash: KERN_PROTECTION_FAILURE hitting Stack Guard from swift_getTypeByMangledName).
         Form {
-            settingsTopSections
-            settingsSecuritySections
-            settingsLockSections
-            settingsBottomSections
+            AnyView(settingsTopSections)
+            AnyView(settingsSecuritySections)
+            AnyView(settingsLockSections)
+            AnyView(settingsBottomSections)
         }
         .navigationTitle(appInfo.displayName())
         .navigationBarTitleDisplayMode(.inline)
         .onAppear { sharedModel.isInAppSettings = true }
         .onDisappear { sharedModel.isInAppSettings = false }
-    }
-
-    private var settingsFormAlerts: some View {
-        settingsFormBase
+        // Alerts (previously in settingsFormAlerts)
         .alert("lc.common.error".loc, isPresented: $errorShow) {
-            Button("lc.common.ok".loc, action: {
-            })
+            Button("lc.common.ok".loc, action: {})
         } message: {
             Text(errorInfo)
         }
         .alert("lc.common.success".loc, isPresented: $successShow) {
-            Button("lc.common.ok".loc, action: {
-            })
+            Button("lc.common.ok".loc, action: {})
         } message: {
             Text(successInfo)
         }
@@ -1933,74 +1937,39 @@ struct LCAppSettingsView: View {
             title: "lc.common.enterNewFolderName".loc,
             text: $renameFolderInput.initVal,
             placeholder: "",
-            action: { newText in
-                renameFolderInput.close(result: newText!)
-            },
-            actionCancel: {_ in
-                renameFolderInput.close(result: "")
-            }
+            action: { newText in renameFolderInput.close(result: newText!) },
+            actionCancel: { _ in renameFolderInput.close(result: "") }
         )
         .textFieldAlert(
             isPresented: $addUrlSchemeInput.show,
             title: "lc.appSettings.enterUrlScheme".loc,
             text: $addUrlSchemeInput.initVal,
             placeholder: "e.g. scrcpy2",
-            action: { newText in
-                addUrlSchemeInput.close(result: newText!)
-            },
-            actionCancel: {_ in
-                addUrlSchemeInput.close(result: "")
-            }
+            action: { newText in addUrlSchemeInput.close(result: newText!) },
+            actionCancel: { _ in addUrlSchemeInput.close(result: "") }
         )
         .alert("lc.appSettings.toSharedApp".loc, isPresented: $moveToAppGroupAlert.show) {
-            Button {
-                self.moveToAppGroupAlert.close(result: true)
-            } label: {
-                Text("lc.common.move".loc)
-            }
-            Button("lc.common.cancel".loc, role: .cancel) {
-                self.moveToAppGroupAlert.close(result: false)
-            }
+            Button { self.moveToAppGroupAlert.close(result: true) } label: { Text("lc.common.move".loc) }
+            Button("lc.common.cancel".loc, role: .cancel) { self.moveToAppGroupAlert.close(result: false) }
         } message: {
             Text("lc.appSettings.toSharedAppDesc".loc)
         }
         .alert("lc.appSettings.toPrivateApp".loc, isPresented: $moveToPrivateDocAlert.show) {
-            Button {
-                self.moveToPrivateDocAlert.close(result: true)
-            } label: {
-                Text("lc.common.move".loc)
-            }
-            Button("lc.common.cancel".loc, role: .cancel) {
-                self.moveToPrivateDocAlert.close(result: false)
-            }
+            Button { self.moveToPrivateDocAlert.close(result: true) } label: { Text("lc.common.move".loc) }
+            Button("lc.common.cancel".loc, role: .cancel) { self.moveToPrivateDocAlert.close(result: false) }
         } message: {
             Text("lc.appSettings.toPrivateAppDesc".loc)
         }
-    }
-
-    private var settingsForm: some View {
-        settingsFormAlerts
+        // Alerts (previously in settingsForm)
         .alert("lc.appSettings.forceSign".loc, isPresented: $signUnsignedAlert.show) {
-            Button {
-                self.signUnsignedAlert.close(result: true)
-            } label: {
-                Text("lc.common.ok".loc)
-            }
-            Button("lc.common.cancel".loc, role: .cancel) {
-                self.signUnsignedAlert.close(result: false)
-            }
+            Button { self.signUnsignedAlert.close(result: true) } label: { Text("lc.common.ok".loc) }
+            Button("lc.common.cancel".loc, role: .cancel) { self.signUnsignedAlert.close(result: false) }
         } message: {
             Text("lc.appSettings.signUnsignedDesc".loc)
         }
         .alert("lc.appSettings.addExternalNonLocalContainer".loc, isPresented: $addExternalNonLocalContainerWarningAlert.show) {
-            Button {
-                self.addExternalNonLocalContainerWarningAlert.close(result: true)
-            } label: {
-                Text("lc.common.continue".loc)
-            }
-            Button("lc.common.cancel".loc, role: .cancel) {
-                self.addExternalNonLocalContainerWarningAlert.close(result: false)
-            }
+            Button { self.addExternalNonLocalContainerWarningAlert.close(result: true) } label: { Text("lc.common.continue".loc) }
+            Button("lc.common.cancel".loc, role: .cancel) { self.addExternalNonLocalContainerWarningAlert.close(result: false) }
         } message: {
             Text("lc.appSettings.addExternalNonLocalContainerWarningAlert".loc)
         }
@@ -2170,22 +2139,20 @@ struct LCAppSettingsView: View {
             }
             
             Section {
-                List{
-                    ForEach(model.uiContainers.indices, id:\.self) { i in
-                        NavigationLink {
-                            LCContainerView(container: model.uiContainers[i], uiDefaultDataFolder: $model.uiDefaultDataFolder, delegate: self)
-                        } label: {
-                            HStack {
-                                // ✅ ADD: Star icon for default container
-                                if model.uiContainers[i].folderName == model.uiDefaultDataFolder {
-                                    Image(systemName: "star.fill")
-                                        .foregroundColor(.blue)
-                                        .font(.system(size: 12))
-                                }
-                                
-                                Text(model.uiContainers[i].name)
-                                Spacer()
+                ForEach(model.uiContainers.indices, id:\.self) { i in
+                    NavigationLink {
+                        LCContainerView(container: model.uiContainers[i], uiDefaultDataFolder: $model.uiDefaultDataFolder, delegate: self)
+                    } label: {
+                        HStack {
+                            // ✅ ADD: Star icon for default container
+                            if model.uiContainers[i].folderName == model.uiDefaultDataFolder {
+                                Image(systemName: "star.fill")
+                                    .foregroundColor(.blue)
+                                    .font(.system(size: 12))
                             }
+                            
+                            Text(model.uiContainers[i].name)
+                            Spacer()
                         }
                     }
                 }
@@ -2240,17 +2207,21 @@ struct LCAppSettingsView: View {
             
             
             if sharedModel.developerMode {
+                // AnyView erases each section's concrete type so the Form's @ViewBuilder
+                // doesn't accumulate an unboundedly-deep generic type — which overflows the
+                // Swift runtime's TypeDecoder stack on iOS 26+ (KERN_PROTECTION_FAILURE / SIGSEGV).
+
                 // MARK: GPS Settings init
-                GPSSettingsSection(
+                AnyView(GPSSettingsSection(
                     spoofGPS: $model.uiSpoofGPS,
                     latitude: $model.uiSpoofLatitude,
                     longitude: $model.uiSpoofLongitude,
                     altitude: $model.uiSpoofAltitude,
                     locationName: $model.uiSpoofLocationName
-                )
-                
+                ))
+
                 // MARK: Camera Settings init
-                CameraSettingsSection(
+                AnyView(CameraSettingsSection(
                     spoofCamera: $model.uiSpoofCamera,
                     spoofCameraMode: $model.uiSpoofCameraMode,
                     spoofCameraType: $model.uiSpoofCameraType,
@@ -2265,10 +2236,10 @@ struct LCAppSettingsView: View {
                     videoProcessingProgress: $model.videoProcessingProgress,
                     errorInfo: $errorInfo,
                     errorShow: $errorShow
-                )
+                ))
 
-                // MARK: Device Spoofing (Profile-Based) — moved to old network section location
-                deviceSpoofingSection()
+                // MARK: Device Spoofing (Profile-Based)
+                AnyView(deviceSpoofingSection())
             }
     }
 
@@ -2512,7 +2483,7 @@ struct LCAppSettingsView: View {
             } footer: {
                 Text("lc.appSettings.forceSignDesc".loc)
             }
-
+            
             Section {
                 if isStorageLoading {
                     HStack {
@@ -2541,9 +2512,9 @@ struct LCAppSettingsView: View {
                     }
                 }
                 .disabled(isClearingCacheAndTemp || isStorageLoading)
-                
+
                 Toggle("Auto Clean Cache & Temp on Launch", isOn: $model.uiAutoCleanCacheOnLaunch)
-                
+
                 if model.uiAutoCleanCacheOnLaunch {
                     storageRow(title: "Saved This Week", bytes: appInfo.autoCleanBytesSaved(inLastDays: 7))
                     storageRow(title: "Saved This Month", bytes: appInfo.autoCleanBytesSaved(inLastDays: 30))
@@ -2555,7 +2526,7 @@ struct LCAppSettingsView: View {
                         Text(formatDate(date: appInfo.lastAutoCleanDate))
                             .foregroundStyle(.secondary)
                     }
-                    
+
                     Button(role: .destructive) {
                         resetAutoCleanStats()
                     } label: {
@@ -2567,7 +2538,6 @@ struct LCAppSettingsView: View {
             } footer: {
                 Text("Clears app cache files and temporary folders. Auto-clean runs at launch for apps that enable it.")
             }
-            
             Section {
                 ForEach(model.uiCustomUrlSchemes, id: \.self) { scheme in
                     HStack {
@@ -4343,6 +4313,7 @@ struct LCAppSettingsView: View {
     }
 }
 
+
 struct LCAppContainerTarget: Sendable {
     let url: URL
     let needsSecurityScope: Bool
@@ -4357,9 +4328,9 @@ struct LCAppStorageMetrics: Sendable {
 struct LCCacheCleanupResult: Sendable {
     let removedItemCount: Int
     let removedBytes: Int64
-    
+
     static let empty = LCCacheCleanupResult(removedItemCount: 0, removedBytes: 0)
-    
+
     static func +(lhs: LCCacheCleanupResult, rhs: LCCacheCleanupResult) -> LCCacheCleanupResult {
         LCCacheCleanupResult(
             removedItemCount: lhs.removedItemCount + rhs.removedItemCount,
@@ -4474,7 +4445,7 @@ func lcCalculateItemSize(at url: URL) throws -> Int64 {
 func lcClearAppCacheAndTemp(bundlePath: String, containerTargets: [LCAppContainerTarget]) throws -> LCCacheCleanupResult {
     let bundleURL = URL(fileURLWithPath: bundlePath, isDirectory: true)
     var cleanupResult = LCCacheCleanupResult.empty
-    
+
     cleanupResult = cleanupResult + (try lcRemoveItemIfExists(at: bundleURL.appendingPathComponent("LCAppIconLight.png")))
     cleanupResult = cleanupResult + (try lcRemoveItemIfExists(at: bundleURL.appendingPathComponent("LCAppIconDark.png")))
     cleanupResult = cleanupResult + (try lcRemoveItemIfExists(at: bundleURL.appendingPathComponent("zsign_cache.json")))
@@ -4562,7 +4533,6 @@ private func lcIsNoSuchFileError(_ error: Error) -> Bool {
     }
     return false
 }
-
 
 
 extension LCAppSettingsView : LCContainerViewDelegate {
