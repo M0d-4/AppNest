@@ -82,8 +82,8 @@ struct LCMultiLCManagementView : View, InstallAnotherLCButtonDelegate {
     var body: some View {
         Form {
             Section {
-                InstallAnotherLCButton(lcName: "LiveContainer2", delegate: self)
-                InstallAnotherLCButton(lcName: "LiveContainer3", delegate: self)
+                InstallAnotherLCButton(lcName: "AppNest2", delegate: self)
+                InstallAnotherLCButton(lcName: "AppNest3", delegate: self)
             } header: {
                 Text("lc.settings.multiLCInstall".loc)
             }
