@@ -23443,19 +23443,19 @@
       }
     },
     "lc.settings.multiLCLaunchPriorityDesc": {
-      "comment": "Drag LiveContainers to choose which one is tried first when launching shared apps.",
+      "comment": "Drag AppNests to choose which one is tried first when launching shared apps.",
       "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Drag LiveContainers to choose which one is tried first when launching shared apps."
+            "value": "Drag AppNests to choose which one is tried first when launching shared apps."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "拖动 LiveContainer 来设置启动共享 App 时的尝试顺序。"
+            "value": "拖动 AppNest 来设置启动共享 App 时的尝试顺序。"
           }
         }
       }
