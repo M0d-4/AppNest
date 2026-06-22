@@ -1617,8 +1617,7 @@ func setMode(_ mode: AppLaunchMode) {
             errorInfo = error.localizedDescription
             errorShow = true
         }
-    } else if UserDefaults.standard.bool(forKey: "LCNativeFullscreen") ||
-          LCUtils.appGroupUserDefault.bool(forKey: "LCRealIPhoneMode") {
+    } else {
         do {
             try await appFound.runApp(containerFolderName: container, forceJIT: forceJIT)
         } catch {
@@ -1852,11 +1851,11 @@ func setMode(_ mode: AppLaunchMode) {
     }
     
     var gridItemWidth: CGFloat {
-        appGridShowLabels ? 76 : 78
+        appGridShowLabels ? 90 : 92
     }
     
     var gridSpacing: CGFloat {
-        appGridShowLabels ? 12 : 10
+        appGridShowLabels ? 20 : 18
     }
     
     @ViewBuilder
@@ -1866,7 +1865,7 @@ func setMode(_ mode: AppLaunchMode) {
             let gridCoordinateSpace = isHiddenAppGrid ? "LCHiddenAppGrid" : "LCVisibleAppGrid"
             let appFrames = isHiddenAppGrid ? hiddenGridAppFrames : visibleGridAppFrames
             
-            LazyVGrid(columns: [GridItem(.adaptive(minimum: gridItemWidth), spacing: gridSpacing)], spacing: appGridShowLabels ? 22 : 12) {
+            LazyVGrid(columns: [GridItem(.adaptive(minimum: gridItemWidth), spacing: gridSpacing)], spacing: appGridShowLabels ? 32 : 22) {
                 ForEach(apps, id: \.self) { app in
                     if hidden {
                         LCAppSkeletonIcon(showLabels: appGridShowLabels)
@@ -1880,7 +1879,7 @@ func setMode(_ mode: AppLaunchMode) {
                             return NSItemProvider(object: NSString(string: sharedAppSortManager.getUniqueIdentifier(for: app) ?? app.displayName))
                         } preview: {
                             IconImageView(icon: app.appInfo.iconIsDarkIcon(LCUtils.appGroupUserDefault.bool(forKey: "darkModeIcon")))
-                                .frame(width: appGridShowLabels ? 58 : 70, height: appGridShowLabels ? 58 : 70)
+                                .frame(width: appGridShowLabels ? 72 : 84, height: appGridShowLabels ? 72 : 84)
                         }
                         .background {
                             GeometryReader { proxy in

@@ -1501,15 +1501,15 @@ struct LCAppSkeletonIcon: View {
     
     var body: some View {
         VStack(spacing: 5) {
-            RoundedRectangle(cornerRadius: showLabels ? 16 : 19)
+            RoundedRectangle(cornerRadius: showLabels ? 19 : 22)
                 .fill(Color.gray.opacity(0.3))
-                .frame(width: showLabels ? 58 : 70, height: showLabels ? 58 : 70)
+                .frame(width: showLabels ? 72 : 84, height: showLabels ? 72 : 84)
             if showLabels {
                 RoundedRectangle(cornerRadius: 4)
                     .fill(Color.gray.opacity(0.3))
-                    .frame(width: 64, height: 10)
+                    .frame(width: 78, height: 12)
             }
         }
-        .frame(width: showLabels ? 76 : 78, height: showLabels ? 92 : 78, alignment: .top)
+        .frame(width: showLabels ? 90 : 92, height: showLabels ? 112 : 92, alignment: .top)
     }
 }
