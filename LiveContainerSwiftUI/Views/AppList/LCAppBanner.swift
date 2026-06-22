@@ -594,7 +594,7 @@ struct LCAppBanner : View {
             VStack(spacing: 5) {
                 ZStack {
                     IconImageView(icon: icon)
-                        .frame(width: appGridShowLabels ? 58 : 70, height: appGridShowLabels ? 58 : 70)
+                        .frame(width: appGridShowLabels ? 72 : 84, height: appGridShowLabels ? 72 : 84)
                         .opacity(model.isSigningInProgress ? 0.35 : 1)
                     if model.isSigningInProgress {
                         ProgressView().progressViewStyle(.circular)
@@ -602,14 +602,14 @@ struct LCAppBanner : View {
                 }
                 if appGridShowLabels {
                     Text(model.displayName)
-                        .font(.system(size: 11))
+                        .font(.system(size: 13))
                         .lineLimit(2)
                         .multilineTextAlignment(.center)
                         .foregroundColor(.primary)
-                        .frame(width: 76, height: 28, alignment: .top)
+                        .frame(width: 90, height: 34, alignment: .top)
                 }
             }
-            .frame(width: appGridShowLabels ? 76 : 78, height: appGridShowLabels ? 92 : 78, alignment: .top)
+            .frame(width: appGridShowLabels ? 90 : 92, height: appGridShowLabels ? 112 : 92, alignment: .top)
         }
         .buttonStyle(.plain)
         .disabled(model.isAppRunning)

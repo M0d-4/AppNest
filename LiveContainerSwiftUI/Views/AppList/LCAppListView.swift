@@ -1618,10 +1618,13 @@ func setMode(_ mode: AppLaunchMode) {
             errorShow = true
         }
     } else if UserDefaults.standard.bool(forKey: "LCNativeFullscreen") ||
-          LCUtils.appGroupUserDefault.bool(forKey: "LCRealIPhoneMode") { 
-
-
-        
+          LCUtils.appGroupUserDefault.bool(forKey: "LCRealIPhoneMode") {
+        do {
+            try await appFound.runApp(containerFolderName: container, forceJIT: forceJIT)
+        } catch {
+            errorInfo = error.localizedDescription
+            errorShow = true
+        }
     }
 }
     
