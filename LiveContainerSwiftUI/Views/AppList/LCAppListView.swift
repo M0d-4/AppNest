@@ -121,6 +121,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     
     @State var safariViewOpened = false
     @State var safariViewURL = URL(string: "https://google.com")!
+    @State private var didRunAutoCleanOnStartup = false
     
     @State private var navigateTo : AnyView?
     @State private var isNavigationActive = false
@@ -137,7 +138,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     
     @State private var isViewAppeared = false
     
-    @ObservedObject var searchContext = SearchContext()
+    @ObservedObject var searchContext: SearchContext
     private var downloadHelper: DownloadHelper { sharedModel.downloadHelper }
 
     
@@ -318,10 +319,11 @@ func setMode(_ mode: AppLaunchMode) {
         }
     }
 
-    init(appDataFolderNames: Binding<[String]>, tweakFolderNames: Binding<[String]>) {
+    init(appDataFolderNames: Binding<[String]>, tweakFolderNames: Binding<[String]>, searchContext: SearchContext) {
         _installOptions = State(initialValue: [])
         _appDataFolderNames = appDataFolderNames
         _tweakFolderNames = tweakFolderNames
+        self.searchContext = searchContext
     }
     
     var body: some View {
@@ -531,7 +533,7 @@ func setMode(_ mode: AppLaunchMode) {
                                 }
                             }
                         } label: {
-                            Label("lc.appList.sort".loc, systemImage: "line.3.horizontal.decrease.circle")
+                            Label("Sort by", systemImage: "line.3.horizontal.decrease.circle")
                         }
                         Button {
                             withAnimation { isMultiSelectMode = true }
@@ -801,7 +803,43 @@ func setMode(_ mode: AppLaunchMode) {
         for app in sharedModel.hiddenApps {
             app.delegate = self
         }
+        Task {
+            await autoCleanEnabledAppsOnStartup()
+        }
         didAppear = true
+    }
+    
+    func autoCleanEnabledAppsOnStartup() async {
+        if didRunAutoCleanOnStartup {
+            return
+        }
+        didRunAutoCleanOnStartup = true
+        
+        let appsToConsider = sharedModel.apps + sharedModel.hiddenApps
+        for app in appsToConsider {
+            if !app.uiAutoCleanCacheOnLaunch {
+                continue
+            }
+            guard let bundlePath = app.appInfo.bundlePath() else {
+                continue
+            }
+            
+            let containerTargets = app.uiContainers.map { container in
+                LCAppContainerTarget(url: container.containerURL, needsSecurityScope: container.storageBookMark != nil)
+            }
+            
+            do {
+                let cleanupResult = try await Task.detached(priority: .utility) {
+                    try lcClearAppCacheAndTemp(bundlePath: bundlePath, containerTargets: containerTargets)
+                }.value
+                
+                app.appInfo.clearIconCache()
+                app.appInfo.recordAutoClean(withBytesSaved: cleanupResult.removedBytes)
+                app.objectWillChange.send()
+            } catch {
+                NSLog("[LC] auto-clean failed for %@: %@", app.displayName, error.localizedDescription)
+            }
+        }
     }
     
     
@@ -859,9 +897,8 @@ func setMode(_ mode: AppLaunchMode) {
                 }
             }
             
-            UserDefaults.standard.setValue(urlToOpen.url!.absoluteString, forKey: "launchAppUrlScheme")
             do {
-                try await appToLaunch.runApp()
+                try await appToLaunch.runApp(urlStr: urlToOpen.url!.absoluteString)
             } catch {
                 errorInfo = error.localizedDescription
                 errorShow = true
@@ -1556,8 +1593,8 @@ func setMode(_ mode: AppLaunchMode) {
                 if jitEnabler == .StosDebug || jitEnabler == .StosDebugLC {
                     let encoded = encodedData.map { "&script=\($0)" } ?? ""
                     if jitEnabler == .StosDebugLC {
-                        if let app = sharedModel.apps.first(where: { app in
-                            return app.appInfo.urlSchemes().contains("stosdebug") &&
+                        if sharedModel.apps.contains(where: { app in
+                            app.appInfo.urlSchemes().contains("stosdebug") &&
                             (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                         }) {
                             if let url = URL(string: "stosdebug://enableJIT?bundleId=\(Bundle.main.bundleIdentifier!)&appName=\(appName)&pid=\(pid)&relaunchApp=false& forcePID=true\(encoded)") {
@@ -1579,8 +1616,8 @@ func setMode(_ mode: AppLaunchMode) {
                 let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
                 if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encoded)") {
                     if jitEnabler == .StikJITLC {
-                        if let app = sharedModel.apps.first(where: { app in
-                            return app.appInfo.urlSchemes().contains("stikjit") &&
+                        if sharedModel.apps.contains(where: { app in
+                            app.appInfo.urlSchemes().contains("stikjit") &&
                             (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                         }) {
                             Task { await openWebView(urlString: url.absoluteString) }

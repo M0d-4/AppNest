@@ -149,9 +149,8 @@ struct LCWebView: View {
 
         }
         
-        UserDefaults.standard.setValue(url.absoluteString, forKey: "launchAppUrlScheme")
         do {
-            try await app.runApp()
+            try await app.runApp(urlStr: url.absoluteString)
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true

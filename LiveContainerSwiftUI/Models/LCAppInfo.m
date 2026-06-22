@@ -617,43 +617,10 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
         return;
     }
     
-    if(forceSign) {
-        // remove ZSign cache since hash is changed after upgrading patch
-        NSString* cachePath = [appPath stringByAppendingPathComponent:@"zsign_cache.json"];
-        if([fm fileExistsAtPath:cachePath]) {
-            NSError* err;
-            [fm removeItemAtPath:cachePath error:&err];
-        }
-    }
-    
     // Sign app if JIT-less is set up
         NSURL *appPathURL = [NSURL fileURLWithPath:appPath];
-            // We need to temporarily fake bundle ID and main executable to sign properly
-            NSString *tmpExecPath = [appPath stringByAppendingPathComponent:@"LiveContainer.tmp"];
-            if (!info[@"LCBundleIdentifier"]) {
-                // Don't let main executable get entitlements
-                [fm copyItemAtPath:NSBundle.mainBundle.executablePath toPath:tmpExecPath error:nil];
-
-                infoPlist[@"LCBundleExecutable"] = infoPlist[@"CFBundleExecutable"];
-                infoPlist[@"LCBundleIdentifier"] = infoPlist[@"CFBundleIdentifier"];
-                infoPlist[@"CFBundleExecutable"] = tmpExecPath.lastPathComponent;
-                infoPlist[@"CFBundleIdentifier"] = NSBundle.mainBundle.bundleIdentifier;
-                [infoPlist writeBinToFile:infoPath atomically:YES];
-            }
-            infoPlist[@"CFBundleExecutable"] = infoPlist[@"LCBundleExecutable"];
-            infoPlist[@"CFBundleIdentifier"] = infoPlist[@"LCBundleIdentifier"];
-            [infoPlist removeObjectForKey:@"LCBundleExecutable"];
-            [infoPlist removeObjectForKey:@"LCBundleIdentifier"];
-            
             void (^signCompletionHandler)(BOOL success, NSError *error)  = ^(BOOL success, NSError *_Nullable error) {
                 dispatch_async(dispatch_get_main_queue(), ^{
-                    
-                    // Remove fake main executable
-                    [fm removeItemAtPath:tmpExecPath error:nil];
-                    
-                    // Save sign ID and restore bundle ID
-                    [self save];
-                    [infoPlist writeBinToFile:infoPath atomically:YES];
                     [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
                     if(!success) {
                         completetionHandler(NO, error.localizedDescription);
@@ -674,7 +641,6 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
             if (progress) {
                 progressHandler(progress);
             }
-
 }
 
 - (bool)isJITNeeded {
@@ -2451,6 +2417,126 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
     } else {
         _info[@"LCCustomUrlSchemes"] = customUrlSchemes;
     }
+    [self save];
+}
+
+- (bool)autoCleanCacheOnLaunch {
+    if(_info[@"autoCleanCacheOnLaunch"] != nil) {
+        return [_info[@"autoCleanCacheOnLaunch"] boolValue];
+    } else {
+        return NO;
+    }
+}
+
+- (void)setAutoCleanCacheOnLaunch:(bool)autoCleanCacheOnLaunch {
+    _info[@"autoCleanCacheOnLaunch"] = [NSNumber numberWithBool:autoCleanCacheOnLaunch];
+    [self save];
+}
+
+- (NSDate*)lastAutoCleanDate {
+    return _info[@"lastAutoCleanDate"];
+}
+
+- (void)setLastAutoCleanDate:(NSDate *)lastAutoCleanDate {
+    if(lastAutoCleanDate) {
+        _info[@"lastAutoCleanDate"] = lastAutoCleanDate;
+    } else {
+        [_info removeObjectForKey:@"lastAutoCleanDate"];
+    }
+    [self save];
+}
+
+- (long long)autoCleanTotalBytesSaved {
+    if(_info[@"autoCleanTotalBytesSaved"] != nil) {
+        return [_info[@"autoCleanTotalBytesSaved"] longLongValue];
+    } else {
+        return 0;
+    }
+}
+
+- (void)setAutoCleanTotalBytesSaved:(long long)autoCleanTotalBytesSaved {
+    long long value = autoCleanTotalBytesSaved >= 0 ? autoCleanTotalBytesSaved : 0;
+    _info[@"autoCleanTotalBytesSaved"] = [NSNumber numberWithLongLong:value];
+    [self save];
+}
+
+- (void)recordAutoCleanWithBytesSaved:(long long)bytesSaved {
+    long long clampedBytesSaved = bytesSaved >= 0 ? bytesSaved : 0;
+    NSDate *now = NSDate.date;
+    
+    NSMutableArray<NSDictionary*>* history = [_info[@"autoCleanHistory"] mutableCopy];
+    if(!history) {
+        history = [[NSMutableArray alloc] init];
+    }
+    [history addObject:@{
+        @"date": now,
+        @"bytesSaved": @(clampedBytesSaved)
+    }];
+    
+    const NSUInteger maxHistoryEntries = 180;
+    if(history.count > maxHistoryEntries) {
+        NSRange rangeToDelete = NSMakeRange(0, history.count - maxHistoryEntries);
+        [history removeObjectsInRange:rangeToDelete];
+    }
+    
+    _info[@"autoCleanHistory"] = history;
+    _info[@"lastAutoCleanDate"] = now;
+    _info[@"autoCleanTotalBytesSaved"] = @([self autoCleanTotalBytesSaved] + clampedBytesSaved);
+    [self save];
+}
+
+- (long long)autoCleanBytesSavedInLastDays:(NSInteger)days {
+    if(days <= 0) {
+        return 0;
+    }
+    
+    NSArray<NSDictionary*>* history = _info[@"autoCleanHistory"];
+    if(!history || history.count == 0) {
+        return 0;
+    }
+    
+    NSCalendar *calendar = NSCalendar.currentCalendar;
+    NSDate *now = NSDate.date;
+    NSDate *startDate = [calendar dateByAddingUnit:NSCalendarUnitDay value:-days toDate:now options:0];
+    if(!startDate) {
+        return 0;
+    }
+    
+    long long total = 0;
+    for(NSDictionary *entry in history) {
+        NSDate *entryDate = entry[@"date"];
+        if(![entryDate isKindOfClass:NSDate.class]) {
+            continue;
+        }
+        if([entryDate compare:startDate] != NSOrderedAscending) {
+            NSNumber *saved = entry[@"bytesSaved"];
+            if([saved isKindOfClass:NSNumber.class]) {
+                total += saved.longLongValue;
+            }
+        }
+    }
+    
+    return total;
+}
+
+- (long long)lastAutoCleanBytesSaved {
+    NSArray<NSDictionary*>* history = _info[@"autoCleanHistory"];
+    if(!history || history.count == 0) {
+        return 0;
+    }
+    
+    NSDictionary *lastEntry = history.lastObject;
+    NSNumber *saved = lastEntry[@"bytesSaved"];
+    if(![saved isKindOfClass:NSNumber.class]) {
+        return 0;
+    }
+    return saved.longLongValue;
+}
+
+- (void)resetAutoCleanStats {
+    [_info removeObjectForKey:@"autoCleanHistory"];
+    [_info removeObjectForKey:@"lastAutoCleanDate"];
+    [_info removeObjectForKey:@"autoCleanTotalBytesSaved"];
     [self save];
 }
 

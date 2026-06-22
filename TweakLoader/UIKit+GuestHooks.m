@@ -13,6 +13,57 @@ extern void _objc_msgForward(void);
 @end
 UIInterfaceOrientation LCOrientationLock = UIInterfaceOrientationUnknown;
 NSMutableArray<NSString*>* LCSupportedUrlSchemes = nil;
+BOOL strictTestMode = NO;
+UIPasteboard *strictPrivatePasteboard = nil;
+BOOL launchURLProcessed = NO;
+
+@interface LCNetworkExtensionStrictHookProvider : NSObject
+@end
+
+static void LCSwizzleClassIfPresent(Class cls, SEL originalAction, SEL swizzledAction) {
+    if(!cls) {
+        return;
+    }
+    Method originalMethod = class_getClassMethod(cls, originalAction);
+    Method swizzledMethod = class_getClassMethod(cls, swizzledAction);
+    if(originalMethod && swizzledMethod) {
+        method_exchangeImplementations(originalMethod, swizzledMethod);
+    }
+}
+
+static void LCSwizzleIfPresent(Class cls, SEL originalAction, SEL swizzledAction) {
+    if(!cls) {
+        return;
+    }
+    Method originalMethod = class_getInstanceMethod(cls, originalAction);
+    Method swizzledMethod = class_getInstanceMethod(cls, swizzledAction);
+    if(originalMethod && swizzledMethod) {
+        method_exchangeImplementations(originalMethod, swizzledMethod);
+    }
+}
+
+static void LCSwizzleClassIfPresentWithSourceClass(Class cls, Class sourceCls, SEL originalAction, SEL swizzledAction) {
+    if(!cls || !sourceCls) {
+        return;
+    }
+    Method originalMethod = class_getClassMethod(cls, originalAction);
+    Method sourceMethod = class_getClassMethod(sourceCls, swizzledAction);
+    if(!originalMethod || !sourceMethod) {
+        return;
+    }
+    Class metaClass = object_getClass((id)cls);
+    class_addMethod(
+        metaClass,
+        swizzledAction,
+        method_getImplementation(sourceMethod),
+        method_getTypeEncoding(sourceMethod)
+    );
+    Method swizzledMethod = class_getClassMethod(cls, swizzledAction);
+    if(swizzledMethod) {
+        method_exchangeImplementations(originalMethod, swizzledMethod);
+    }
+}
+
 //⭐️⭐️⭐️⤵️
 static void Real_UIKitGuestHooksInit(void);
 static NSString *const LCExternalURLBlockBypassDepthKey = @"LCExternalURLBlockBypassDepth";
@@ -181,6 +232,21 @@ static void Real_UIKitGuestHooksInit(void) {
         if(NSUserDefaults.isLiveProcess) {
             swizzle(_UIRemoteKeyboards.class, @selector(startConnection), @selector(hook_startConnection));
         }
+    }
+
+    NSDictionary* guestContainerInfo = [NSUserDefaults guestContainerInfo];
+    strictTestMode = [guestContainerInfo[@"strictTestMode"] boolValue];
+    if(strictTestMode) {
+        strictPrivatePasteboard = [UIPasteboard pasteboardWithUniqueName];
+        LCSwizzleClassIfPresent(UIPasteboard.class, @selector(generalPasteboard), @selector(hook_generalPasteboard));
+        LCSwizzleIfPresent(NSURLSessionTask.class, @selector(resume), @selector(hook_resume));
+        Class hotspotNetworkClass = NSClassFromString(@"NEHotspotNetwork");
+        LCSwizzleClassIfPresentWithSourceClass(
+            hotspotNetworkClass,
+            LCNetworkExtensionStrictHookProvider.class,
+            @selector(fetchCurrentWithCompletionHandler:),
+            @selector(hook_fetchCurrentWithCompletionHandler:)
+        );
     }
 }
 
@@ -592,6 +658,20 @@ BOOL canAppOpenItself(NSURL* url) {
     return [LCSupportedUrlSchemes containsObject:[url.scheme lowercaseString]];
 }
 
+BOOL strictModeAllowsOpenURL(NSURL *url) {
+    if(!strictTestMode) {
+        return YES;
+    }
+    if(!url) {
+        return NO;
+    }
+    if(canAppOpenItself(url)) {
+        return YES;
+    }
+    NSString *scheme = url.scheme.lowercaseString;
+    return [scheme isEqualToString:NSUserDefaults.lcAppUrlScheme.lowercaseString];
+}
+
 // Handler for AppDelegate
 @implementation UIApplication(LiveContainerHook)
 - (void)hook__applicationOpenURLAction:(id)action payload:(NSDictionary *)payload origin:(id)origin {
@@ -668,9 +748,11 @@ BOOL canAppOpenItself(NSURL* url) {
 
 - (void)hook__connectUISceneFromFBSScene:(id)scene transitionContext:(UIApplicationSceneTransitionContext*)context {
 #if !TARGET_OS_MACCATALYST
+    NSString* decodedUrlStr = launchURLProcessed ? nil : NSUserDefaults.lcLaunchURL;
+    launchURLProcessed = YES;
     NSString* urlStr;
-    if(context.payload && (urlStr = context.payload[UIApplicationLaunchOptionsURLKey])) {
-        BOOL urlDecodeSuccess = NO;
+        
+    if(!decodedUrlStr && context.payload && (urlStr = context.payload[UIApplicationLaunchOptionsURLKey])) {
         do {
             if([urlStr hasPrefix:[NSString stringWithFormat: @"%@://open-url", NSUserDefaults.lcAppUrlScheme]]) {
                 NSURLComponents* lcUrl = [NSURLComponents componentsWithString:urlStr];
@@ -679,44 +761,43 @@ BOOL canAppOpenItself(NSURL* url) {
                 realUrlEncoded = [realUrlEncoded stringByReplacingOccurrencesOfString:@" " withString:@"+"];
                 // Convert the base64 encoded url into String
                 NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
-                NSString *decodedUrlStr = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
-                NSURL* decodedUrl = [NSURL URLWithString:decodedUrlStr];
-                if(!canAppOpenItself(decodedUrl)) {
-                    break;
-                }
-                urlDecodeSuccess = YES;
-                
-                NSMutableDictionary* newDict = [context.payload mutableCopy];
-                newDict[UIApplicationLaunchOptionsURLKey] = decodedUrl;
-                context.payload = newDict;
-                
-                if(context.actions) {
-                    UIOpenURLAction *urlAction = nil;
-                    for (id obj in context.actions.allObjects) {
-                        if ([obj isKindOfClass:UIOpenURLAction.class]) {
-                            urlAction = obj;
-                            break;
-                        }
-                    }
-                    if(!urlAction) {
-                        break;
-                    }
-                    NSMutableSet *newActions = context.actions.mutableCopy;
-                    [newActions removeObject:urlAction];
-
-                    UIOpenURLAction *newUrlAction = [[UIOpenURLAction alloc] initWithURL:decodedUrl];
-                    [newActions addObject:newUrlAction];
-                    context.actions = newActions;
-                }
-
+                decodedUrlStr = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
+            } else if([urlStr hasPrefix:NSUserDefaults.lcAppUrlScheme]) {
+                context.payload = nil;
+                context.actions = nil;
             }
-        } while(0);
-
-        if(!urlDecodeSuccess) {
-            context.payload = nil;
-            context.actions = nil;
-        }
+        } while (0);
     }
+    
+    do {
+        if(!decodedUrlStr) break;
+        NSURL* decodedUrl = [NSURL URLWithString:decodedUrlStr];
+        
+        NSMutableDictionary* newDict = [context.payload mutableCopy];
+        if(!newDict) newDict = [NSMutableDictionary new];
+        newDict[UIApplicationLaunchOptionsURLKey] = decodedUrlStr;
+        context.payload = newDict;
+        
+        
+        UIOpenURLAction *urlAction = nil;
+        for (id obj in context.actions.allObjects) {
+            if ([obj isKindOfClass:UIOpenURLAction.class]) {
+                urlAction = obj;
+                break;
+            }
+        }
+        
+        NSMutableSet *newActions = context.actions.mutableCopy;
+        if(newActions && urlAction) {
+            [newActions removeObject:urlAction];
+        }
+        if(!newActions) newActions = [NSMutableSet new];
+        
+        UIOpenURLAction *newUrlAction = [[UIOpenURLAction alloc] initWithURL:decodedUrl];
+        [newActions addObject:newUrlAction];
+        context.actions = newActions;
+        
+    } while(0);
     
 #endif
     [self hook__connectUISceneFromFBSScene:scene transitionContext:context];
@@ -739,6 +820,18 @@ BOOL canAppOpenItself(NSURL* url) {
 }
 
 - (void)hook_openURL:(NSURL *)url options:(NSDictionary<NSString *,id> *)options completionHandler:(void (^)(_Bool))completion {
+    if(strictTestMode) {
+        BOOL allowed = strictModeAllowsOpenURL(url);
+        if(!allowed) {
+            if(completion) {
+                completion(NO);
+            }
+            return;
+        }
+        [self hook_openURL:url options:options completionHandler:completion];
+        return;
+    }
+
     // When running as built-in SideStore, pass ALL URLs straight through — including
     // livecontainer:// which is otherwise in the blocked list. relaunchLC needs it.
     // This check must come BEFORE LCShouldBlockExternalURL.
@@ -768,6 +861,9 @@ BOOL canAppOpenItself(NSURL* url) {
     }
 }
 - (BOOL)hook_canOpenURL:(NSURL *) url {
+    if(strictTestMode) {
+        return strictModeAllowsOpenURL(url);
+    }
     // When running as built-in SideStore pass through directly — livecontainer://
     // is in the blocked list but SideStore needs it for relaunchLC.
     // This check must come BEFORE LCShouldBlockExternalURL.
@@ -892,6 +988,18 @@ BOOL canAppOpenItself(NSURL* url) {
 }
 
 - (void)hook_openURL:(NSURL *)url options:(UISceneOpenExternalURLOptions *)options completionHandler:(void (^)(BOOL success))completion {
+    if(strictTestMode) {
+        BOOL allowed = strictModeAllowsOpenURL(url);
+        if(!allowed) {
+            if(completion) {
+                completion(NO);
+            }
+            return;
+        }
+        [self hook_openURL:url options:options completionHandler:completion];
+        return;
+    }
+
     if (LCShouldBlockExternalURL(url)) {
         NSLog(@"[LC] Blocked external URL scheme: %@", url.scheme);
         if (completion) {
@@ -1124,4 +1232,41 @@ static id<LCMultitaskXPCServiceProtocol> server;
     class_replaceMethod(proxyClass, @selector(focusApplicationWithProcessIdentifier:context:stealingKeyboard:onCompletion:),
                         method_getImplementation(method), method_getTypeEncoding(method));
 }
+@end
+
+@implementation UIPasteboard(hook)
+
++ (UIPasteboard *)hook_generalPasteboard {
+    if(strictTestMode) {
+        return strictPrivatePasteboard ?: [self hook_generalPasteboard];
+    }
+    return [self hook_generalPasteboard];
+}
+
+@end
+
+@implementation NSURLSessionTask(hook)
+
+- (void)hook_resume {
+    if(strictTestMode) {
+        [self cancel];
+        return;
+    }
+    [self hook_resume];
+}
+
+@end
+
+@implementation LCNetworkExtensionStrictHookProvider
+
++ (void)hook_fetchCurrentWithCompletionHandler:(void (^)(id currentNetwork))completionHandler {
+    if(strictTestMode) {
+        if(completionHandler) {
+            completionHandler(nil);
+        }
+        return;
+    }
+    [self hook_fetchCurrentWithCompletionHandler:completionHandler];
+}
+
 @end

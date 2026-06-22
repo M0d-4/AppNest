@@ -129,6 +129,12 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         }
     }
 
+    @Published var uiAutoCleanCacheOnLaunch: Bool {
+        didSet {
+            appInfo.autoCleanCacheOnLaunch = uiAutoCleanCacheOnLaunch
+        }
+    }
+    
     @Published var uiIsMultitaskModeSpecificed : MultitaskSpecified {
         didSet {
             appInfo.multitaskSpecified = uiIsMultitaskModeSpecificed;
@@ -746,6 +752,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         self.uiSpoofSDKVersion = appInfo.spoofSDKVersion
         self.uiRemark = appInfo.remark ?? ""
         self.uiCustomUrlSchemes = appInfo.customUrlSchemes ?? []
+        self.uiAutoCleanCacheOnLaunch = appInfo.autoCleanCacheOnLaunch
 #if is32BitSupported
         self.uiIs32bit = appInfo.is32bit
 #endif
@@ -1198,7 +1205,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
     }
     
     // You should let LCAppModel.runApp to decide whether to run in multitask mode, but you may override the multitask parameter if necessary
-    func runApp(multitask: Bool? = nil, containerFolderName : String? = nil, bundleIdOverride : String? = nil, forceJIT: Bool? = nil) async throws{
+    func runApp(multitask: Bool? = nil, containerFolderName : String? = nil, bundleIdOverride : String? = nil, urlStr : String? = nil, forceJIT: Bool? = nil) async throws{
         if isAppRunning {
             return
         }
@@ -1239,18 +1246,61 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         {
             runningLC = (runningLC as NSString).deletingPathExtension
             
-            let openURL = URL(string: "\(runningLC)://")!
-            if await UIApplication.shared.canOpenURL(openURL) {
-                await UIApplication.shared.open(openURL)
+            var openURLComp = URLComponents()
+            openURLComp.scheme = runningLC
+            if let urlStr {
+                openURLComp.host = "open-url"
+                openURLComp.queryItems = [
+                    URLQueryItem(name: "url", value: Data(urlStr.utf8).base64EncodedString())
+                ]
+            }
+            if await UIApplication.shared.canOpenURL(openURLComp.url!) {
+                await UIApplication.shared.open(openURLComp.url!)
                 return
             }
         }
         
-        // ask user if they want to terminate all multitasking apps
+        // find a free lc to run non-multitasking shared app. If none, ask user if they want to terminate all multitasking apps
         if MultitaskManager.isMultitasking() && !multitask {
             if let currentDataFolder,
                await bringExistingMultitaskWindowIfNeeded(dataUUID: currentDataFolder) {
                 return
+            }
+            
+            if self.uiIsShared {
+                var freeScheme: String? = nil
+                LCUtils.forEachInstalledLC(isFree: true) { scheme, shouldBreak in
+                    freeScheme = scheme
+                    shouldBreak = true
+                }
+                if let freeScheme {
+                    LCUtils.appGroupUserDefault.set(freeScheme, forKey: "LCLaunchExtensionScheme")
+                    LCUtils.appGroupUserDefault.set(self.appInfo.relativeBundlePath, forKey: "LCLaunchExtensionBundleID")
+                    LCUtils.appGroupUserDefault.set(uiSelectedContainer?.folderName, forKey: "LCLaunchExtensionContainerName")
+                    if let urlStr {
+                        LCUtils.appGroupUserDefault.set(urlStr, forKey: "LCLaunchExtensionLaunchURL")
+                    }
+                    LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
+                    var launchURLComp = URLComponents()
+                    launchURLComp.scheme = freeScheme
+                    launchURLComp.host = "livecontainer-launch"
+                    var queryItems: [URLQueryItem] = []
+                    if let bundlePath = self.appInfo.relativeBundlePath {
+                        queryItems.append(URLQueryItem(name: "bundle-name", value: bundlePath))
+                    }
+                    if let folderName = uiSelectedContainer?.folderName {
+                        queryItems.append(URLQueryItem(name: "container-folder-name", value: folderName))
+                    }
+                    
+                    launchURLComp.queryItems = queryItems
+                    
+                    if let url = launchURLComp.url {
+                        await UIApplication.shared.open(url)
+                    } else {
+                        throw "Unable to build URL from launchURLComp???"
+                    }
+                    return
+                }
             }
             
             guard let ans = await delegate?.showRunWhenMultitaskAlert(), ans else {
@@ -1282,8 +1332,9 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         } else {
             UserDefaults.standard.set(self.appInfo.relativeBundlePath, forKey: "selected")
         }
-        
-
+        if let urlStr {
+            UserDefaults.standard.setValue(urlStr, forKey: "launchAppUrlScheme")
+        }
         UserDefaults.standard.set(uiSelectedContainer?.folderName, forKey: "selectedContainer")
         var is32bit = false
         

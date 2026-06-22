@@ -33,6 +33,7 @@
 @end
 
 @interface AppSceneViewController()
+@property(nonatomic) API_AVAILABLE(ios(17.0)) _UISceneHostingController *hostingController;
 @property(nonatomic) UIWindowScene *hostScene;
 @property(nonatomic) NSString *sceneID;
 @property(nonatomic) NSExtension* extension;
@@ -59,20 +60,92 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     return windowScene ? windowScene.interfaceOrientation : UIInterfaceOrientationPortrait;
 }
 
+static NSString *const kLCStrictContainerInfoFileName = @"LCContainerInfo.plist";
+
+static NSString *LCContainerPathForDataUUID(NSString *dataUUID) {
+    if(dataUUID.length == 0) {
+        return nil;
+    }
+
+    NSFileManager *fm = NSFileManager.defaultManager;
+    NSURL *docURL = [fm URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].lastObject;
+    NSMutableArray<NSURL *> *candidateURLs = [NSMutableArray array];
+    if(docURL) {
+        [candidateURLs addObject:[docURL URLByAppendingPathComponent:[NSString stringWithFormat:@"Data/Application/%@", dataUUID]]];
+    }
+    NSURL *appGroupPath = [LCSharedUtils appGroupPath];
+    if(appGroupPath) {
+        [candidateURLs addObject:[appGroupPath URLByAppendingPathComponent:[NSString stringWithFormat:@"LiveContainer/Data/Application/%@", dataUUID]]];
+    }
+
+    for(NSURL *candidateURL in candidateURLs) {
+        NSString *containerInfoPath = [[candidateURL path] stringByAppendingPathComponent:kLCStrictContainerInfoFileName];
+        if([fm fileExistsAtPath:containerInfoPath]) {
+            return candidateURL.path;
+        }
+    }
+    return nil;
+}
+
+static BOOL LCStrictShouldAutoWipeContainerAtPath(NSString *containerPath) {
+    if(containerPath.length == 0) {
+        return NO;
+    }
+    NSString *containerInfoPath = [containerPath stringByAppendingPathComponent:kLCStrictContainerInfoFileName];
+    NSDictionary *info = [NSDictionary dictionaryWithContentsOfFile:containerInfoPath];
+    if(![info isKindOfClass:NSDictionary.class]) {
+        return NO;
+    }
+    return [info[@"strictTestMode"] boolValue] && [info[@"strictAutoWipeOnExit"] boolValue];
+}
+
+static void LCStrictEnsureContainerDirectoriesAtPath(NSString *containerPath) {
+    NSFileManager *fm = NSFileManager.defaultManager;
+    NSArray<NSString *> *directories = @[@"Library/Caches", @"Library/Cookies", @"Documents", @"SystemData", @"tmp"];
+    for(NSString *directory in directories) {
+        NSString *path = [containerPath stringByAppendingPathComponent:directory];
+        [fm createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:nil];
+    }
+}
+
+static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
+    NSString *containerPath = LCContainerPathForDataUUID(dataUUID);
+    if(containerPath.length == 0 || !LCStrictShouldAutoWipeContainerAtPath(containerPath)) {
+        return;
+    }
+
+    NSFileManager *fm = NSFileManager.defaultManager;
+    NSError *listError = nil;
+    NSArray<NSString *> *entries = [fm contentsOfDirectoryAtPath:containerPath error:&listError];
+    if(!entries) {
+        NSLog(@"[LC][StrictMode] Failed to enumerate container %@ for auto-wipe: %@", dataUUID, listError.localizedDescription);
+        return;
+    }
+
+    for(NSString *entry in entries) {
+        if([entry isEqualToString:kLCStrictContainerInfoFileName]) {
+            continue;
+        }
+        NSError *removeError = nil;
+        NSString *entryPath = [containerPath stringByAppendingPathComponent:entry];
+        if(![fm removeItemAtPath:entryPath error:&removeError] && removeError) {
+            NSLog(@"[LC][StrictMode] Failed to remove %@ in container %@: %@", entry, dataUUID, removeError.localizedDescription);
+        }
+    }
+    LCStrictEnsureContainerDirectoriesAtPath(containerPath);
+}
+
 @implementation AppSceneViewController
 
 
 - (instancetype)initWithBundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID hostScene:(UIWindowScene *)hostScene delegate:(id<AppSceneViewControllerDelegate>)delegate {
     self = [super initWithNibName:nil bundle:nil];
     self.view = [[UIView alloc] init];
-    self.contentView = [[UIView alloc] init];
-    [self.view addSubview:_contentView];
     self.delegate = delegate;
     self.dataUUID = dataUUID;
     self.bundleId = bundleId;
     self.scaleRatio = 1.0;
     self.isAppTerminationCleanUpCalled = false;
-    self.settings = [UIMutableApplicationSceneSettings new];
     // init extension
     NSError* error = nil;
     _extension = [NSExtension extensionWithIdentifier:LCUtils.liveProcessBundleIdentifier error:&error];
@@ -94,6 +167,12 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
         @"bookmarks": bookmarks,
         @"lcHomePath": NSHomeDirectory(),
     }.mutableCopy;
+    
+    NSString* launchAppUrlScheme = [NSUserDefaults.standardUserDefaults stringForKey:@"launchAppUrlScheme"];
+    [NSUserDefaults.lcUserDefaults removeObjectForKey:@"launchAppUrlScheme"];
+    if(launchAppUrlScheme) {
+        [userInfo setValue:launchAppUrlScheme forKey:@"launchAppUrlScheme"];
+    }
     
     NSURL *docURL = [NSFileManager.defaultManager URLsForDirectory:NSDocumentDirectory inDomains:NSUserDomainMask].lastObject;
     if ([NSUserDefaults.standardUserDefaults boolForKey:@"LCSharePrivateDataWithLiveProcess"]) {
@@ -153,66 +232,128 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
     // At this point, the process is spawned and we're ready to create a scene to render in our app
     RBSProcessHandle* processHandle = [PrivClass(RBSProcessHandle) handleForPredicate:predicate error:nil];
     [manager registerProcessForAuditToken:processHandle.auditToken];
-    // NSString *identifier = [NSString stringWithFormat:@"sceneID:%@-%@", bundleID, @"default"];
-    self.sceneID = [NSString stringWithFormat:@"sceneID:%@-%@", @"LiveProcess", self.dataUUID];
-    
-    FBSMutableSceneDefinition *definition = [PrivClass(FBSMutableSceneDefinition) definition];
-    definition.identity = [PrivClass(FBSSceneIdentity) identityForIdentifier:self.sceneID];
-    definition.clientIdentity = [PrivClass(FBSSceneClientIdentity) identityForProcessIdentity:processHandle.identity];
-    definition.specification = [UIApplicationSceneSpecification specification];
-    FBSMutableSceneParameters *parameters = [PrivClass(FBSMutableSceneParameters) parametersForSpecification:definition.specification];
-    
-    UIMutableApplicationSceneSettings *settings = self.settings;
-    settings.canShowAlerts = YES;
-    settings.cornerRadiusConfiguration = [[PrivClass(BSCornerRadiusConfiguration) alloc] initWithTopLeft:self.view.layer.cornerRadius bottomLeft:self.view.layer.cornerRadius bottomRight:self.view.layer.cornerRadius topRight:self.view.layer.cornerRadius];
-    settings.displayConfiguration = UIScreen.mainScreen.displayConfiguration;
-    settings.foreground = YES;
-    
-    settings.deviceOrientation = UIDevice.currentDevice.orientation;
-    settings.interfaceOrientation = LCInterfaceOrientationForView(self.view);
-    {
-        // Scene frame always starts at (0,0). Centering is done by contentView.frame
-        // in viewWillLayoutSubviews / DecoratedAppSceneViewController. The scene's
-        // own coordinate space does not need an offset — that would shift the guest
-        // app's coordinate system rather than centering the visual.
-        CGFloat vW = self.view.frame.size.width;
-        CGFloat vH = self.view.frame.size.height;
-        CGFloat fW = vW, fH = vH;
-        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-            fW = MIN(vH * (9.0 / 16.0), vW);
+
+    UIApplicationSceneSpecification *specification = [UIApplicationSceneSpecification specification];
+
+    __weak typeof(self) weakSelf = self;
+    void (^updateSceneSettings)(UIMutableApplicationSceneSettings *) = ^void(UIMutableApplicationSceneSettings *settings) {
+        AppSceneViewController *strongSelf = weakSelf;
+        if (!strongSelf) return;
+        settings.canShowAlerts = YES;
+        settings.cornerRadiusConfiguration = [[PrivClass(BSCornerRadiusConfiguration) alloc] initWithTopLeft:strongSelf.view.layer.cornerRadius bottomLeft:strongSelf.view.layer.cornerRadius bottomRight:strongSelf.view.layer.cornerRadius topRight:strongSelf.view.layer.cornerRadius];
+        settings.displayConfiguration = UIScreen.mainScreen.displayConfiguration;
+        settings.foreground = YES;
+
+        settings.deviceOrientation = UIDevice.currentDevice.orientation;
+        settings.interfaceOrientation = LCInterfaceOrientationForView(strongSelf.view);
+        {
+            // Scene frame always starts at (0,0). Centering is done by contentView.frame
+            // in viewWillLayoutSubviews / DecoratedAppSceneViewController. The scene's
+            // own coordinate space does not need an offset — that would shift the guest
+            // app's coordinate system rather than centering the visual.
+            CGFloat vW = strongSelf.view.frame.size.width;
+            CGFloat vH = strongSelf.view.frame.size.height;
+            CGFloat fW = vW, fH = vH;
+            if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
+                fW = MIN(vH * (9.0 / 16.0), vW);
+            }
+            if (UIInterfaceOrientationIsLandscape(settings.interfaceOrientation)) {
+                settings.frame = CGRectMake(0, 0, fH, fW);
+            } else {
+                settings.frame = CGRectMake(0, 0, fW, fH);
+            }
         }
-        if (UIInterfaceOrientationIsLandscape(settings.interfaceOrientation)) {
-            settings.frame = CGRectMake(0, 0, fH, fW);
+        //settings.interruptionPolicy = 2; // reconnect
+        settings.level = 1;
+        settings.persistenceIdentifier = nil;
+        if(strongSelf.isNativeWindow) {
+            UIEdgeInsets defaultInsets = strongSelf.view.window.safeAreaInsets;
+            settings.peripheryInsets = defaultInsets;
+            settings.safeAreaInsetsPortrait = defaultInsets;
+        }
+
+        settings.statusBarDisabled = !strongSelf.isNativeWindow;
+        //settings.previewMaximumSize =
+        //settings.deviceOrientationEventsEnabled = YES;
+
+        strongSelf.settings = settings;
+    };
+    void (^updateSceneClientSettings)(UIMutableApplicationSceneClientSettings *) = ^void(UIMutableApplicationSceneClientSettings *clientSettings) {
+        clientSettings.interfaceOrientation = UIInterfaceOrientationPortrait;
+        clientSettings.statusBarStyle = 0;
+    };
+
+    if (@available(iOS 17.4, *)) {
+        // Use new API for iOS 17+. While some of these APIs are available since 17.0, we're only interested in fixing event deferring issue
+        _UISceneHostingControllerAdvancedConfiguration *config = [[_UISceneHostingControllerAdvancedConfiguration alloc] initWithProcessIdentity:processHandle.identity];
+        config.sceneSpecification = specification;
+        if (@available(iOS 27.0, *)) {} else {
+            // on 27 manually adding this is not needed, also setAdditionalExtensions: doesn't exist for some reason
+            config.additionalExtensions = [NSOrderedSet orderedSetWithArray:@[
+                PrivClass(_UISceneHostingEventDeferringExtension),
+            ]];
+        }
+        self.hostingController = [[_UISceneHostingController alloc] initWithAdvancedConfiguration:config];
+        FBScene *scene = [self.hostingController valueForKey:@"_fbScene"];
+        [scene configureParameters:^(FBSMutableSceneParameters *parameters) {
+            [parameters updateSettingsWithBlock:updateSceneSettings];
+            [parameters updateClientSettingsWithBlock:updateSceneClientSettings];
+        }];
+
+        /// Fix keyboard focus by setting up event deferring extension. Previously we worked around it by changing identifier, but that broke other things
+        _UISceneEventDeferringHostComponent *deferringComponent = self.hostingController._eventDeferringComponent;
+        NSAssert(deferringComponent, @"Unexpectedly nil _UISceneEventDeferringHostComponent");
+        if (@available(iOS 27.0, *)) { // _UIKeyboardArbiterUsesDeferringGraph()
+            /// UIKitCore`__85-[_UIRemoteViewControllerSceneHostingImpl _viewServiceHostSessionDidConnectToClient:]_block_invoke
+            /// iOS 27 requires setting up _UISceneEventDeferringHostComponent for keyboard focus to work
+
+            /// Replicate these methods since they are made private
+            /// -[_UISceneEventDeferringHostComponent setFirstResponderTrackingSelectionPath:]:
+            [deferringComponent setValue:self forKey:@"_firstResponderTrackingSelectionPath"];
+            // if (!deferringComponent->_flags.clientIsInChain) return;
+            /// -[_UISceneEventDeferringHostComponent becomeFirstResponderIfNecessary]:
+            // if (deferringComponent->_flags.maintainHostFirstResponderWhenClientWantsKeyboard)
+
+            deferringComponent.grantBehavior = 2;
+            deferringComponent.selectionRequestBehavior = 2;
         } else {
-            settings.frame = CGRectMake(0, 0, fW, fH);
+            /// UIKitCore`-[_UISceneHostingController createSceneWithConfiguration:]
+            /// Lower iOS uses _UISceneHostingEventDeferringExtension. Maybe setting this is optional
+            deferringComponent.requestEventDeferralForAllFirstResponderChanges = YES;
         }
+
+        [self addChildViewController:self.hostingController.sceneViewController];
+        // _scenePresenter was a property in 26, but made only ivar in 27
+        self.presenter = [self.hostingController.sceneView valueForKey:@"_scenePresenter"];
+        self.sceneID = self.presenter.identifier;
+
+        self.contentView = self.hostingController.sceneViewController.view;
+        self.contentView.clipsToBounds = NO;
+        self.contentView.frame = self.settings.frame;
+        self.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+    } else {
+        self.sceneID = [NSString stringWithFormat:@"sceneID:%@-%@", @"LiveProcess", self.dataUUID];
+        FBSMutableSceneDefinition *definition = [PrivClass(FBSMutableSceneDefinition) definition];
+        definition.identity = [PrivClass(FBSSceneIdentity) identityForIdentifier:self.sceneID];
+        definition.clientIdentity = [PrivClass(FBSSceneClientIdentity) identityForProcessIdentity:processHandle.identity];
+        definition.specification = specification;
+
+        FBSMutableSceneParameters *parameters = [PrivClass(FBSMutableSceneParameters) parametersForSpecification:specification];
+        [parameters updateSettingsWithBlock:updateSceneSettings];
+        [parameters updateClientSettingsWithBlock:updateSceneClientSettings];
+        FBScene *scene = [[PrivClass(FBSceneManager) sharedInstance] createSceneWithDefinition:definition initialParameters:parameters];
+        self.presenter = [scene.uiPresentationManager createPresenterWithIdentifier:self.sceneID];
+        [self.presenter modifyPresentationContext:^(UIMutableScenePresentationContext *context) {
+            context.appearanceStyle = 2;
+        }];
+        [self.presenter activate];
+
+        self.contentView = [[UIView alloc] init];
+        [self.contentView addSubview:self.presenter.presentationView];
+        self.presenter.presentationView.autoresizingMask = UIViewAutoresizingNone;
+        self.presenter.presentationView.translatesAutoresizingMaskIntoConstraints = YES;
     }
-    //settings.interruptionPolicy = 2; // reconnect
-    settings.level = 1;
-    settings.persistenceIdentifier = nil;
-    if(self.isNativeWindow) {
-        UIEdgeInsets defaultInsets = self.view.window.safeAreaInsets;
-        settings.peripheryInsets = defaultInsets;
-        settings.safeAreaInsetsPortrait = defaultInsets;
-    }
-    
-    settings.statusBarDisabled = !self.isNativeWindow;
-    //settings.previewMaximumSize =
-    //settings.deviceOrientationEventsEnabled = YES;
-    parameters.settings = settings;
-    
-    UIMutableApplicationSceneClientSettings *clientSettings = [UIMutableApplicationSceneClientSettings new];
-    clientSettings.interfaceOrientation = UIInterfaceOrientationPortrait;
-    clientSettings.statusBarStyle = 0;
-    parameters.clientSettings = clientSettings;
-    
-    FBScene *scene = [[PrivClass(FBSceneManager) sharedInstance] createSceneWithDefinition:definition initialParameters:parameters];
-    
-    self.presenter = [scene.uiPresentationManager createPresenterWithIdentifier:self.sceneID];
-    [self.presenter modifyPresentationContext:^(UIMutableScenePresentationContext *context) {
-        context.appearanceStyle = 2;
-    }];
-    [self.presenter activate];
+    [self.view addSubview:_contentView];
     
     // If we have a staging URL scheme, pass it now
     NSString *launchUrl = [NSUserDefaults.standardUserDefaults stringForKey:@"launchAppUrlScheme"];
@@ -221,14 +362,9 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
         [self openURLScheme:launchUrl];
     }
     
-    __weak typeof(self) weakSelf = self;
     [self.extension setRequestInterruptionBlock:^(NSUUID *uuid) {
         [weakSelf appTerminationCleanUp];
     }];
-    
-    [self.contentView addSubview:self.presenter.presentationView];
-    self.presenter.presentationView.autoresizingMask = UIViewAutoresizingNone;
-    self.presenter.presentationView.translatesAutoresizingMaskIntoConstraints = YES;
 
     // Size and center contentView immediately so the guest scene renders in the
     // right place from the very first frame. viewWillLayoutSubviews keeps it
@@ -241,18 +377,6 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
             [self updateFrameWithSettingsBlock:nil];
         });
     });
-
-
-
-//if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-    //CGFloat viewW = self.view.bounds.size.width;
-    //CGFloat viewH = self.view.bounds.size.height;
-    //CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
-    //CGFloat offsetX = (viewW - targetW) / 2.0;
-    //self.contentView.layer.position = CGPointMake(offsetX, 0);
-    //self.contentView.bounds = CGRectMake(0, 0, targetW, viewH);
-//}
-
 
     [self.view.window.windowScene _registerSettingsDiffActionArray:@[self] forKey:self.sceneID];
 
@@ -288,7 +412,7 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
         dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
             [self.extension _kill:SIGKILL];
         });
-    }    
+    }
 }
 //⭐️⭐️⭐️Real iPhone mode + multitask mode
 - (void)_performActionsForUIScene:(UIScene *)scene withUpdatedFBSScene:(id)fbsScene settingsDiff:(FBSSceneSettingsDiff *)diff fromSettings:(UIApplicationSceneSettings *)settings transitionContext:(id)context lifecycleActionType:(uint32_t)actionType {
@@ -402,11 +526,17 @@ static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
         if(self.sceneID) {
             [[PrivClass(FBSceneManager) sharedInstance] destroyScene:self.sceneID withTransitionContext:nil];
         }
-        if(self.presenter){
+        if(@available(iOS 17.4, *)) {
+            [self.hostingController invalidate];
+            [self.hostingController.sceneViewController removeFromParentViewController];
+            self.hostingController = nil;
+        } else if(self.presenter){
             [self.presenter deactivate];
             [self.presenter invalidate];
-            self.presenter = nil;
         }
+        self.presenter = nil;
+        
+        LCStrictAutoWipeContainerForDataUUIDIfNeeded(self.dataUUID);
         
         [self.delegate appSceneVCAppDidExit:self];
         [MultitaskManager unregisterMultitaskContainerWithContainer:self.dataUUID];

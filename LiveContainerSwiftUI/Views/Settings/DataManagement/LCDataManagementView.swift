@@ -417,6 +417,14 @@ struct LCDataManagementView : View {
                     }
                 }
             }
+            if let lcCaches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first,
+                fm.fileExists(atPath: lcCaches.path) {
+                let cacheItems = try fm.contentsOfDirectory(at: lcCaches, includingPropertiesForKeys: nil)
+                for item in cacheItems {
+                    try fm.removeItem(at: item)
+                }
+                cleanedCount += 1
+            }
 
             if cleanedCount == 0 {
                 successInfo = "lc.settings.noCacheToClean".loc
@@ -763,12 +771,11 @@ struct LCDataManagementView : View {
     
     func openInFilza(path: URL) {
         let launchURLStr = "filza://view\(path.path)/."
-        UserDefaults.standard.setValue(launchURLStr, forKey: "launchAppUrlScheme")
         Task {
             do {
                 try await sharedModel.apps.first(where: { app in
                     return app.appInfo.bundleIdentifier() == "com.tigisoftware.Filza"
-                })?.runApp()
+                })?.runApp(urlStr: launchURLStr)
             } catch {
                 successInfo = error.localizedDescription
                 successShow = true

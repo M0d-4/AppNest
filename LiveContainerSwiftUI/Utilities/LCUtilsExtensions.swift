@@ -10,56 +10,6 @@ import LocalAuthentication
 extension LCUtils {
     public static let appGroupUserDefault = UserDefaults.init(suiteName: LCSharedUtils.appGroupID()) ?? UserDefaults.standard
     
-    public static func signFilesInFolder(url: URL, onProgressCreated: (Progress) -> Void) async -> String? {
-        let fm = FileManager()
-        var ans : String? = nil
-        let codesignPath = url.appendingPathComponent("_CodeSignature")
-        let provisionPath = url.appendingPathComponent("embedded.mobileprovision")
-        let tmpExecPath = url.appendingPathComponent("LiveContainer.tmp")
-        let tmpInfoPath = url.appendingPathComponent("Info.plist")
-        var info = Bundle.main.infoDictionary!;
-        info["CFBundleExecutable"] = "LiveContainer.tmp";
-        let nsInfo = info as NSDictionary
-        nsInfo.write(to: tmpInfoPath, atomically: true)
-        do {
-            try fm.copyItem(at: Bundle.main.executableURL!, to: tmpExecPath)
-        } catch {
-            return nil
-        }
-        LCPatchAppBundleFixupARM64eSlice(url)
-        await withUnsafeContinuation { c in
-            func compeletionHandler(success: Bool, error: Error?){
-                do {
-                    if let error = error {
-                        ans = error.localizedDescription
-                    }
-                    if(fm.fileExists(atPath: codesignPath.path)) {
-                        try fm.removeItem(at: codesignPath)
-                    }
-                    if(fm.fileExists(atPath: provisionPath.path)) {
-                        try fm.removeItem(at: provisionPath)
-                    }
-
-                    try fm.removeItem(at: tmpExecPath)
-                    try fm.removeItem(at: tmpInfoPath)
-                } catch {
-                    ans = error.localizedDescription
-                }
-                c.resume()
-            }
-            let progress = LCUtils.signAppBundle(withZSign: url, completionHandler: compeletionHandler)
-            
-            guard let progress = progress else {
-                ans = "lc.utils.initSigningError".loc
-                c.resume()
-                return
-            }
-            onProgressCreated(progress)
-        }
-        return ans
-
-    }
-    
     public static func signTweaks(tweakFolderUrl: URL, force : Bool = false, progressHandler : ((Progress) -> Void)? = nil) async throws {
         guard LCSharedUtils.certificatePassword() != nil else {
             return
@@ -71,116 +21,62 @@ extension LCUtils {
         }
         
         // check if re-sign is needed
-        // if sign is expired, or inode number of any file changes, we need to re-sign
-        let tweakSignInfo = NSMutableDictionary(contentsOf: tweakFolderUrl.appendingPathComponent("TweakInfo.plist")) ?? NSMutableDictionary()
-        var signNeeded = false
-        if !force {
-            let tweakFileINodeRecord = tweakSignInfo["files"] as? [String:NSNumber] ?? [String:NSNumber]()
-            let fileURLs = try fm.contentsOfDirectory(at: tweakFolderUrl, includingPropertiesForKeys: nil)
-            for fileURL in fileURLs {
-                let attributes = try fm.attributesOfItem(atPath: fileURL.path)
-                let fileType = attributes[.type] as? FileAttributeType
-                if(fileType != FileAttributeType.typeDirectory && fileType != FileAttributeType.typeRegular) {
-                    continue
-                }
-                if(fileType == FileAttributeType.typeDirectory && !fileURL.lastPathComponent.hasSuffix(".framework")) {
-                    continue
-                }
-                if(fileType == FileAttributeType.typeRegular && !fileURL.lastPathComponent.hasSuffix(".dylib")) {
-                    continue
-                }
-                
-                if(fileURL.lastPathComponent == "TweakInfo.plist"){
-                    continue
-                }
-                let inodeNumber = try fm.attributesOfItem(atPath: fileURL.path)[.systemFileNumber] as? NSNumber
-                if let fileInodeNumber = tweakFileINodeRecord[fileURL.lastPathComponent] {
-                    if(fileInodeNumber != inodeNumber || !checkCodeSignature((fileURL.path as NSString).utf8String)) {
-                        signNeeded = true
-                        break
-                    }
-                } else {
-                    signNeeded = true
-                    break
-                }
-                
-                print(fileURL.lastPathComponent) // Prints the file name
-            }
-            
-        } else {
-            signNeeded = true
-        }
-        
-        guard signNeeded else {
-            return
-        }
-        // sign start
-        
-        let tmpDir = fm.temporaryDirectory.appendingPathComponent("TweakTmp.app")
-        if fm.fileExists(atPath: tmpDir.path) {
-            try fm.removeItem(at: tmpDir)
-        }
-        try fm.createDirectory(at: tmpDir, withIntermediateDirectories: true)
-        
-        var tmpPaths : [URL] = []
-        // copy items to tmp folders
+        // if signature is invalid, we need to re-sign. dylib and framework's main binary are supported
         let fileURLs = try fm.contentsOfDirectory(at: tweakFolderUrl, includingPropertiesForKeys: nil)
+
+        var filesToSign: [URL] = []
+        
         for fileURL in fileURLs {
+            var fileURL = fileURL
             let attributes = try fm.attributesOfItem(atPath: fileURL.path)
             let fileType = attributes[.type] as? FileAttributeType
             if(fileType != FileAttributeType.typeDirectory && fileType != FileAttributeType.typeRegular) {
                 continue
             }
-            if(fileType == FileAttributeType.typeDirectory && !fileURL.lastPathComponent.hasSuffix(".framework")) {
+            if(fileType == FileAttributeType.typeDirectory) {
+                if(!fileURL.lastPathComponent.hasSuffix(".framework")) {
+                    continue
+                }
+                guard let frameworkBundle = Bundle(url: fileURL), let executableURL = frameworkBundle.executableURL else {
+                    continue
+                }
+                fileURL = executableURL
+            } else if (fileType == FileAttributeType.typeRegular && !fileURL.lastPathComponent.hasSuffix(".dylib")) {
                 continue
             }
-            if(fileType == FileAttributeType.typeRegular && !fileURL.lastPathComponent.hasSuffix(".dylib")) {
-                continue
+
+            if !force, checkCodeSignature((fileURL.path as NSString).utf8String) {
+                continue;
             }
             
-            let tmpPath = tmpDir.appendingPathComponent(fileURL.lastPathComponent)
-            tmpPaths.append(tmpPath)
-            try fm.copyItem(at: fileURL, to: tmpPath)
+            filesToSign.append(fileURL)
         }
         
-        if tmpPaths.isEmpty {
-            try fm.removeItem(at: tmpDir)
+        if filesToSign.isEmpty {
             return
         }
         
-        let error = await LCUtils.signFilesInFolder(url: tmpDir) { p in
-            if let progressHandler {
-                progressHandler(p)
-            }
-        }
-        if let error = error {
-            throw error
+        for fileURL in filesToSign {
+            LCPatchAppBundleFixupARM64eSlice(fileURL)
         }
         
-        // move signed files back and rebuild TweakInfo.plist
-        let disabledTweaks = tweakSignInfo["disabledItems"]
-        tweakSignInfo.removeAllObjects()
-        var fileInodes = [String:NSNumber]()
-        for tmpFile in tmpPaths {
-            let toPath = tweakFolderUrl.appendingPathComponent(tmpFile.lastPathComponent)
-            // remove original item and move the signed ones back
-            if fm.fileExists(atPath: toPath.path) {
-                try fm.removeItem(at: toPath)
+        try await withUnsafeThrowingContinuation({ c in
+            let progress = signFilesWithZSign(with: filesToSign) { success, error in
+                if(success) {
+                    c.resume()
+                    return
+                }
                 
+                guard let error else {
+                    c.resume()
+                    return
+                }
+                c.resume(throwing: error)
             }
-            try fm.moveItem(at: tmpFile, to: toPath)
-            if let inodeNumber = try fm.attributesOfItem(atPath: toPath.path)[.systemFileNumber] as? NSNumber {
-                fileInodes[tmpFile.lastPathComponent] = inodeNumber
+            if let progress {
+                progressHandler?(progress)
             }
-        }
-        try fm.removeItem(at: tmpDir)
-
-        tweakSignInfo["files"] = fileInodes
-        if let disabledTweaks {
-            tweakSignInfo["disabledItems"] = disabledTweaks
-        }
-        try tweakSignInfo.write(to: tweakFolderUrl.appendingPathComponent("TweakInfo.plist"))
-        
+        })
     }
         
     private static func authenticateUser(completion: @escaping (Bool, Error?) -> Void) {
@@ -439,7 +335,7 @@ extension LCUtils {
                 }
                 
                 let launchURL = URL(string: "\(freeScheme)://open-url?url=\(encodedStr)")!
-                
+                LCUtils.appGroupUserDefault.set(freeScheme, forKey: "LCLaunchExtensionScheme")
                 LCUtils.appGroupUserDefault.set(appToLaunch.appInfo.relativeBundlePath, forKey: "LCLaunchExtensionBundleID")
                 LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
                 onServerMessage?("JIT acquisition will continue in another LiveContainer.")
@@ -500,7 +396,7 @@ extension LCUtils {
                 }
                 
                 launchURL = URL(string: "\(freeScheme)://open-url?url=\(encodedStr)")!
-                
+                LCUtils.appGroupUserDefault.set(freeScheme, forKey: "LCLaunchExtensionScheme")
                 LCUtils.appGroupUserDefault.set(appToLaunch.appInfo.relativeBundlePath, forKey: "LCLaunchExtensionBundleID")
                 LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
                 onServerMessage?("JIT acquisition will continue in another LiveContainer.")
@@ -518,12 +414,106 @@ extension LCUtils {
         return false
     }
 
+    static func moveFilesAtomicallyAfterPreflight(_ moves: [(URL, URL)]) throws {
+        let fileManager = FileManager.default
+
+        var seenSources = Set<URL>()
+        var seenDestinations = Set<URL>()
+
+        let normalizedMoves = moves.map { source, destination in
+            (
+                source.standardizedFileURL,
+                destination.standardizedFileURL
+            )
+        }
+
+        // MARK: - Preflight
+
+        for (source, destination) in normalizedMoves {
+            guard !source.path.isEmpty else {
+                throw BatchMoveError.emptySource(source)
+            }
+
+            guard source != destination else {
+                throw BatchMoveError.sourceEqualsDestination(source)
+            }
+
+            guard seenSources.insert(source).inserted else {
+                throw BatchMoveError.duplicateSource(source)
+            }
+            
+            guard fileManager.isWritableFile(atPath: source.deletingLastPathComponent().path) else {
+                throw BatchMoveError.sourceParentIsNotWritable(source.deletingLastPathComponent())
+            }
+
+            guard seenDestinations.insert(destination).inserted else {
+                throw BatchMoveError.duplicateDestination(destination)
+            }
+
+            var isDirectory: ObjCBool = false
+
+            guard fileManager.fileExists(atPath: source.path, isDirectory: &isDirectory) else {
+                throw BatchMoveError.sourceDoesNotExist(source)
+            }
+
+            do {
+                _ = try source.checkResourceIsReachable()
+            } catch {
+                throw BatchMoveError.sourceIsNotReachable(source, underlying: error)
+            }
+
+            guard !fileManager.fileExists(atPath: destination.path) else {
+                throw BatchMoveError.destinationAlreadyExists(destination)
+            }
+
+            let parent = destination.deletingLastPathComponent()
+
+            var parentIsDirectory: ObjCBool = false
+            guard fileManager.fileExists(atPath: parent.path, isDirectory: &parentIsDirectory) else {
+                throw BatchMoveError.destinationParentDoesNotExist(parent)
+            }
+
+            guard parentIsDirectory.boolValue else {
+                throw BatchMoveError.destinationParentIsNotDirectory(parent)
+            }
+
+            guard fileManager.isWritableFile(atPath: parent.path) else {
+                throw BatchMoveError.destinationParentIsNotWritable(parent)
+            }
+
+            if isDirectory.boolValue {
+                let sourcePath = source.path.hasSuffix("/") ? source.path : source.path + "/"
+                let destinationPath = destination.path.hasSuffix("/") ? destination.path : destination.path + "/"
+
+                if destinationPath.hasPrefix(sourcePath) {
+                    throw BatchMoveError.moveWouldPlaceDirectoryInsideItself(
+                        source: source,
+                        destination: destination
+                    )
+                }
+            }
+        }
+
+        // MARK: - Execute only after all preflight checks pass
+
+        for (source, destination) in normalizedMoves {
+            do {
+                try fileManager.moveItem(at: source, to: destination)
+            } catch {
+                throw BatchMoveError.moveFailed(
+                    source: source,
+                    destination: destination,
+                    underlying: error
+                )
+            }
+        }
+    }
     
-    static func openSideStore(delegate: LCAppModelDelegate? = nil) {
+    static func openSideStore(delegate: LCAppModelDelegate? = nil, urlStr: String? = nil) {
         let sideStoreApp = LCAppModel(appInfo: BuiltInSideStoreAppInfo(), delegate: delegate)
         
         Task {
-            try await sideStoreApp.runApp(bundleIdOverride: "builtinSideStore")
+            try await sideStoreApp.runApp(bundleIdOverride: "builtinSideStore", urlStr: urlStr)
         }
     }
 }

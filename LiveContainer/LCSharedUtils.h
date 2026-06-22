@@ -16,5 +16,6 @@
 + (NSBundle*)findBundleWithBundleId:(NSString*)bundleId isSharedAppOut:(bool*)isSharedAppOut;
 + (void)dumpPreferenceToPath:(NSString*)plistLocationTo dataUUID:(NSString*)dataUUID;
 + (NSString*)findDefaultContainerWithBundleId:(NSString*)bundleId;
++ (NSArray<NSString*>*)lcUnorderedUrlSchemes;
 + (NSArray<NSString*>*)lcUrlSchemes;
 @end

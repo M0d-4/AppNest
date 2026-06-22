@@ -27,22 +27,6 @@ bool ChangeDylibPath(NSString *filePath,
 bool ListDylibs(NSString *filePath, NSMutableArray *dylibPathsArray);
 bool UninstallDylibs(NSString *filePath, NSArray<NSString *> *dylibPathsArray);
 
-void zsign(NSString *appPath,
-          NSData *prov,
-          NSData *key,
-          NSString *pass,
-          NSProgress* progress,
-          void(^completionHandler)(BOOL success, NSError *error)
-          );
-
-bool adhocSignMachO(NSString *machoPath, NSString *bundleId, NSData* entitlementData);
-NSString* getTeamId(NSData *prov,
-                    NSData *key,
-                    NSString *pass);
-int checkCert(NSData *prov,
-              NSData *key,
-              NSString *pass,
-              void(^completionHandler)(int status, NSDate* expirationDate, NSString* organizationalUnitName,NSString *error));
 #ifdef __cplusplus
 }
 #endif

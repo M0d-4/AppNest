@@ -30,15 +30,6 @@
 @protocol _UISceneSettingsDiffAction <NSObject>
 @end
 
-@implementation RBSTarget (hook)
-+ (instancetype)hook_targetWithPid:(pid_t)pid environmentIdentifier:(NSString *)environmentIdentifier {
-    if([environmentIdentifier containsString:@"LiveProcess"]) {
-        environmentIdentifier = [NSString stringWithFormat:@"LiveProcess:%d", pid];
-    }
-    return [self hook_targetWithPid:pid environmentIdentifier:environmentIdentifier];
-}
-@end
-
 static int hook_return_2(void) {
     return 2;
 }

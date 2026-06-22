@@ -235,8 +235,6 @@
     NSError *error;
 
     // use zsign as our signer~
-    NSURL *profilePath = [NSBundle.mainBundle URLForResource:@"embedded" withExtension:@"mobileprovision"];
-    NSData *profileData = [NSData dataWithContentsOfURL:profilePath];
     // Load libraries from Documents, yeah
     [self loadStoreFrameworksWithError2:&error];
 
@@ -247,33 +245,45 @@
 
     NSLog(@"[LC] starting signing...");
     
-    NSProgress* ans = [NSClassFromString(@"ZSigner") signWithAppPath:[path path] prov:profileData key: self.certificateData pass:LCSharedUtils.certificatePassword completionHandler:completionHandler];
+    NSProgress* ans = [NSClassFromString(@"ZSigner") signWithAppPath:[path path] bundleId:NSBundle.mainBundle.bundleIdentifier cert:self.certificateData pass:LCSharedUtils.certificatePassword completionHandler:completionHandler];
     
     return ans;
 }
 
++ (NSProgress *)signFilesWithZSignWithURLs:(NSArray<NSURL*>*)urls completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
+    NSError *error;
+    [self loadStoreFrameworksWithError2:&error];
+    if (error) {
+        completionHandler(NO, error);
+        return nil;
+    }
+    NSMutableArray *paths = [NSMutableArray arrayWithCapacity:[urls count]];
+    for (NSURL *url in urls) {
+        [paths addObject:url.path];
+    }
+    
+    return [NSClassFromString(@"ZSigner") signMachOPathArr:paths bundleId:NSBundle.mainBundle.bundleIdentifier cert:self.certificateData
+                                                      pass:LCSharedUtils.certificatePassword completionHandler:completionHandler];
+}
+
 + (NSString*)getCertTeamIdWithKeyData:(NSData*)keyData password:(NSString*)password {
     NSError *error;
-    NSURL *profilePath = [NSBundle.mainBundle URLForResource:@"embedded" withExtension:@"mobileprovision"];
-    NSData *profileData = [NSData dataWithContentsOfURL:profilePath];
     [self loadStoreFrameworksWithError2:&error];
     if (error) {
         return nil;
     }
-    NSString* ans = [NSClassFromString(@"ZSigner") getTeamIdWithProv:profileData key:keyData pass:password];
+    NSString* ans = [NSClassFromString(@"ZSigner") getTeamIdWithCert:keyData pass:password];
     return ans;
 }
 
 + (int)validateCertificateWithCompletionHandler:(void(^)(int status, NSDate *expirationDate, NSString *organizationalUnitName, NSString *error))completionHandler {
     NSError *error;
-    NSURL *profilePath = [NSBundle.mainBundle URLForResource:@"embedded" withExtension:@"mobileprovision"];
-    NSData *profileData = [NSData dataWithContentsOfURL:profilePath];
     NSData *certData = [LCUtils certificateData];
     if (error) {
         return -6;
     }
     [self loadStoreFrameworksWithError2:&error];
-    int ans = [NSClassFromString(@"ZSigner") checkCertWithProv:profileData key:certData pass:[LCSharedUtils certificatePassword] completionHandler:completionHandler];
+    int ans = [NSClassFromString(@"ZSigner") checkCert:certData pass:[LCSharedUtils certificatePassword] completionHandler:completionHandler];
     return ans;
 }
 
@@ -329,16 +339,10 @@
 + (void)validateJITLessSetupWithCompletionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
     // Verify that the certificate is usable
     // Create a test app bundle
-    NSString *path = [NSTemporaryDirectory() stringByAppendingPathComponent:@"CertificateValidation.app"];
+    NSString *path = NSTemporaryDirectory();
     [NSFileManager.defaultManager createDirectoryAtPath:path withIntermediateDirectories:YES attributes:nil error:nil];
-    NSString *tmpExecPath = [path stringByAppendingPathComponent:@"LiveContainer.tmp"];
     NSString *tmpLibPath = [path stringByAppendingPathComponent:@"TestJITLess.dylib"];
-    NSString *tmpInfoPath = [path stringByAppendingPathComponent:@"Info.plist"];
-    [NSFileManager.defaultManager copyItemAtPath:NSBundle.mainBundle.executablePath toPath:tmpExecPath error:nil];
     [NSFileManager.defaultManager copyItemAtPath:[NSBundle.mainBundle.bundlePath stringByAppendingPathComponent:@"Frameworks/TestJITLess.dylib"] toPath:tmpLibPath error:nil];
-    NSMutableDictionary *info = NSBundle.mainBundle.infoDictionary.mutableCopy;
-    info[@"CFBundleExecutable"] = @"LiveContainer.tmp";
-    [info writeBinToFile:tmpInfoPath atomically:YES];
 
     dispatch_semaphore_t sema = dispatch_semaphore_create(0);
     __block bool signSuccess = false;
@@ -346,7 +350,7 @@
     
     // Sign the test app bundle
 
-    [LCUtils signAppBundleWithZSign:[NSURL fileURLWithPath:path]
+    [LCUtils signFilesWithZSignWithURLs:@[[NSURL fileURLWithPath:tmpLibPath]]
                   completionHandler:^(BOOL success, NSError *_Nullable error) {
         signSuccess = success;
         signError = error;
@@ -363,10 +367,8 @@
         } else {
             completionHandler(NO, [NSError errorWithDomain:NSBundle.mainBundle.bundleIdentifier code:2 userInfo:@{NSLocalizedDescriptionKey: @"lc.signer.latestCertificateInvalidErr"}]);
         }
-        
+        [NSFileManager.defaultManager removeItemAtPath:tmpLibPath error:nil];
     });
-    
-
 }
 
 + (NSURL *)archiveIPAWithBundleName:(NSString*)newBundleName includingExtraInfoDict:(NSDictionary *)extraInfoDict error:(NSError **)error {

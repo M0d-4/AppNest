@@ -3,7 +3,6 @@
 #include "common/json.h"
 #include "openssl.h"
 #include "macho.h"
-#include "bundle.h"
 #include <libgen.h>
 #include <dirent.h>
 #include <getopt.h>
@@ -19,11 +18,6 @@
 #include "timer.h"
 #include "common/log.h"
 
-
-NSString* getTmpDir() {
-	NSArray *paths = NSSearchPathForDirectoriesInDomains(NSDocumentDirectory, NSUserDomainMask, YES);
-	return [[[paths objectAtIndex:0] stringByDeletingLastPathComponent] stringByAppendingPathComponent:@"tmp"];
-}
 
 extern "C" {
 
@@ -73,142 +67,31 @@ NSError* makePartialSignError(const std::string& failedFiles, const std::vector<
     return [NSError errorWithDomain:@"Failed to Sign" code:-1 userInfo:userInfo];
 }
 
-ZSignAsset zSignAsset;
-
-void zsign(NSString *appPath,
-          NSData *prov,
-          NSData *key,
-          NSString *pass,
-          NSProgress* progress,
-          void(^completionHandler)(BOOL success, NSError *error)
-          )
-{
-    ZTimer gtimer;
-    ZTimer timer;
-    timer.Reset();
-    
-	bool bForce = false;
-	bool bWeakInject = false;
-	bool bDontGenerateEmbeddedMobileProvision = YES;
-	
-	string strPassword;
-
-	string strDyLibFile;
-	string strOutputFile;
-
-	string strEntitlementsFile;
-
-    const char* strPKeyFileData = (const char*)[key bytes];
-    const char* strProvFileData = (const char*)[prov bytes];
-	strPassword = [pass cStringUsingEncoding:NSUTF8StringEncoding];
-	
-	
-	string strPath = [appPath cStringUsingEncoding:NSUTF8StringEncoding];
-    
-    ZLog::logs.clear();
-
-	__block ZSignAsset zSignAsset;
-	
-    if (!zSignAsset.InitSimple(strPKeyFileData, (int)[key length], strProvFileData, (int)[prov length], strPassword)) {
-        completionHandler(NO, makeErrorFromLog(ZLog::logs));
-        ZLog::logs.clear();
-		return;
-	}
-    
-	bool bEnableCache = true;
-	string strFolder = strPath;
-	
-	__block ZBundle bundle;
-	bool success = bundle.ConfigureFolderSign(&zSignAsset, strFolder, "", "", "", strDyLibFile, bForce, bWeakInject, bEnableCache, bDontGenerateEmbeddedMobileProvision);
-
-    if(!success) {
-        completionHandler(NO, makeErrorFromLog(ZLog::logs));
-        ZLog::logs.clear();
+// copy, remove and rename back the file to prevent crash due to kernel signature cache
+// see https://developer.apple.com/documentation/security/updating-mac-software
+void refreshFile(NSString* path) {
+    if(![NSFileManager.defaultManager fileExistsAtPath:path]) {
         return;
     }
-    
-    int filesNeedToSign = bundle.GetSignCount();
-    [progress setTotalUnitCount:filesNeedToSign];
-    bundle.progressHandler = [&progress] {
-        [progress setCompletedUnitCount:progress.completedUnitCount + 1];
-    };
-    
-    
-
-
-    ZLog::PrintV(">>> Files Need to Sign: \t%d\n", filesNeedToSign);
-    bool bRet = bundle.StartSign(bEnableCache);
-    timer.PrintResult(bRet, ">>> Signed %s!", bRet ? "OK" : "Failed");
-    gtimer.Print(">>> Done.");
-    if (!bRet) {
-        completionHandler(NO, makeErrorFromLog(ZLog::logs));
-        ZLog::logs.clear();
-        return;
-    }
-
-    NSError* signError = nil;
-    if (!bundle.signFailedFiles.empty()) {
-        signError = makePartialSignError(bundle.signFailedFiles, ZLog::logs);
-    }
-
-    completionHandler(YES, signError);
-    ZLog::logs.clear();
-    
-	return;
+    NSString* newPath = [NSString stringWithFormat:@"%@.tmp", path];
+    NSError* error;
+    [NSFileManager.defaultManager copyItemAtPath:path toPath:newPath error:&error];
+    [NSFileManager.defaultManager removeItemAtPath:path error:&error];
+    [NSFileManager.defaultManager moveItemAtPath:newPath toPath:path error:&error];
 }
 
-bool adhocSignMachO(NSString *machoPath, NSString *bundleId, NSData* entitlementData) {
-    ZSignAsset zSignAsset;
-    zSignAsset.InitAdhoc([entitlementData bytes], (int)[entitlementData length]);
-    
-    ZMachO* macho = new ZMachO();
-    if (!macho->Init(machoPath.UTF8String)) {
-        ZLog::ErrorV(">>> Invalid mach-o file! %s\n", machoPath.UTF8String);
-        return false;
-    }
-
-    string strInfoSHA1;
-    string strInfoSHA256;
-    string strCodeResourcesData;
-    string strBundleId(bundleId.UTF8String);
-    bool bRet = macho->Sign(&zSignAsset, true, strBundleId, strInfoSHA1, strInfoSHA256, strCodeResourcesData);
-    return bRet;
-}
-
-NSString* getTeamId(NSData *prov,
-                    NSData *key,
-                    NSString *pass) {
-    string strPassword;
-
-    const char* strPKeyFileData = (const char*)[key bytes];
-    const char* strProvFileData = (const char*)[prov bytes];
-    strPassword = [pass cStringUsingEncoding:NSUTF8StringEncoding];
-    
-    ZLog::logs.clear();
-
-    __block ZSignAsset zSignAsset;
-    
-    if (!zSignAsset.InitSimple(strPKeyFileData, (int)[key length], strProvFileData, (int)[prov length], strPassword)) {
-        ZLog::logs.clear();
-        return nil;
-    }
-    NSString* teamId = [NSString stringWithUTF8String:zSignAsset.m_strTeamId.c_str()];
-    return teamId;
-}
-
-int checkCert(NSData *prov,
-              NSData *key,
+int checkCert(NSData *key,
               NSString *pass,
               void(^completionHandler)(int status, NSDate* expirationDate, NSString* organizationalUnitName, NSString *error)) {
     const char* strPKeyFileData = (const char*)[key bytes];
-    const char* strProvFileData = (const char*)[prov bytes];
+
     string strPassword = [pass cStringUsingEncoding:NSUTF8StringEncoding];
     
     ZLog::logs.clear();
 
     __block ZSignAsset zSignAsset;
     
-    if (!zSignAsset.InitSimple(strPKeyFileData, (int)[key length], strProvFileData, (int)[prov length], strPassword)) {
+    if (!zSignAsset.InitSimple(strPKeyFileData, (int)[key length], nil, 0, strPassword)) {
         ZLog::logs.clear();
         completionHandler(2, nil, nil, @"Unable to initialize certificate. Please check your password.");
         return -1;
@@ -345,5 +228,149 @@ int checkCert(NSData *prov,
     [task resume];
     return 1;
 }
+
+@implementation ZSigner
++ (NSProgress*)signMachOPathArr:(NSArray<NSString*>*)machoPathArr bundleId:(NSString *)bundleId cert:(NSData *)key
+                            pass:(NSString *)pass completionHandler:(void(^)(BOOL success, NSError *error))completionHandler {
+    NSProgress* progress = [NSProgress progressWithTotalUnitCount:(int64_t)machoPathArr.count];
+    ZLog::logs.clear();
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0), ^{
+        ZSignAsset* pSignAsset = new ZSignAsset();
+        const char* strPKeyFileData = (const char*)[key bytes];
+        const char* strPassword = [pass cStringUsingEncoding:NSUTF8StringEncoding];
+        string strBundleId(bundleId.UTF8String);
+
+        bool ret = pSignAsset->InitSimple(strPKeyFileData, (int)[key length], nil, 0, strPassword);
+        if (!ret) {
+            delete pSignAsset;
+            NSError* initError = [NSError errorWithDomain:@"Failed to Sign" code:-1 userInfo:@{
+                NSLocalizedDescriptionKey: @"Failed to initialize zSignAsset. Maybe wrong password?"
+            }];
+            dispatch_async(dispatch_get_main_queue(), ^{
+                completionHandler(NO, initError);
+            });
+            return;
+        }
+
+        NSMutableArray<NSString *>* errorList = [NSMutableArray new];
+        // serialQueue serializes errorList writes and progress updates from concurrent tasks
+        dispatch_queue_t serialQueue = dispatch_queue_create("com.zsign.signqueue", DISPATCH_QUEUE_SERIAL);
+        dispatch_group_t group = dispatch_group_create();
+        dispatch_queue_t concurrentQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0);
+
+        for (NSString* machoPath in machoPathArr) {
+            dispatch_group_async(group, concurrentQueue, ^{
+                ZMachO* macho = new ZMachO();
+                NSString* errorMsg = nil;
+                refreshFile(machoPath);
+                if (!macho->Init(machoPath.UTF8String)) {
+                    ZLog::ErrorV(">>> Invalid mach-o file! %s\n", machoPath.UTF8String);
+                    errorMsg = [NSString stringWithFormat:@"Invalid mach-o file! %@", machoPath];
+                } else {
+                    bool bRet = macho->Sign(pSignAsset, true, strBundleId, "", "", "");
+                    if (!bRet) {
+                        errorMsg = [NSString stringWithFormat:@"Failed to Sign %@", machoPath];
+                    } else {
+                        refreshFile(machoPath);
+                    }
+                }
+                delete macho;
+
+                // Serialize errorList mutation and progress counter increment
+                dispatch_sync(serialQueue, ^{
+                    if (errorMsg) {
+                        [errorList addObject:errorMsg];
+                    }
+                    progress.completedUnitCount++;
+                });
+            });
+        }
+
+        dispatch_group_wait(group, DISPATCH_TIME_FOREVER);
+
+        delete pSignAsset;
+        if (errorList.count > 0) {
+            NSError* signingError = [NSError errorWithDomain:@"Failed to Sign" code:-1 userInfo:@{
+                NSLocalizedDescriptionKey: [errorList componentsJoinedByString:@"\n"]
+            }];
+            completionHandler(NO, signingError);
+        } else {
+            completionHandler(YES, nil);
+        }
+
+    });
+
+    return progress;
+}
+
++ (NSProgress*)signWithAppPath:(NSString *)appPath bundleId:(NSString *)bundleId cert:(NSData *)key pass:(NSString *)pass
+             completionHandler:(void (^)(BOOL success, NSError *error))completionHandler {
+
+    NSURL* bundleURL = [NSURL fileURLWithPath:appPath];
+        
+    NSFileManager *fm = [NSFileManager defaultManager];
+    NSDirectoryEnumerator *enumerator = [fm enumeratorAtURL:bundleURL includingPropertiesForKeys:@[NSURLIsRegularFileKey] options:NSDirectoryEnumerationSkipsHiddenFiles errorHandler:nil];
+    NSMutableArray* filesToSign = [NSMutableArray new];
+    
+    NSError* error;
+    
+    for (NSURL *fileURL in enumerator) {
+        NSNumber *isRegularFile = nil;
+        if (![fileURL getResourceValue:&isRegularFile forKey:NSURLIsRegularFileKey error:&error] || ![isRegularFile boolValue]) {
+            continue;
+        }
+        if(!is_64bit_macho(fileURL.path.UTF8String)) {
+            continue;
+        }
+        [filesToSign addObject:fileURL.path];
+    }
+    
+    return [ZSigner signMachOPathArr:filesToSign bundleId:bundleId cert:key pass:pass completionHandler:completionHandler];
+}
+
++ (BOOL)adhocSignMachOAtPath:(NSString *)path bundleId:(NSString*)bundleId entitlementData:(NSData *)entitlementData {
+    ZLog::logs.clear();
+    
+    ZSignAsset zSignAsset;
+    zSignAsset.InitAdhoc([entitlementData bytes], (int)[entitlementData length]);
+    
+    ZMachO* macho = new ZMachO();
+    if (!macho->Init(path.UTF8String)) {
+        ZLog::ErrorV(">>> Invalid mach-o file! %s\n", path.UTF8String);
+        return false;
+    }
+
+    string strInfoSHA1;
+    string strInfoSHA256;
+    string strCodeResourcesData;
+    string strBundleId(bundleId.UTF8String);
+    bool bRet = macho->Sign(&zSignAsset, true, strBundleId, strInfoSHA1, strInfoSHA256, strCodeResourcesData);
+    return bRet;
+}
+
+// this method is used to get teamId for ADP/Enterprise certs ,don't use it in normal jitless
++ (NSString*)getTeamIdWithCert:(NSData *)cert pass:(NSString *)pass {
+    string strPassword;
+
+    const char* strPKeyFileData = (const char*)[cert bytes];
+
+    strPassword = [pass cStringUsingEncoding:NSUTF8StringEncoding];
+    
+    ZLog::logs.clear();
+
+    __block ZSignAsset zSignAsset;
+    
+    if (!zSignAsset.InitSimple(strPKeyFileData, (int)[cert length], nil, 0, strPassword)) {
+        ZLog::logs.clear();
+        return nil;
+    }
+    NSString* teamId = [NSString stringWithUTF8String:zSignAsset.m_strTeamId.c_str()];
+    return teamId;
+}
+
++ (int)checkCert:(NSData *)cert pass:(NSString *)pass completionHandler:(void(^)(int status, NSDate* expirationDate, NSString* organizationalUnitName, NSString *error))completionHandler {
+    return checkCert(cert, pass, completionHandler);
+}
+@end
 
 }

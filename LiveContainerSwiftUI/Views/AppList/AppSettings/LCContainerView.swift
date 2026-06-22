@@ -15,6 +15,7 @@ protocol LCContainerViewDelegate {
     func getSettingsBundle() -> Bundle?
     func getContainerURL(container: LCContainer) -> URL
     func getBundleId() -> String
+    func isTweakLoaderInjectionDisabled() -> Bool
 }
 
 struct LCContainerView : View {
@@ -30,6 +31,21 @@ struct LCContainerView : View {
     @EnvironmentObject private var sharedModel : SharedModel
     @State private var typingContainerName : String = ""
     @State private var typingIDFV: String = ""
+    @State private var typingSpoofDeviceName: String = ""
+    @State private var typingSpoofDeviceModel: String = ""
+    @State private var typingSpoofSystemName: String = ""
+    @State private var typingSpoofSystemVersion: String = ""
+    @State private var typingSpoofLocaleIdentifier: String = ""
+    @State private var typingSpoofTimeZoneIdentifier: String = ""
+    @State private var typingSpoofBatteryLevel: String = ""
+    @State private var spoofBatteryStateSelection: Int = 2
+    @State private var spoofLowPowerModeEnabled: Bool = false
+    @State private var typingSpoofSubscriberIdentifier: String = ""
+    @State private var typingSpoofSubscriberCarrierTokenBase64: String = ""
+    @State private var spoofSubscriberSIMInsertedEnabled: Bool = false
+    @State private var spoofSubscriberSIMInserted: Bool = false
+    @State private var typingSpoofRadioAccessTechnology: String = "CTRadioAccessTechnologyLTE"
+    @State private var typingSpoofHardwareModel: String = ""
     @State private var inUse = false
     @State private var runningLC : String? = nil
     
@@ -37,11 +53,30 @@ struct LCContainerView : View {
     @State private var errorInfo = ""
     @State private var successShow = false
     @State private var successInfo = ""
+
+    private var tweakLoaderDependentControlsEnabled: Bool {
+        !delegate.isTweakLoaderInjectionDisabled()
+    }
     
     init(container: LCContainer, uiDefaultDataFolder : Binding<String?>, delegate: LCContainerViewDelegate) {
         self._container = ObservedObject(initialValue: container)
         self.delegate = delegate
         self._typingContainerName = State(initialValue: container.name)
+        self._typingSpoofDeviceName = State(initialValue: container.spoofDeviceName)
+        self._typingSpoofDeviceModel = State(initialValue: container.spoofDeviceModel)
+        self._typingSpoofSystemName = State(initialValue: container.spoofSystemName)
+        self._typingSpoofSystemVersion = State(initialValue: container.spoofSystemVersion)
+        self._typingSpoofLocaleIdentifier = State(initialValue: container.spoofLocaleIdentifier)
+        self._typingSpoofTimeZoneIdentifier = State(initialValue: container.spoofTimeZoneIdentifier)
+        self._typingSpoofBatteryLevel = State(initialValue: String(format: "%.2f", container.spoofBatteryLevel))
+        self._spoofBatteryStateSelection = State(initialValue: container.spoofBatteryState)
+        self._spoofLowPowerModeEnabled = State(initialValue: container.spoofLowPowerModeEnabled)
+        self._typingSpoofSubscriberIdentifier = State(initialValue: container.spoofSubscriberIdentifier)
+        self._typingSpoofSubscriberCarrierTokenBase64 = State(initialValue: container.spoofSubscriberCarrierTokenBase64)
+        self._spoofSubscriberSIMInsertedEnabled = State(initialValue: container.spoofSubscriberSIMInsertedEnabled)
+        self._spoofSubscriberSIMInserted = State(initialValue: container.spoofSubscriberSIMInserted)
+        self._typingSpoofRadioAccessTechnology = State(initialValue: container.spoofRadioAccessTechnology.isEmpty ? "CTRadioAccessTechnologyLTE" : container.spoofRadioAccessTechnology)
+        self._typingSpoofHardwareModel = State(initialValue: container.spoofHardwareModel)
         self._uiDefaultDataFolder = Binding(projectedValue: uiDefaultDataFolder)
     }
     
@@ -69,6 +104,7 @@ struct LCContainerView : View {
                     Toggle(isOn: $container.isolateAppGroup) {
                         Text("lc.container.isolateAppGroup".loc)
                     }
+                    .disabled(container.strictTestMode)
                     .onChange(of: container.isolateAppGroup) { newValue in
                         saveContainer()
                     }
@@ -92,6 +128,30 @@ struct LCContainerView : View {
                     }
                 } footer: {
                     Text("lc.container.defaultContainerDesc".loc)
+                }
+
+                Section {
+                    Toggle("Strict Test Mode", isOn: $container.strictTestMode)
+                        .disabled(!tweakLoaderDependentControlsEnabled)
+                        .onChange(of: container.strictTestMode) { _ in
+                            saveStrictModeSettings()
+                        }
+
+                    if container.strictTestMode {
+                        Toggle("Auto-Wipe Container on App Exit", isOn: $container.strictAutoWipeOnExit)
+                            .disabled(!tweakLoaderDependentControlsEnabled)
+                            .onChange(of: container.strictAutoWipeOnExit) { _ in
+                                saveContainer()
+                            }
+                    }
+                } header: {
+                    Text("Strict Test Mode")
+                } footer: {
+                    if tweakLoaderDependentControlsEnabled {
+                        Text("Aggressive isolation for app testing: forces app-group isolation, blocks common external URL/network paths, and can auto-wipe this container on exit.")
+                    } else {
+                        Text("Strict Test Mode requires TweakLoader injection. Disable Don't Inject TweakLoader in App Settings to use this.")
+                    }
                 }
                                 
                 Section {
@@ -224,9 +284,28 @@ struct LCContainerView : View {
         }
         .onAppear() {
             container.reloadInfoPlist()
+            if container.strictTestMode {
+                container.isolateAppGroup = true
+                container.blockDeviceInfoReads = true
+            }
             if let spoofedIDFV = container.spoofedIdentifier {
                 typingIDFV = spoofedIDFV
             }
+            typingSpoofDeviceName = container.spoofDeviceName
+            typingSpoofDeviceModel = container.spoofDeviceModel
+            typingSpoofSystemName = container.spoofSystemName
+            typingSpoofSystemVersion = container.spoofSystemVersion
+            typingSpoofLocaleIdentifier = container.spoofLocaleIdentifier
+            typingSpoofTimeZoneIdentifier = container.spoofTimeZoneIdentifier
+            typingSpoofBatteryLevel = String(format: "%.2f", container.spoofBatteryLevel)
+            spoofBatteryStateSelection = container.spoofBatteryState
+            spoofLowPowerModeEnabled = container.spoofLowPowerModeEnabled
+            typingSpoofSubscriberIdentifier = container.spoofSubscriberIdentifier
+            typingSpoofSubscriberCarrierTokenBase64 = container.spoofSubscriberCarrierTokenBase64
+            spoofSubscriberSIMInsertedEnabled = container.spoofSubscriberSIMInsertedEnabled
+            spoofSubscriberSIMInserted = container.spoofSubscriberSIMInserted
+            typingSpoofRadioAccessTechnology = container.spoofRadioAccessTechnology.isEmpty ? "CTRadioAccessTechnologyLTE" : container.spoofRadioAccessTechnology
+            typingSpoofHardwareModel = container.spoofHardwareModel
             settingsBundle = delegate.getSettingsBundle()
             runningLC = LCSharedUtils.getContainerUsingLCScheme(withFolderName: container.folderName)
             inUse = runningLC != nil
@@ -252,6 +331,14 @@ struct LCContainerView : View {
         }
         
         delegate.saveContainer(container: container)
+    }
+
+    func saveStrictModeSettings() {
+        if container.strictTestMode {
+            container.isolateAppGroup = true
+            container.blockDeviceInfoReads = true
+        }
+        saveContainer()
     }
     
     func openDataFolder() {

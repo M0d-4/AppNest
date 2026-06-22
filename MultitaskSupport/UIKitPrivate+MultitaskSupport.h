@@ -11,23 +11,23 @@
 #define PrivClass(NAME) NSClassFromString(@#NAME)
 
 @interface LSResourceProxy : NSObject
-	@property (setter=_setLocalizedName:,nonatomic,copy) NSString *localizedName;
+    @property (setter=_setLocalizedName:,nonatomic,copy) NSString *localizedName;
 @end
 
 @interface LSBundleProxy : LSResourceProxy
 @end
 
 @interface LSApplicationProxy : LSBundleProxy
-	@property(nonatomic, assign, readonly) NSString *bundleIdentifier;
-	@property(nonatomic, assign, readonly) NSString *localizedShortName;
-	@property(nonatomic, assign, readonly) NSString *primaryIconName;
+    @property(nonatomic, assign, readonly) NSString *bundleIdentifier;
+    @property(nonatomic, assign, readonly) NSString *localizedShortName;
+    @property(nonatomic, assign, readonly) NSString *primaryIconName;
 
-	@property (nonatomic,readonly) NSString * applicationIdentifier;
-	@property (nonatomic,readonly) NSString * applicationType;
-	@property (nonatomic,readonly) NSArray * appTags;
-	@property (getter=isLaunchProhibited,nonatomic,readonly) BOOL launchProhibited;
-	@property (getter=isPlaceholder,nonatomic,readonly) BOOL placeholder;
-	@property (getter=isRemovedSystemApp,nonatomic,readonly) BOOL removedSystemApp;
+    @property (nonatomic,readonly) NSString * applicationIdentifier;
+    @property (nonatomic,readonly) NSString * applicationType;
+    @property (nonatomic,readonly) NSArray * appTags;
+    @property (getter=isLaunchProhibited,nonatomic,readonly) BOOL launchProhibited;
+    @property (getter=isPlaceholder,nonatomic,readonly) BOOL placeholder;
+    @property (getter=isRemovedSystemApp,nonatomic,readonly) BOOL removedSystemApp;
 @end
 
 @interface BSCornerRadiusConfiguration : NSObject
@@ -46,7 +46,7 @@
 
 // FrontBoard
 
-@class RBSProcessIdentity, FBProcessExecutableSlice, UIMutableApplicationSceneClientSettings, UIMutableScenePresentationContext, UIScenePresentationManager, _UIScenePresenter, _UIScenePresenterOwner;
+@class RBSProcessIdentity, FBProcessExecutableSlice, UIMutableApplicationSceneClientSettings, UIMutableScenePresentationContext, UIScenePresentationManager, _UIScenePresenter, _UIScenePresenterOwner, _UISceneEventDeferringHostComponent, _UISceneRelationshipManagementHostComponent;
 
 @interface FBApplicationProcessLaunchTransaction : BSTransaction
 - (instancetype) initWithProcessIdentity:(RBSProcessIdentity *)identity executionContextProvider:(id)providerBlock;
@@ -58,19 +58,19 @@
 
 @interface FBMutableProcessExecutionContext : FBProcessExecutionContext
 
-@property (nonatomic,copy) RBSProcessIdentity * identity; 
-@property (nonatomic,copy) NSArray * arguments; 
-@property (nonatomic,copy) NSDictionary * environment; 
-@property (nonatomic,retain) NSURL * standardOutputURL; 
-@property (nonatomic,retain) NSURL * standardErrorURL; 
-@property (assign,nonatomic) BOOL waitForDebugger; 
-@property (assign,nonatomic) BOOL disableASLR; 
-@property (assign,nonatomic) BOOL checkForLeaks; 
-@property (assign,nonatomic) long long launchIntent; 
-//@property (nonatomic,retain) id<FBProcessWatchdogProviding> watchdogProvider; 
-@property (nonatomic,copy) NSString * overrideExecutablePath; 
-//@property (nonatomic,retain) FBProcessExecutableSlice * overrideExecutableSlice; 
-@property (nonatomic,copy) id completion; 
+@property (nonatomic,copy) RBSProcessIdentity * identity;
+@property (nonatomic,copy) NSArray * arguments;
+@property (nonatomic,copy) NSDictionary * environment;
+@property (nonatomic,retain) NSURL * standardOutputURL;
+@property (nonatomic,retain) NSURL * standardErrorURL;
+@property (assign,nonatomic) BOOL waitForDebugger;
+@property (assign,nonatomic) BOOL disableASLR;
+@property (assign,nonatomic) BOOL checkForLeaks;
+@property (assign,nonatomic) long long launchIntent;
+//@property (nonatomic,retain) id<FBProcessWatchdogProviding> watchdogProvider;
+@property (nonatomic,copy) NSString * overrideExecutablePath;
+//@property (nonatomic,retain) FBProcessExecutableSlice * overrideExecutableSlice;
+@property (nonatomic,copy) id completion;
 -(id)copyWithZone:(NSZone*)arg1 ;
 @end
 
@@ -87,6 +87,7 @@
 @end
 
 @interface FBScene : NSObject
+@property(nonatomic, assign, readonly) _UISceneRelationshipManagementHostComponent *_relationshipManagementHostComponent API_AVAILABLE(ios(17.4));
 - (NSString *)identifier;
 - (FBSSceneIdentityToken *)identityToken;
 - (FBProcess *)clientProcess;
@@ -94,6 +95,8 @@
 - (void)updateSettings:(UIMutableApplicationSceneSettings *)settings withTransitionContext:(id)context completion:(id)completion;
 - (void)updateSettingsWithBlock:(void(^)(UIMutableApplicationSceneSettings *settings))arg1;
 - (void)updateSettingsWithTransitionBlock:(UIApplicationSceneTransitionContext *(^)(/* FBSMutableSceneSettings * */ id settings))transitionBlock;
+- (void)addExtension:(Class)extension;
+- (void)configureParameters:(void(^)(FBSMutableSceneParameters *parameters))parametersBlock;
 @end
 
 @interface FBDisplayManager : NSObject
@@ -151,6 +154,7 @@
 @end
 
 @interface UIApplicationSceneSpecification : FBSSceneSpecification
+- (NSArray<Class> *)defaultExtensions;
 @end
 
 @interface FBSSceneIdentity : NSObject
@@ -196,7 +200,8 @@
 
 @interface FBSSceneParameters(Multitask)
 + (instancetype)parametersForSpecification:(FBSSceneSpecification *)spec;
-//- (void)updateSettingsWithBlock:(id)block;
+- (void)updateClientSettingsWithBlock:(void(^)(UIMutableApplicationSceneClientSettings *clientSettings))block;
+- (void)updateSettingsWithBlock:(void(^)(UIMutableApplicationSceneSettings *settings))block;
 @end
 
 @interface FBSMutableSceneDefinition : NSObject
@@ -264,6 +269,7 @@
 @end
 
 @interface _UIScenePresenter : NSObject
+@property (nonatomic, copy, readonly) NSString *identifier;
 @property (nonatomic, assign, readonly) _UIScenePresentationView *presentationView;
 @property(nonatomic, assign, readonly) FBScene *scene;
 - (instancetype)initWithOwner:(_UIScenePresenterOwner *)manager identifier:(NSString *)scene sortContext:(NSNumber *)context;
@@ -358,4 +364,36 @@
 @interface _UISceneRelationshipManagementHostComponent : NSObject {
     @public _UIScenePresenter *_prioritizedPresenter;
 };
+@end
+
+/// The following private API is used to properly configure keyboard focus for iOS 17.4+
+API_AVAILABLE(ios(17.4))
+@interface _UISceneHostingControllerAdvancedConfiguration : NSObject
+@property(retain, nonatomic) UIApplicationSceneSpecification *sceneSpecification;
+@property(retain, nonatomic) NSOrderedSet *additionalExtensions;
+- (instancetype)initWithProcessIdentity:(RBSProcessIdentity *)identity;
+@end
+
+API_AVAILABLE(ios(17.4)) // 17.0
+@interface _UISceneHostingView : UIView
+- (_UIScenePresenter *)_scenePresenter;
+@end
+API_AVAILABLE(ios(17.4)) // 17.0
+@interface _UISceneHostingController : NSObject
+- (instancetype)initWithAdvancedConfiguration:(_UISceneHostingControllerAdvancedConfiguration *)config API_AVAILABLE(ios(17.4));
+- (instancetype)initWithProcessIdentity:(RBSProcessIdentity *)identity sceneSpecification:(FBSSceneSpecification *)spec;
+- (_UISceneEventDeferringHostComponent *)_eventDeferringComponent;
+- (_UISceneHostingView *)sceneView;
+- (UIViewController *)sceneViewController;
+- (void)invalidate;
+@end
+
+API_AVAILABLE(ios(17.4)) // 17.0
+// iOS 17.0-26.x the class was named _UISceneHostingEventDeferringHostComponent
+@interface _UISceneEventDeferringHostComponent : NSObject
+@property(nonatomic) NSInteger grantBehavior API_AVAILABLE(ios(27.0));
+@property(nonatomic) NSInteger selectionRequestBehavior API_AVAILABLE(ios(27.0));
+@property(nonatomic) BOOL maintainHostFirstResponderWhenClientWantsKeyboard;
+@property(nonatomic) BOOL requestEventDeferralForAllFirstResponderChanges;
+- (void)setFirstResponderTrackingSelectionPath:(UIViewController *)path API_AVAILABLE(ios(27.0));
 @end

@@ -114,7 +114,7 @@ struct LCStorageSummarySection: View {
                         .foregroundStyle(.red)
                 }
 
-                if let breakdown {
+                if breakdown != nil {
                     let displayItems = self.displayItems
 
                     if !displayItems.isEmpty {

@@ -35,6 +35,7 @@ int dyld_get_program_sdk_version(void);
                    completionHandler:(void(^)(NSURL* ipaURL, NSError* error))completionHandler;
 
 + (NSProgress *)signAppBundleWithZSign:(NSURL *)path completionHandler:(void (^)(BOOL success, NSError *error))completionHandler;
++ (NSProgress *)signFilesWithZSignWithURLs:(NSArray<NSURL*>*)urls completionHandler:(void (^)(BOOL success, NSError *error))completionHandler;
 + (NSString*)getCertTeamIdWithKeyData:(NSData*)keyData password:(NSString*)password;
 + (int)validateCertificateWithCompletionHandler:(void(^)(int status, NSDate *expirationDate, NSString *organizationalUnitName, NSString *error))completionHandler;
 

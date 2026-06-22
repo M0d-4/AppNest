@@ -31,6 +31,7 @@ public:
 	static void PrintV(int nLevel, const char* szFormat, ...);
 	static void SetLogLever(int nLogLevel) { g_nLogLevel = nLogLevel; }
     static vector<std::string> logs;
+    static std::mutex logsMutex;
 
 private:
 	static void _Print(const char* szLog, int nColor = 0);

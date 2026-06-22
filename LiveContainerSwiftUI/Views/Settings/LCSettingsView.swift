@@ -7,6 +7,7 @@
 
 import Foundation
 import SwiftUI
+import UserNotifications
 
 enum JITEnablerType : Int, CaseIterable, Identifiable {
     var id: Int { rawValue }
@@ -149,7 +150,7 @@ struct LCSettingsView: View {
                             LCMultiLCManagementView()
                         } label: {
                             if sharedModel.multiLCStatus == 0 {
-                                Text("lc.settings.multiLCInstall".loc)
+                                Text("lc.settings.multiLC".loc)
                             } else if sharedModel.multiLCStatus == 2 {
                                 Text("lc.settings.multiLCIsSecond".loc)
                             }
@@ -256,7 +257,15 @@ struct LCSettingsView: View {
                 } footer: {
                     Text("lc.settings.dontSignDesc".loc)
                 }
-                    
+
+                Section {
+                    Button {
+                        clearNotifications()
+                    } label: {
+                        Text("lc.settings.clearNotifications".loc)
+                    }
+                }
+
                 Section {
                     NavigationLink {
                         LCDataManagementView(appDataFolderNames: $appDataFolderNames)
@@ -474,6 +483,18 @@ struct LCSettingsView: View {
     func openTwitter() {
         UIApplication.shared.open(URL(string: "https://twitter.com/khanhduytran0")!)
     }
+
+    func clearNotifications() {
+        let notificationCenter = UNUserNotificationCenter.current()
+        notificationCenter.removeAllDeliveredNotifications()
+        notificationCenter.removeAllPendingNotificationRequests()
+        if #available(iOS 16.0, *) {
+            notificationCenter.setBadgeCount(0)
+        } else {
+            UIApplication.shared.applicationIconBadgeNumber = 0
+        }
+    }
+
     func openForkOwnerGitHub() {
         UIApplication.shared.open(URL(string: "https://github.com/M0d-4")!)
     }

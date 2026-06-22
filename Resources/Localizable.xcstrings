@@ -2489,7 +2489,43 @@
             "value": "Dark"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダーク"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "다크 모드"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ciemny"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Koyu"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tối"
+          }
+        },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深色"
+          }
+        },
+        "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "深色"
@@ -2506,10 +2542,46 @@
             "value": "Light"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ライト"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "라이트 모드"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Jasny"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Açık"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sáng"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "浅色"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "淺色"
           }
         }
       }
@@ -2523,7 +2595,43 @@
             "value": "Original"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "オリジナル"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "오리지널"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oryginalny"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Orijinal"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nguyên bản"
+          }
+        },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "原版"
+          }
+        },
+        "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "原版"
@@ -2540,10 +2648,46 @@
             "value": "Please select an icon style"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アイコンのスタイルを選択してください"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱 아이콘을 선택해주세요."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Proszę wybrać jakikolwiek styl ikon"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lütfen bir simge stili seçin"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hãy chọn kiểu biểu tượng"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "请选择一个图标样式"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "請選取一個圖示樣式"
           }
         }
       }
@@ -3255,7 +3399,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "동일한 번들 식별자를 갖고 있는 앱이 존재합니다. 하나를 교체하거나 새로운 앱으로 설치해주세요."
+            "value": "동일한 번들 식별자를 갖고 있는 앱이 존재합니다. 기존에 설치되어 있는 앱에 덮어씌우거나 새로운 앱으로 설치해주세요."
           }
         },
         "pl": {
@@ -3905,10 +4049,34 @@
             "value": "Format d'URL de itms-services invalide"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無効な itms-services URL 形式"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "유효하지 않은 itms-services URL입니다."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nieprawidłowy format adresu URL itms-services"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Недействительный itms-services URL-формат"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Geçersiz itms-services URL biçimi"
           }
         },
         "vi": {
@@ -3958,16 +4126,34 @@
             "value": "Aucune URL de téléchargement IPA trouvée dans le fichier plist"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "IPAダウンロードURLがplistに見つかりません"
+          }
+        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "plist에서 IPA 파일 다운로드 URL을 찾을 수 없습니다."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W pliku plist nie znaleziono adresu URL do pobrania pliku IPA"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Не найден URL-адрес загрузки IPA в plist-файле"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plist dosyasında IPA indirme URL'si bulunamadı"
           }
         },
         "vi": {
@@ -4017,16 +4203,34 @@
             "value": "Échec de l'analyse du fichier plist"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plistファイルの解析に失敗しました"
+          }
+        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "plist를 파싱하는데 실패했습니다."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nie udało się przeanalizować pliku plist"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Не удалось обработать plist-файл"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Plist dosyası ayrıştırılamadı"
           }
         },
         "vi": {
@@ -4319,6 +4523,12 @@
             "state": "translated",
             "value": "名称升序"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "名稱 (A-Z)"
+          }
         }
       }
     },
@@ -4401,6 +4611,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "自定义"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "自訂"
           }
         }
       }
@@ -4486,6 +4702,12 @@
             "state": "translated",
             "value": "编辑排序"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重新排列"
+          }
         }
       }
     },
@@ -4568,6 +4790,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "这将重置排序顺序为升序。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "這將重設排列順序為升序。"
           }
         }
       }
@@ -4652,6 +4880,12 @@
             "state": "translated",
             "value": "安装时间"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安裝日期"
+          }
         }
       }
     },
@@ -4734,6 +4968,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "上次打开"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "上次開啟"
           }
         }
       }
@@ -5330,10 +5570,34 @@
             "value": "Ajout d'un conteneur non local"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "非ローカルコンテナの追加"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "외부 저장소 컨테이너 추가 중입니다."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodawanie nielokalnego kontenera"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Добавление контейнера не локально"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerel Olmayan Konteyner Ekleme"
           }
         },
         "vi": {
@@ -5346,6 +5610,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加非本地容器"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增非本地容器"
           }
         }
       }
@@ -5377,10 +5647,34 @@
             "value": "L'ajout d'un conteneur dans un stockage non local n'est pas pris en charge par la plupart des applications et provoquera un comportement indéfini, y compris un plantage. Continuer ?"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ローカルストレージ以外のストレージにコンテナを追加することは、ほとんどのアプリではサポートされておらず、クラッシュを始めとした不具合を引き起こす可能性があります。続行しますか？"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "외부 저장소에 컨테이너를 추가할 경우, 앱이 충돌할 수 있습니다. 계속하시겠습니까?"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dodawanie kontenera do pamięci masowej innej niż lokalna nie jest obsługiwane przez większość aplikacji i spowoduje nieoczekiwane zachowanie (w tym awarię). Kontynuować?"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Добавление контейнера в нелокальном хранилище не поддерживается большинством приложений и приведет к неопределённому поведению, включая сбой. Продолжить?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yerel olmayan bir depolama alanına konteyner eklemek çoğu uygulama tarafından desteklenmez ve çökme dahil olmak üzere tanımlanamayan davranışlara neden olur. Devam etmek istiyor musunuz?"
           }
         },
         "vi": {
@@ -5393,6 +5687,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加不处于本地存储的数据文件夹不被大多数App支持，且会导致包括崩溃等的未定义行为。要继续吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增不位於本地存儲的資料夾不被大多數應用程式支援，且會導致包含當機等自訂行為，要繼續嗎？"
           }
         }
       }
@@ -6143,6 +6443,12 @@
             "state": "translated",
             "value": "修复文件导入"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修復檔案匯入"
+          }
         }
       }
     },
@@ -6225,6 +6531,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "修复本地通知"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "修復本地通知"
           }
         }
       }
@@ -6879,6 +7191,12 @@
             "state": "translated",
             "value": "JIT启动脚本"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "JIT啟動腳本"
+          }
         }
       }
     },
@@ -6963,6 +7281,12 @@
             "state": "translated",
             "value": "在带JIT启动时传递给StikDebug的脚本"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "在JIT啟動時傳遞給StikDebug的腳本"
+          }
         }
       }
     },
@@ -7045,6 +7369,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "已选择脚本"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已選擇腳本"
           }
         }
       }
@@ -7456,10 +7786,34 @@
             "value": "Remarque"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "備考"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메모"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uwaga"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Примечание"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorum"
           }
         },
         "vi": {
@@ -7509,10 +7863,34 @@
             "value": "Entrer une remarque..."
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "備考を入力…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "메모를 입력하세요..."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wpisz uwagę..."
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Введите примечания..."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Yorum girin..."
           }
         },
         "vi": {
@@ -7562,10 +7940,34 @@
             "value": "Sélectionner un dossier de données externe"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "外部ストレージのデータフォルダを使用"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "외부 저장소 폴더 선택"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wybierz zewnętrzny folder danych"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Выберите внешнюю папку данных"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Harici Veri Klasörünü Seç"
           }
         },
         "vi": {
@@ -7578,6 +7980,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "选择外部容器"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "選取外部資料夾"
           }
         }
       }
@@ -8370,6 +8778,12 @@
           }
         },
         "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用AppNest的包名"
+          }
+        },
+        "zh-Hant": {
           "stringUnit": {
             "state": "translated",
             "value": "使用AppNest的包名"
@@ -9407,73 +9821,11 @@
             "state": "translated",
             "value": "默认"
           }
-        }
-      }
-    },
-    "lc.common.calculate": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calculate"
-          }
         },
-        "zh-Hans": {
+        "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "计算"
-          }
-        }
-      }
-    },
-    "lc.storage.calculating": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Calculating…"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "计算中…"
-          }
-        }
-      }
-    },
-    "lc.common.collapsed": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Collapsed"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已收起"
-          }
-        }
-      }
-    },
-    "lc.common.expanded": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Expanded"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已展开"
+            "value": "預設"
           }
         }
       }
@@ -10129,6 +10481,12 @@
             "state": "translated",
             "value": "安装"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安裝"
+          }
         }
       }
     },
@@ -10686,6 +11044,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "未选择文件"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未選取檔案"
           }
         }
       }
@@ -11323,6 +11687,12 @@
             "state": "translated",
             "value": "统计数据"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "統計資料"
+          }
         }
       }
     },
@@ -11733,10 +12103,34 @@
             "value": "Résolution du favori du conteneur..."
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "コンテナブックマークを解決しています…"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "컨테이너 북마크 해결 중입니다."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rozwiązywanie zakładki kontenera..."
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Разрешение закладки контейнера..."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Konteyner yer işaretleri çözülüyor..."
           }
         },
         "vi": {
@@ -11749,6 +12143,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "正在解析容器书签..."
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "正在解析容器書籤…"
           }
         }
       }
@@ -12255,16 +12655,34 @@
             "value": "Ce conteneur n'est pas disponible pour le moment"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在このコンテナは利用できません"
+          }
+        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "지금은 이 컨테이너를 사용할 수 없습니다."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ten kontener nie jest w tym momencie dostępny"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Этот контейнер сейчас недоступен"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu konteyner şu anda mevcut değildir."
           }
         },
         "vi": {
@@ -12277,6 +12695,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "此容器当前不可用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此容器當前不可用"
           }
         }
       }
@@ -12467,6 +12891,24 @@
           "stringUnit": {
             "state": "translated",
             "value": "容器目前由%@使用。"
+          }
+        }
+      }
+    },
+    "lc.container.invalidIDFV": {
+      "comment": "lc.container.invalidIDFV",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Invalid IDFV"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "无效的 IDFV"
           }
         }
       }
@@ -13466,6 +13908,12 @@
             "value": "identifierForVendor 속이기"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oszukaj identifierForVendor"
+          }
+        },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
@@ -13494,6 +13942,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "伪造identifierForVendor"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "偽裝identifierForVendor"
           }
         }
       }
@@ -15806,10 +16260,34 @@
             "value": "ID d’équipe du certificat"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "証明書Team ID"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예상 Team ID"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Team ID Certyfikatu"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Сертифицировать ID команды"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sertifika Ekip Kimliği"
           }
         },
         "vi": {
@@ -15948,10 +16426,34 @@
             "value": "ID d'équipe attendu"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "期待されているTeamID"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "예상 Team ID"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Oczekiwany Team ID"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Ожидаемый идентификатор команды"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Beklenen Takım Kimliği"
           }
         },
         "vi": {
@@ -16200,7 +16702,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "팀 ID"
+            "value": "Team ID"
           }
         },
         "pl": {
@@ -16308,6 +16810,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "无法加载测试动态链接库，这可能是由于证书出现问题。请尝试：1. 重新打开%@；2. 刷新%@；3. 如果仍有问题，请尝试重新给%@打补丁。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "無法載入測試動態連結庫，這可能是由於證書出現問題。請嘗試：1. 重新打開%@；2. 刷新%@；3. 如果仍有問題，請嘗試重新修補%@。"
           }
         }
       }
@@ -17622,6 +18130,12 @@
             "state": "translated",
             "value": "底部窗口栏"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "底部視窗列"
+          }
         }
       }
     },
@@ -17717,6 +18231,57 @@
           "stringUnit": {
             "state": "translated",
             "value": "AppNest 的套裝識別碼「%@」與權限中的 application-Identifier 不匹配，權限預期的套裝識別碼為「%@」。某些功能可能無法使用。"
+          }
+        }
+      }
+    },
+    "lc.settings.cleanCacheComplete": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Caches cleared."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "缓存清理完成"
+          }
+        }
+      }
+    },
+    "lc.settings.cleanCacheConfirm": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do you want to clear the cache?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "确认清除缓存？"
+          }
+        }
+      }
+    },
+    "lc.settings.cleanCaches": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clean Caches"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理缓存"
           }
         }
       }
@@ -18299,6 +18864,60 @@
         }
       }
     },
+    "lc.settings.cleanTmp": {
+      "comment": "lc.settings.cleanTmp",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clean Temporary Files"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清理 tmp 内容"
+          }
+        }
+      }
+    },
+    "lc.settings.cleanTmpComplete": {
+      "comment": "lc.settings.cleanTmpComplete",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temporary files removed."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已清理 tmp 内容。"
+          }
+        }
+      }
+    },
+    "lc.settings.cleanTmpConfirm": {
+      "comment": "lc.settings.cleanTmpConfirm",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Do you want to delete temporary files?"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "要删除 tmp 内容吗？"
+          }
+        }
+      }
+    },
     "lc.settings.clearIconCache": {
       "extractionState": "stale",
       "localizations": {
@@ -18326,10 +18945,34 @@
             "value": "Vider le cache des icônes"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アイコンキャッシュをクリア"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "아이콘 캐시 삭제"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wyczyść pamięć podręczną ikon"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Очистить кэш иконки"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Simge Önbelleğini Temizle"
           }
         },
         "vi": {
@@ -18342,6 +18985,30 @@
           "stringUnit": {
             "state": "translated",
             "value": "清理图标缓存"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除圖示快取"
+          }
+        }
+      }
+    },
+    "lc.settings.clearNotifications": {
+      "comment": "lc.settings.clearNotifications",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear Notifications"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "清除通知"
           }
         }
       }
@@ -18373,16 +19040,34 @@
             "value": "Icône du mode sombre"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "ダークモードのアイコン"
+          }
+        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "다크 모드 아이콘"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ciemny motyw ikony"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Иконка в темном режиме"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Karanlık Mod Simgesi"
           }
         },
         "vi": {
@@ -18395,6 +19080,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "深色模式图标"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "深色模式圖示"
           }
         }
       }
@@ -18494,227 +19185,6 @@
         }
       }
     },
-    "lc.settings.storageManagement": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Storage Management"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "存储管理"
-          }
-        }
-      }
-    },
-    "lc.storage.appBundle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App Bundle"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "应用本体"
-          }
-        }
-      }
-    },
-    "lc.storage.containers": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Containers"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "容器"
-          }
-        }
-      }
-    },
-    "lc.storage.appGroupData": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App Group Data"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "App Group 数据"
-          }
-        }
-      }
-    },
-    "lc.storage.breakdown": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Breakdown"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "分类"
-          }
-        }
-      }
-    },
-    "lc.storage.other": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Other"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "其他"
-          }
-        }
-      }
-    },
-    "lc.storage.temporaryFiles": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Temporary Files"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "临时文件"
-          }
-        }
-      }
-    },
-    "lc.storage.totalStorage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Total Storage"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "总存储"
-          }
-        }
-      }
-    },
-    "lc.storage.installedApps": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Installed Apps"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已安装应用"
-          }
-        }
-      }
-    },
-    "lc.storage.installedAppsToggleHint": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Shows or hides storage details for this app"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "显示或隐藏该应用的存储明细"
-          }
-        }
-      }
-    },
-    "lc.storage.noAppStorageData": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No app storage data"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "没有应用存储数据"
-          }
-        }
-      }
-    },
-    "lc.storage.looseFiles": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Loose Files"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "零散文件"
-          }
-        }
-      }
-    },
-    "lc.storage.tweaks": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tweaks"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tweaks"
-          }
-        }
-      }
-    },
     "lc.settings.defaultSigner": {
       "extractionState": "manual",
       "localizations": {
@@ -18764,6 +19234,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "默认签名工具"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "預設簽署工具"
           }
         }
       }
@@ -18847,6 +19323,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "快捷栏宽度"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Dock欄寬度"
           }
         }
       }
@@ -19516,6 +19998,24 @@
         }
       }
     },
+    "lc.settings.hideCollapsedDock": {
+      "comment": "lc.settings.hideCollapsedDock",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hide Collapsed Dock"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "隐藏折叠 Dock"
+          }
+        }
+      }
+    },
     "lc.settings.importCertFromBuiltinSideStore": {
       "extractionState": "stale",
       "localizations": {
@@ -19595,6 +20095,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "从内置SideStore导入证书"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "從內建SideStore匯入證書"
           }
         }
       }
@@ -19677,7 +20183,13 @@
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "未检测到证书，你在内置SideStore中登录了吗？"
+            "value": "证书未找到，你是否登录了内置SideStore？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "未找到證書，你在內建SideStore中登入了嗎？"
           }
         }
       }
@@ -19761,6 +20273,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "检测到内置SideStore，你想从中导入证书吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "偵測到內建Sideload，你想要從中匯入證書嗎？"
           }
         }
       }
@@ -20195,6 +20713,12 @@
             "state": "translated",
             "value": "向AppNest加载模块"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "向AppNest加載模組"
+          }
         }
       }
     },
@@ -20253,6 +20777,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "启用后，AppNest自身会加载全局模块文件夹中的模块。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AppNest 會載入放入全域模組資料夾的模組。"
           }
         }
       }
@@ -21191,6 +21721,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "默认最大化多任务窗口"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "預設全螢幕多任務視窗"
           }
         }
       }
@@ -22188,7 +22724,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "AppNest2가 AppNest와 다른 인증서로 서명되었습니다. 제대로 된 사용을 위해서 AppNest2를 AppNest와 동일한 계정으로 설치해주세요."
+            "value": "인증서가 일치하지 않습니다. AppNest 설치할 때 사용한 동일한 계정으로 AppNest2를 설치해주세요."
           }
         },
         "pl": {
@@ -22283,7 +22819,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "AppNest로 설치한 앱을 공유 앱으로 변환하면, 두번째 AppNest에서도 데이터와 설정을 유지한 채 해당 앱을 열 수 있습니다."
+            "value": "AppNest를 여러 개 설치할 경우, 앱 여러 개를 동시에 실행할 수 있습니다. (설치한 앱은 공유된 앱으로 변환해야 합니다.)"
           }
         },
         "pl": {
@@ -22378,7 +22914,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "두번째 AppNest 설치"
+            "value": "서브 AppNest 설치"
           }
         },
         "pl": {
@@ -22600,6 +23136,12 @@
             "state": "translated",
             "value": "使用内置SideStore安装"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "使用內建SideStore安裝"
+          }
         }
       }
     },
@@ -22682,6 +23224,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "设置类别为游戏"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "設定類別為遊戲"
           }
         }
       }
@@ -22823,7 +23371,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "두번째 AppNest입니다."
+            "value": "서브 AppNest 사용 중입니다."
           }
         },
         "pl": {
@@ -22872,6 +23420,42 @@
           "stringUnit": {
             "state": "translated",
             "value": "這是第二個AppNest"
+          }
+        }
+      }
+    },
+    "lc.settings.multiLCLaunchPriority": {
+      "comment": "lc.settings.multiLCLaunchPriority",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Launch Priority"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "启动优先级"
+          }
+        }
+      }
+    },
+    "lc.settings.multiLCLaunchPriorityDesc": {
+      "comment": "Drag LiveContainers to choose which one is tried first when launching shared apps.",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Drag LiveContainers to choose which one is tried first when launching shared apps."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "拖动 LiveContainer 来设置启动共享 App 时的尝试顺序。"
           }
         }
       }
@@ -23050,6 +23634,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "通过多任务模式你可以同时打开多个App。将App转换为共享App以在多任务模式中使用。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "多任務模式允許你同時使用多個應用程式。將應用程式轉換為共享應用程式以在多任務模式中使用。"
           }
         }
       }
@@ -23339,94 +23929,20 @@
         }
       }
     },
-    "lc.settings.cleanTmp": {
-      "extractionState": "manual",
+    "lc.settings.noCacheToClean": {
+      "comment": "lc.settings.noCacheToClean",
+      "extractionState": "stale",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Clean Temporary Files"
+            "value": "No caches to clean."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "清理 tmp 内容"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "清理 tmp 內容"
-          }
-        }
-      }
-    },
-    "lc.settings.cleanTmpComplete": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Temporary files removed."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已清理 tmp 内容。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "已清理 tmp 內容。"
-          }
-        }
-      }
-    },
-    "lc.settings.cleanTmpConfirm": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Do you want to delete temporary files?"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "要删除 tmp 内容吗？"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "要刪除 tmp 內容嗎？"
-          }
-        }
-      }
-    },
-    "lc.settings.noTmpToClean": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "No temporary files to remove."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "没有可清理的 tmp 内容。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "沒有可清理的 tmp 內容。"
+            "value": "没有可清理的缓存。"
           }
         }
       }
@@ -23606,6 +24122,29 @@
             "state": "translated",
             "value": "AppNest未被使用开发证书签名，因此无法正常工作。请使用开发证书签名AppNest。"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AppNest未使用開發證書簽名，因此無法正常運作。請使用開發證書簽名AppNest。"
+          }
+        }
+      }
+    },
+    "lc.settings.noTmpToClean": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No temporary files to remove."
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有可清理的 tmp 内容。"
+          }
         }
       }
     },
@@ -23636,16 +24175,34 @@
             "value": "Mode fenêtre unique"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "シングルウィンドウモード"
+          }
+        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "단일 윈도우 모드"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tryb pojedynczego okna"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Однооконный режим"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tek Pencere Modu"
           }
         },
         "vi": {
@@ -23659,6 +24216,12 @@
             "state": "translated",
             "value": "单窗口模式"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "單視窗模式"
+          }
         }
       }
     },
@@ -23671,10 +24234,46 @@
             "value": "Redirect URL Schemes to Host AppNest"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URLスキームをAppNestのホストにリダイレクトする"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "AppNest 전용 URL Scheme"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Schematy przekierowań URL do hosta AppNest"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "URL Şemalarını AppNest'a Yönlendir"
+          }
+        },
+        "vi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Đổi hướng URL Scheme sang AppNest Chủ"
+          }
+        },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
             "value": "重定向URL到AppNest"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "重導向網址到AppNest"
           }
         }
       }
@@ -23991,10 +24590,34 @@
             "value": "Redémarrer l'application automatiquement après l'arrêt"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "終了後にアプリを自動的に再起動する"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱 종료 후 앱을 다시 실행해주세요."
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Automatyczne ponowne uruchomienie aplikacji po jej zamknięciu"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Перезагружать приложение сразу после прекращения"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygulama sonlandırıldıktan sonra otomatik olarak yeniden başlat"
           }
         },
         "vi": {
@@ -24007,6 +24630,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "终止后自动重新启动应用"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "終結後自動重啟"
           }
         }
       }
@@ -24471,10 +25100,34 @@
             "value": "Ignorer l'écran terminé"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "終了画面をスキップする"
+          }
+        },
+        "ko": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "앱 종료 화면 없애기"
+          }
+        },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pomiń ekran zakończenia"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Пропустить завершение экрана"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sonlandırılan ekranı atla"
           }
         },
         "vi": {
@@ -24487,6 +25140,29 @@
           "stringUnit": {
             "state": "translated",
             "value": "跳过终止提示"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "略過終止提示"
+          }
+        }
+      }
+    },
+    "lc.settings.storageManagement": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Storage Management"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "存储管理"
           }
         }
       }
@@ -25236,6 +25912,12 @@
             "state": "translated",
             "value": "添加源"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "添加源頭"
+          }
         }
       }
     },
@@ -25281,7 +25963,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "레포 추가"
+            "value": "소스 추가"
           }
         },
         "pl": {
@@ -25312,6 +25994,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加源"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增來源"
           }
         }
       }
@@ -25396,6 +26084,12 @@
             "state": "translated",
             "value": "测试版"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "測試版"
+          }
         }
       }
     },
@@ -25441,7 +26135,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "레포를 추가하면 다양한 앱을 둘러볼 수 있습니다."
+            "value": "소스를 추가하면 앱을 쉽게 설치할 수 있습니다."
           }
         },
         "pl": {
@@ -25478,6 +26172,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "添加一个源以查看App。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "新增一個來源以瀏覽應用程式。"
           }
         }
       }
@@ -25524,7 +26224,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이미 추가된 레포입니다."
+            "value": "이미 추가된 소스입니다."
           }
         },
         "pl": {
@@ -25651,6 +26351,12 @@
             "state": "translated",
             "value": "URL无效。"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "網址無效。"
+          }
         }
       }
     },
@@ -25696,7 +26402,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "유효하지 않은 레포 파일입니다."
+            "value": "유효하지 않은 소스 파일입니다."
           }
         },
         "pl": {
@@ -25733,6 +26439,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "源的文件无效。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "來源的檔案無效。"
           }
         }
       }
@@ -25817,6 +26529,12 @@
             "state": "translated",
             "value": "本项中不包含下载链接。"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "本項目不包含下載網址。"
+          }
         }
       }
     },
@@ -25900,6 +26618,12 @@
             "state": "translated",
             "value": "加载中..."
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "載入中…"
+          }
         }
       }
     },
@@ -25945,7 +26669,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "현재 레포"
+            "value": "소스"
           }
         },
         "pl": {
@@ -26034,7 +26758,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "수동으로 추가"
+            "value": "소스 추가"
           }
         },
         "pl": {
@@ -26071,6 +26795,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "手动添加"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "手動新增"
           }
         }
       }
@@ -26353,7 +27083,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "\"%@\" 레포를 삭제하시겠습니까?"
+            "value": "\"%@\" 소스를 삭제하시겠습니까?"
           }
         },
         "pl": {
@@ -26442,7 +27172,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "레포 삭제"
+            "value": "소스 삭제"
           }
         },
         "pl": {
@@ -26531,7 +27261,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "레포 삭제"
+            "value": "소스 삭제"
           }
         },
         "pl": {
@@ -26568,6 +27298,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "删除源"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "移除來源"
           }
         }
       }
@@ -26614,7 +27350,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "해당 레포를 새로고침할 수 없습니다."
+            "value": "소스를 업데이트할 수 없습니다."
           }
         },
         "pl": {
@@ -26703,7 +27439,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "해당 레포에 설치할 수 있는 앱이 존재하지 않습니다."
+            "value": "해당 소스에 설치할 수 있는 앱이 존재하지 않습니다."
           }
         },
         "pl": {
@@ -26741,6 +27477,12 @@
             "state": "translated",
             "value": "此源中无App。"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此來源無應用程式。"
+          }
         }
       }
     },
@@ -26771,16 +27513,34 @@
             "value": "Il y a trop d'applications dans le dépôt actuel, veuillez utiliser la recherche."
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "現在のリポジトリにアプリが多すぎます。代わりに検索を使用してください。"
+          }
+        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "이 저장소에는 앱이 너무 많습니다. 검색을 사용하십시오."
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "W obecnym repozytorium znajduje się zbyt wiele aplikacji. Użyj wyszukiwania."
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "В этом репозитории слишком много приложений, вместо этого используйте поиск."
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mevcut depoda çok fazla uygulama var, lütfen arama özelliğini kullanın."
           }
         },
         "vi": {
@@ -26793,6 +27553,185 @@
           "stringUnit": {
             "state": "translated",
             "value": "当前仓库含有过多App，请使用搜索功能。"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "當前儲存庫包含過多應用程式，請使用搜尋功能。"
+          }
+        }
+      }
+    },
+    "lc.storage.appBundle": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Bundle"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "应用本体"
+          }
+        }
+      }
+    },
+    "lc.storage.appGroupData": {
+      "comment": "lc.storage.appGroupData",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Group Data"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "App Group 数据"
+          }
+        }
+      }
+    },
+    "lc.storage.calculating": {
+      "comment": "lc.storage.calculating",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Calculating…"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "计算中…"
+          }
+        }
+      }
+    },
+    "lc.storage.containers": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Containers"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "容器"
+          }
+        }
+      }
+    },
+    "lc.storage.installedApps": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed Apps"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "已安装应用"
+          }
+        }
+      }
+    },
+    "lc.storage.noAppStorageData": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No app storage data"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "没有应用存储数据"
+          }
+        }
+      }
+    },
+    "lc.storage.other": {
+      "comment": "lc.storage.other",
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Other"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "其他"
+          }
+        }
+      }
+    },
+    "lc.storage.temporaryFiles": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Temporary Files"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "临时文件"
+          }
+        }
+      }
+    },
+    "lc.storage.totalStorage": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total Storage"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "总存储"
+          }
+        }
+      }
+    },
+    "lc.storage.tweaks": {
+      "extractionState": "stale",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tweaks"
+          }
+        },
+        "zh-Hans": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tweaks"
           }
         }
       }
@@ -27068,6 +28007,12 @@
             "state": "translated",
             "value": "源"
           }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "來源"
+          }
         }
       }
     },
@@ -27208,7 +28153,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 폴더는 개별 폴더입니다. 이곳에 트윅을 추가하고, 앱 설정에서 이 폴더를 선택하면, 그 앱에만 트윅이 적용됩니다."
+            "value": "이 폴더는 개별 폴더입니다. 이곳에 트윅을 추가하고, 앱 설정에서 생성한 폴더를 선택하면, 해당 앱에만 트윅이 적용됩니다."
           }
         },
         "pl": {
@@ -27303,7 +28248,7 @@
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "이 폴더는 글로벌 폴더입니다. 이곳에 트윅을 추가할 경우 모든 앱에 적용됩니다. 앱별로 트윅을 적용하고 싶다면 새로운 폴더를 만드세요."
+            "value": "이 폴더는 글로벌 폴더입니다. 이곳에 트윅을 추가할 경우 트윅이 모든 앱에 적용됩니다. 앱별로 트윅을 적용하고 싶으면 새로운 폴더를 만드세요."
           }
         },
         "pl": {
@@ -29663,16 +30608,34 @@
             "value": "Installer l'application"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "アプリをインストール"
+          }
+        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "앱 설치"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Zainstaluj aplikację"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Установить"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Uygulamayı Yükle"
           }
         },
         "vi": {
@@ -29685,6 +30648,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "安装App"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "安裝應用程式"
           }
         }
       }
@@ -29716,16 +30685,34 @@
             "value": "Cette page Web souhaite installer une application. Continuer ?"
           }
         },
+        "ja": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "このウェブページはアプリをインストールしようとしています。続けますか？"
+          }
+        },
         "ko": {
           "stringUnit": {
             "state": "translated",
             "value": "이 웹페이지에서 앱 설치를 허용하시겠습니까?"
           }
         },
+        "pl": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ta witryna próbuje zainstalować aplikację. Czy chcesz kontynuować?"
+          }
+        },
         "ru": {
           "stringUnit": {
             "state": "translated",
             "value": "Эта веб-страница хочет установить приложение. Продолжить?"
+          }
+        },
+        "tr": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bu web sayfası bir uygulama yüklemek istiyor. Devam etmek istiyor musunuz?"
           }
         },
         "vi": {
@@ -29738,6 +30725,12 @@
           "stringUnit": {
             "state": "translated",
             "value": "此页面想要安装一个App，要继续吗？"
+          }
+        },
+        "zh-Hant": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "此頁面想要安裝一個應用程式，要繼續嗎？"
           }
         }
       }

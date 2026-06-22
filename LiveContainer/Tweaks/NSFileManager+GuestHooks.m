@@ -7,6 +7,7 @@
 #include <dlfcn.h>
 
 BOOL isolateAppGroup = NO;
+BOOL strictTestMode = NO;
 void* webKitHeader = 0;
 
 static NSString *LCSanitizedGroupIdentifier(NSString *groupIdentifier) {
@@ -58,7 +59,8 @@ static void LCEnsureGroupContainerScaffold(NSURL *containerURL) {
 
 void NSFMGuestHooksInit(void) {
     NSDictionary* infoDict = [NSUserDefaults guestContainerInfo];
-    isolateAppGroup = [infoDict[@"isolateAppGroup"] boolValue];
+    strictTestMode = [infoDict[@"strictTestMode"] boolValue];
+    isolateAppGroup = strictTestMode || [infoDict[@"isolateAppGroup"] boolValue];
     swizzle(NSFileManager.class, @selector(containerURLForSecurityApplicationGroupIdentifier:), @selector(hook_containerURLForSecurityApplicationGroupIdentifier:));
     
     /// To fix https://github.com/LiveContainer/LiveContainer/issues/888 i.e. WebKit being unable to save cookie issue, we have to hook -[NSFileManager createDirectoryAtPath:withIntermediateDirectories:attributes:error:] so that WebKit still creates bookmark for the symlinked lc's cookies folder, which is resolved by the kernel to the app's cookies folder

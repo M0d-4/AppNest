@@ -23,8 +23,8 @@ struct LaunchAppExtension: AppIntent {
     static var bookmarkResolved = false
     static var ext: NSExtension? = nil
 
-    func forEachInstalledLC(isFree: Bool, block: (String, inout Bool) -> Void) {
-        for scheme in [launchURL.scheme].compactMap({ $0 }) + LCSharedUtils.lcUrlSchemes() {
+    func forEachInstalledLC(schemes: [String] = LCSharedUtils.lcUrlSchemes(), isFree: Bool, block: (String, inout Bool) -> Void) {
+        for scheme in schemes {
             // Check if the app is installed
             guard let url = URL(string: "\(scheme)://"),
                   lsApplicationWorkspaceCanOpenURL(url) else {
@@ -44,7 +44,23 @@ struct LaunchAppExtension: AppIntent {
             }
         }
     }
-    
+
+    func firstFreeInstalledLC(preferredScheme: String?) -> String? {
+        var schemeToLaunch: String? = nil
+        
+        var schemes = LCSharedUtils.lcUrlSchemes()!
+        if let preferredScheme {
+            schemes.removeAll { $0 == preferredScheme }
+            schemes.insert(preferredScheme, at: 0)
+        }
+        
+        forEachInstalledLC(schemes: schemes, isFree: true) { scheme, stop in
+            schemeToLaunch = scheme
+            stop = true
+        }
+        return schemeToLaunch
+    }
+
     func openURL(url: URL) async throws {
         var ext : NSExtension? = LaunchAppExtension.ext
         if ext == nil {
@@ -66,7 +82,15 @@ struct LaunchAppExtension: AppIntent {
     
     func perform() async throws -> some IntentResult {
         // sanitize url
-        guard let s = launchURL.scheme, (LCSharedUtils.lcUrlSchemes() + ["sidestore"]).contains(s) else {    
+        let normalizedLaunchScheme = launchURL.scheme?.lowercased()
+        var isLiveContainerURL = normalizedLaunchScheme == "livecontainer"
+        let preferredScheme = isLiveContainerURL ? nil : (normalizedLaunchScheme == "livecontainer1" ? "livecontainer" : normalizedLaunchScheme)
+        
+        if let preferredScheme, let schemes = LCSharedUtils.lcUnorderedUrlSchemes() {
+            isLiveContainerURL = schemes.contains(preferredScheme)
+        }
+        
+        if !isLiveContainerURL && normalizedLaunchScheme != "sidestore" {
             throw LaunchAppExtensionError("Not a livecontainer URL!")
         }
         
@@ -77,7 +101,8 @@ struct LaunchAppExtension: AppIntent {
             throw LaunchAppExtensionError("lcSharedDefaults failed to initialize, because no app group was found. Did you sign LiveContainer correctly?")
         }
         
-        if launchURL.scheme == "sidestore" {
+        if normalizedLaunchScheme == "sidestore" {
+            lcSharedDefaults.set("livecontainer", forKey: "LCLaunchExtensionScheme")
             lcSharedDefaults.set("builtinSideStore", forKey: "LCLaunchExtensionBundleID")
             lcSharedDefaults.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
             try await openURL(url: launchURL)
@@ -172,14 +197,9 @@ struct LaunchAppExtension: AppIntent {
         } else {
             newLaunch = true
             if isSharedApp {
-                forEachInstalledLC(isFree: true) { scheme, stop in
-                    schemeToLaunch = scheme
-                    stop = true
-                }
+                schemeToLaunch = firstFreeInstalledLC(preferredScheme: preferredScheme)
             } else {
-                if !LCSharedUtils.isLCScheme(inUse: "livecontainer") {
-                    schemeToLaunch = "livecontainer"
-                }
+                schemeToLaunch = firstFreeInstalledLC(preferredScheme: preferredScheme)
             }
         }
 
@@ -190,6 +210,7 @@ struct LaunchAppExtension: AppIntent {
         }
         
         if newLaunch && !forceJIT && !isHiden && !isLocked && !isJITNeeded {
+            lcSharedDefaults.set(schemeToLaunch, forKey: "LCLaunchExtensionScheme")
             lcSharedDefaults.set(bundleId, forKey: "LCLaunchExtensionBundleID")
             lcSharedDefaults.set(containerName, forKey: "LCLaunchExtensionContainerName")
             lcSharedDefaults.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")

@@ -47,6 +47,9 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 @property NSDate* installationDate;
 @property NSString* remark;
 @property NSArray<NSString*>* customUrlSchemes;
+@property bool autoCleanCacheOnLaunch;
+@property NSDate* lastAutoCleanDate;
+@property long long autoCleanTotalBytesSaved;
 #if is32BitSupported
 @property bool is32bit;
 #endif
@@ -190,4 +193,8 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
                            fallbackVendorID:(NSString * _Nullable)fallbackVendorID;
 - (void)patchExecAndSignIfNeedWithCompletionHandler:(void(^)(bool success, NSString* errorInfo))completetionHandler progressHandler:(void(^)(NSProgress* progress))progressHandler  forceSign:(BOOL)forceSign;
 - (nonnull NSString *)bundleSize;
+- (void)recordAutoCleanWithBytesSaved:(long long)bytesSaved;
+- (long long)autoCleanBytesSavedInLastDays:(NSInteger)days;
+- (long long)lastAutoCleanBytesSaved;
+- (void)resetAutoCleanStats;
 @end

@@ -11,6 +11,21 @@ protocol InstallAnotherLCButtonDelegate {
     func installAnotherLC(name: String) async
 }
 
+private let multiLCLaunchPriorityKey = "LCMultiLaunchPriority"
+
+private struct LaunchPriorityLC: Identifiable, Hashable {
+    let scheme: String
+    let displayName: String
+
+    var id: String { scheme }
+}
+
+private let knownLiveContainers = [
+    LaunchPriorityLC(scheme: "livecontainer", displayName: "LiveContainer"),
+    LaunchPriorityLC(scheme: "livecontainer2", displayName: "LiveContainer2"),
+    LaunchPriorityLC(scheme: "livecontainer3", displayName: "LiveContainer3")
+]
+
 struct InstallAnotherLCButton : View {
     @State var lcName : String
     @State var detected = false
@@ -60,11 +75,32 @@ struct LCMultiLCManagementView : View, InstallAnotherLCButtonDelegate {
     @State private var showShareSheet = false
     @State private var shareURL : URL? = nil
     @StateObject private var installLC2Alert = AlertHelper<Int>()
-    
+    @State private var launchPriorityItems: [LaunchPriorityLC] = []
+
     let storeName = LCUtils.getStoreName()
-    
+
     var body: some View {
-        List {
+        Form {
+            Section {
+                InstallAnotherLCButton(lcName: "LiveContainer2", delegate: self)
+                InstallAnotherLCButton(lcName: "LiveContainer3", delegate: self)
+            } header: {
+                Text("lc.settings.multiLCInstall".loc)
+            }
+
+            Section {
+                ForEach(launchPriorityItems) { item in
+                    Text(item.displayName)
+                }
+                .onMove { source, destination in
+                    launchPriorityItems.move(fromOffsets: source, toOffset: destination)
+                    saveLaunchPriority()
+                }
+            } header: {
+                Text("lc.settings.multiLCLaunchPriority".loc)
+            } footer: {
+                Text("lc.settings.multiLCLaunchPriorityDesc".loc)
+            }
             Section {
                 Toggle(isOn: $useGameCategory) {
                     Text("lc.settings.multiLCInstall.useGameCategory".loc)
@@ -72,9 +108,13 @@ struct LCMultiLCManagementView : View, InstallAnotherLCButtonDelegate {
                 Toggle(isOn: $allowGameMode) {
                     Text("lc.settings.multiLCInstall.allowGameMode".loc)
                 }
+            } header: {
+                Text("lc.common.miscellaneous".loc)
             }
-            InstallAnotherLCButton(lcName: "AppNest2", delegate: self)
-            InstallAnotherLCButton(lcName: "AppNest3", delegate: self)
+        }
+        .environment(\.editMode, .constant(.active))
+        .onAppear {
+            reloadLaunchPriorityItems()
         }
         .alert("lc.settings.multiLCInstall".loc, isPresented: $installLC2Alert.show) {
             if(UserDefaults.sideStoreExist()) {
@@ -106,6 +146,45 @@ struct LCMultiLCManagementView : View, InstallAnotherLCButtonDelegate {
         .navigationBarTitleDisplayMode(.inline)
     }
     
+    private func isInstalled(scheme: String) -> Bool {
+        if scheme == "livecontainer" {
+            return true
+        }
+        guard let url = URL(string: "\(scheme)://") else {
+            return false
+        }
+        return UIApplication.shared.canOpenURL(url)
+    }
+
+    private func reloadLaunchPriorityItems() {
+        let installedItems = knownLiveContainers.filter { isInstalled(scheme: $0.scheme) }
+        let installedByScheme = Dictionary(uniqueKeysWithValues: installedItems.map { ($0.scheme, $0) })
+        let installedSchemes = Set(installedItems.map(\.scheme))
+        let savedSchemes = LCUtils.appGroupUserDefault.array(forKey: multiLCLaunchPriorityKey) as? [String] ?? []
+        var orderedSchemes: [String] = []
+
+        for rawScheme in savedSchemes {
+            let scheme = rawScheme.lowercased()
+            guard installedSchemes.contains(scheme), !orderedSchemes.contains(scheme) else {
+                continue
+            }
+            orderedSchemes.append(scheme)
+        }
+
+        for item in installedItems {
+            if !orderedSchemes.contains(item.scheme) {
+                orderedSchemes.append(item.scheme)
+            }
+        }
+
+        launchPriorityItems = orderedSchemes.compactMap { installedByScheme[$0] }
+        saveLaunchPriority()
+    }
+
+    private func saveLaunchPriority() {
+        LCUtils.appGroupUserDefault.set(launchPriorityItems.map(\.scheme), forKey: multiLCLaunchPriorityKey)
+    }
+
     func installAnotherLC(name: String) async {
         if !LCUtils.isAppGroupAltStoreLike() {
             errorInfo = "lc.settings.unsupportedInstallMethod".loc
@@ -132,8 +211,7 @@ struct LCMultiLCManagementView : View, InstallAnotherLCButtonDelegate {
             
             if(result == 2) {
                 let launchURLStr = packedIpaUrl.absoluteString
-                UserDefaults.standard.setValue(launchURLStr, forKey: "launchAppUrlScheme")
-                LCUtils.openSideStore()
+                LCUtils.openSideStore(urlStr: launchURLStr)
                 return
             }
             

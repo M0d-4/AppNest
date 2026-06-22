@@ -636,46 +636,43 @@ bool performHookDyldApi(const char* functionName, uint32_t adrpOffset, void** or
 
     uint32_t* baseAddr = dlsym(RTLD_DEFAULT, functionName);
     assert(baseAddr != 0);
-    /*
-     arm64e 26.4b1+ has extra 20 instructions between adrpOffset and adrp
-     arm64e
-     1ad450b90  e10300aa   mov     x1, x0
-     1ad450b94  487b2090   adrp    x8, dyld4::gAPIs
-     1ad450b98  000140f9   ldr     x0, [x8]  {dyld4::gAPIs} may contain offset
-     1ad450b9c  100040f9   ldr     x16, [x0]
-     1ad450ba0  f10300aa   mov     x17, x0
-     1ad450ba4  517fecf2   movk    x17, #0x63fa, lsl #0x30
-     1ad450ba8  301ac1da   autda   x16, x17
-     1ad450bac  114780d2   mov     x17, #0x238
-     1ad450bb0  1002118b   add     x16, x16, x17
-     1ad450bb4  020240f9   ldr     x2, [x16]
-     1ad450bb8  e30310aa   mov     x3, x16
-     1ad450bbc  f00303aa   mov     x16, x3
-     1ad450bc0  7085f3f2   movk    x16, #0x9c2b, lsl #0x30
-     1ad450bc4  50081fd7   braa    x2, x16
-
-     arm64
-     00000001ac934c80         mov        x1, x0
-     00000001ac934c84         adrp       x8, #0x1f462d000
-     00000001ac934c88         ldr        x0, [x8, #0xf88]                            ; __ZN5dyld45gDyldE
-     00000001ac934c8c         ldr        x8, [x0]
-     00000001ac934c90         ldr        x2, [x8, #0x258]
-     00000001ac934c94         br         x2
-     */
     uint32_t* adrpInstPtr = baseAddr + adrpOffset;
-    if ((*adrpInstPtr & 0x9f000000) != 0x90000000) {
-        adrpOffset += 20;
-        adrpInstPtr = baseAddr + adrpOffset;
+
+    // find the following instruction pattern: 1 adrp + 2 ldr
+    // adrp    x8, 0x1e6cf0000
+    // ldr     x0, [x8, #0x30]  {dyld4::gAPIs}
+    // ldr     x16, [x0]
+    
+    static long adrpExtraOffset = -1;
+    if(adrpExtraOffset == -1) {
+        // let't hope the function is not longer than 200 instructions
+        uint32_t* end = baseAddr + 200;
+        for(uint32_t* cur = adrpInstPtr;cur < end;++cur) {
+            if ((*cur & 0x9f000000) != 0x90000000) {
+                continue;
+            }
+            if ((*(cur+1) & 0xFFC00000) != 0xF9400000) {
+                continue;
+            }
+            if ((*(cur+2) & 0xFFC00000) != 0xF9400000) {
+                continue;
+            }
+            adrpExtraOffset = cur - adrpInstPtr;
+            break;
+        }
+        assert(adrpExtraOffset != -1);
     }
-    assert ((*adrpInstPtr & 0x9f000000) == 0x90000000);
-    void* gdyldPtr = (void*)aarch64_emulate_adrp_ldr(*adrpInstPtr, *(baseAddr + adrpOffset + 1), (uint64_t)(baseAddr + adrpOffset));
+    
+    adrpInstPtr += adrpExtraOffset;
+
+    void* gdyldPtr = (void*)aarch64_emulate_adrp_ldr(*adrpInstPtr, *(adrpInstPtr + 1), (uint64_t)adrpInstPtr);
     
     assert(gdyldPtr != 0);
     assert(*(void**)gdyldPtr != 0);
     void* vtablePtr = **(void***)gdyldPtr;
 
     void* vtableFunctionPtr = 0;
-    uint32_t* movInstPtr = baseAddr + adrpOffset + 6;
+    uint32_t* movInstPtr = adrpInstPtr + 6;
 
     if((*movInstPtr & 0x7F800000) == 0x52800000) {
         // arm64e, mov imm + add + ldr
@@ -687,7 +684,7 @@ bool performHookDyldApi(const char* functionName, uint32_t adrpOffset, void** or
         vtableFunctionPtr = vtablePtr + imm9;
     } else {
         // arm64
-        uint32_t* ldrInstPtr2 = baseAddr + adrpOffset + 3;
+        uint32_t* ldrInstPtr2 = adrpInstPtr + 3;
         assert((*ldrInstPtr2 & 0xBFC00000) == 0xB9400000);
         uint32_t size2 = (*ldrInstPtr2 & 0xC0000000) >> 30;
         uint32_t imm12_2 = (*ldrInstPtr2 & 0x3FFC00) >> 10;
@@ -717,11 +714,17 @@ bool initGuestSDKVersionInfo(void) {
     if(!versionMapPtr) {
 #if !TARGET_OS_SIMULATOR
         const char* dyldPath = "/usr/lib/dyld";
-        uint64_t offset = LCFindSymbolOffset(dyldPath, "__ZN5dyld3L11sVersionMapE");
+        uint64_t offset = 0;
+        if(@available(iOS 27.0, *)) {
+            offset = LCFindSymbolOffset(dyldPath, "__ZN5dyld311sVersionMapE");
+        } else {
+            offset = LCFindSymbolOffset(dyldPath, "__ZN5dyld3L11sVersionMapE");
+        }
 #else
         void *result = litehook_find_symbol(dyldBase, "__ZN5dyld3L11sVersionMapE");
         uint64_t offset = (uint64_t)result - (uint64_t)dyldBase;
 #endif
+        assert(offset);
         versionMapPtr = dyldBase + offset;
         saveCachedSymbol(@"__ZN5dyld3L11sVersionMapE", dyldBase, offset);
     }

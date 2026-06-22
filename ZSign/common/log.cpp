@@ -146,18 +146,9 @@ void ZLog::DebugV(const char* szFormat, ...)
 }
 
 vector<string> ZLog::logs;
+std::mutex ZLog::logsMutex;
 
 void ZLog::writeToLogFile(const std::string& message) {
-//    const char* documentsPath = getDocumentsDirectory();
-//    std::string logFilePath = std::string(documentsPath) + "/logs.txt";
-//
-//    std::ofstream logFile(logFilePath, std::ios_base::app);
-//    if (logFile.is_open()) {
-//        logFile << message;
-//        logFile.close();
-//    } else {
-//        std::cerr << "Failed to open log file: " << logFilePath << std::endl;
-//    }
-
+    std::lock_guard<std::mutex> lock(logsMutex);
     logs.push_back(message);
 }
