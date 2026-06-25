@@ -22,26 +22,30 @@ struct LCTabView: View {
     @EnvironmentObject var sceneDelegate: SceneDelegate
     @State var shouldToggleMainWindowOpen = false
     @Environment(\.scenePhase) var scenePhase
-    @StateObject var downloadHelper = DownloadHelper()
+    private var downloadHelper: DownloadHelper { sharedModel.downloadHelper }
     
     @StateObject var searchContextAppList = SearchContext()
     @StateObject var searchContextSource = SearchContext()
-    
-    let pub = NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)
-    
+
     private var appListView: LCAppListView {
         LCAppListView(appDataFolderNames: $appDataFolderNames, tweakFolderNames: $tweakFolderNames, searchContext: searchContextAppList)
     }
-    
+
     private var sourcesView: LCSourcesView {
         LCSourcesView(searchContext: searchContextSource)
     }
 
+    let pub = NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)
+
     
     var body: some View {
+        ZStack(alignment: .bottom) {
         Group {
             if #available(iOS 19.0, *), SharedModel.isLiquidGlassSearchEnabled {
-                TabView(selection: $sharedModel.selectedTab) {
+                TabView(selection: Binding(
+                    get: { sharedModel.selectedTab },
+                    set: { if !sharedModel.isMultiSelectMode { sharedModel.selectedTab = $0 } }
+                )) {
                     if DataManager.shared.model.multiLCStatus != 2 {
                         Tab("lc.tabView.sources".loc, systemImage: "books.vertical", value: LCTabIdentifier.sources) {
                             sourcesView
@@ -54,6 +58,9 @@ struct LCTabView: View {
                         Tab("lc.tabView.tweaks".loc, systemImage: "wrench.and.screwdriver", value: LCTabIdentifier.tweaks) {
                             LCTweaksView(tweakFolders: $tweakFolderNames)
                         }
+                    }
+                    Tab("lc.tabView.updates".loc, systemImage: "arrow.down.circle", value: LCTabIdentifier.updates) {
+                        LCUpdatesView()
                     }
                     Tab("lc.tabView.settings".loc, systemImage: "gearshape.fill", value: LCTabIdentifier.settings) {
                         LCSettingsView(appDataFolderNames: $appDataFolderNames)
@@ -70,7 +77,10 @@ struct LCTabView: View {
                     }
                 }
             } else {
-                TabView(selection: $sharedModel.selectedTab) {
+                TabView(selection: Binding(
+                    get: { sharedModel.selectedTab },
+                    set: { if !sharedModel.isMultiSelectMode { sharedModel.selectedTab = $0 } }
+                )) {
                     if DataManager.shared.model.multiLCStatus != 2 {
                         sourcesView
                             .tabItem {
@@ -90,6 +100,11 @@ struct LCTabView: View {
                             }
                             .tag(LCTabIdentifier.tweaks)
                     }
+                    LCUpdatesView()
+                        .tabItem {
+                            Label("lc.tabView.updates".loc, systemImage: "arrow.down.circle")
+                        }
+                        .tag(LCTabIdentifier.updates)
                     
                     LCSettingsView(appDataFolderNames: $appDataFolderNames)
                         .tabItem {
@@ -152,13 +167,25 @@ struct LCTabView: View {
             }
         }
         .onChange(of: sharedModel.selectedTab) { newValue in
-            if newValue != LCTabIdentifier.search {
+            if newValue != LCTabIdentifier.search && newValue != LCTabIdentifier.updates {
                 previousSelectedTab = newValue
             }
         }
         .onOpenURL { url in
             dispatchURL(url: url)
         }
+        .apply {
+            if #available(iOS 16.0, *) {
+                // Only hide tab bar when inside app settings, NOT during multiselect.
+                // Hiding during multiselect causes SwiftUI to misalign toolbar button
+                // hit-test rects, making trash/lock buttons unresponsive.
+                $0.toolbar(sharedModel.isInAppSettings ? .hidden : .visible, for: .tabBar)
+            } else {
+                $0
+            }
+        }
+
+        } // end ZStack
     }
     
     func dispatchURL(url: URL) {
@@ -172,13 +199,36 @@ struct LCTabView: View {
                 break
             }
             
+            // Check if it's a known custom scheme (with or without host)
+            if let scheme = url.scheme?.lowercased(),
+               !["livecontainer", "livecontainer2", "livecontainer3", "sidestore", "file", "http", "https"].contains(scheme) {
+                
+                let allApps = DataManager.shared.model.apps + DataManager.shared.model.hiddenApps
+                if let app = allApps.first(where: { ($0.appInfo.customUrlSchemes as? [String] ?? []).contains(scheme) }) {
+                    UserDefaults.standard.set(url.absoluteString, forKey: "launchAppUrlScheme")
+                    UserDefaults.standard.set(app.appInfo.relativeBundlePath, forKey: "selected")
+                    if let container = app.appInfo.dataUUID {
+                        UserDefaults.standard.set(container, forKey: "selectedContainer")
+                    }
+                    LCSharedUtils.launchToGuestApp()
+                    return
+                }
+            }
+            
             guard let host = url.host?.lowercased() else {
                 return
             }
+
             
             switch host {
             case "livecontainer-launch", "install", "open-web-page", "open-url":
                 sharedModel.selectedTab = .apps
+            case "livecontainer-relaunch":
+                // Guest app pressed the exit button (non-multitask mode). LC is now
+                // in the foreground with `selected` already cleared by LCBootstrap.
+                // Just land on the apps tab — no deep-link processing needed.
+                sharedModel.selectedTab = .apps
+                return
             case "certificate":
                 sharedModel.selectedTab = .settings
             case "source":
@@ -221,6 +271,16 @@ struct LCTabView: View {
     
     func copyError() {
         UIPasteboard.general.string = errorInfo
+    }
+    
+    private static func allTabBars(in vc: UIViewController) -> [UIView] {
+        var result: [UIView] = []
+        if let tbc = vc as? UITabBarController {
+            result.append(tbc.tabBar)
+        }
+        for child in vc.children { result += allTabBars(in: child) }
+        if let pvc = vc.presentedViewController { result += allTabBars(in: pvc) }
+        return result
     }
     
     func checkTeamId() {

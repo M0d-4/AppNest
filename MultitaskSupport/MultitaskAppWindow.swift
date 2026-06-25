@@ -48,6 +48,7 @@ struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
     let bundleId: String
     let dataUUID: String
     let initSize: CGSize
+    let hostScene: UIWindowScene?
     let onAppInitialize: (Int32, Error?) -> Void
     
     class Coordinator: NSObject, AppSceneViewControllerDelegate {
@@ -77,7 +78,7 @@ struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
     }
     
     func makeUIViewController(context: Context) -> UIViewController {
-        return AppSceneViewController(bundleId: bundleId, dataUUID: dataUUID, delegate: context.coordinator)
+        return AppSceneViewController(bundleId: bundleId, dataUUID: dataUUID, hostScene: hostScene, delegate: context.coordinator)
     }
     
     func updateUIViewController(_ vc: UIViewController, context _: Context) {
@@ -101,6 +102,7 @@ struct MultitaskAppWindow: View {
     @Environment(\.openWindow) var openWindow
     @AppStorage("LCMultitaskMode", store: LCUtils.appGroupUserDefault) var multitaskMode: MultitaskMode = .virtualWindow
     @AppStorage("LCSkipTerminatedScreen", store: LCUtils.appGroupUserDefault) var skipTerminatedScreen = false
+    @AppStorage("LCRealIPhoneMode", store: LCUtils.appGroupUserDefault) var isiPhoneMode = false
     let pub = NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)
     init(id: String) {
         guard let appInfo = MultitaskWindowManager.appDict[id] else {
@@ -113,19 +115,27 @@ struct MultitaskAppWindow: View {
         let isVirtualWindowMode = multitaskMode == .virtualWindow
         if show, let appInfo {
             GeometryReader { geometry in
-                AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: geometry.size,
-                                    onAppInitialize: { pid, error in
-                    DispatchQueue.main.async {
-                        if error == nil {
-                            self.pid = Int(pid)
-                        } else {
-                            self.errorMessage = error?.localizedDescription
+                // Pass full geometry to the native VC — it handles iPhone centering
+                // internally via LCRealIPhoneMode in viewWillLayoutSubviews.
+                // We just add a black background so the letterbox areas are filled.
+                ZStack {
+                    Color.black
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    AppSceneViewSwiftUI(show: $show, bundleId: appInfo.bundleId, dataUUID: appInfo.dataUUID, initSize: geometry.size,
+                                        hostScene: sceneDelegate.window?.windowScene,
+                                        onAppInitialize: { pid, error in
+                        DispatchQueue.main.async {
+                            if error == nil {
+                                self.pid = Int(pid)
+                            } else {
+                                self.errorMessage = error?.localizedDescription
+                            }
+                            DataManager.shared.model.pidCallback?(NSNumber(value: pid), error)
+                            DataManager.shared.model.pidCallback = nil
                         }
-                        DataManager.shared.model.pidCallback?(NSNumber(value: pid), error)
-                        DataManager.shared.model.pidCallback = nil
-                    }
-                })
-                .background(.black)
+                    })
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .ignoresSafeArea(.all, edges: .all)

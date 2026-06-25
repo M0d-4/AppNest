@@ -53,6 +53,11 @@ struct LCPath {
 }
 
 class SharedModel: ObservableObject {
+    static let guestURLSchemesKey = "LCGuestURLSchemes"
+    static let guestURLLaunchMapKey = "LCGuestURLLaunchMap"
+    static let guestBundleLaunchMapKey = "LCGuestBundleLaunchMap"
+    static let guestDirectLaunchMapKey = "LCGuestDirectLaunchMap"
+
     @Published var selectedTab: LCTabIdentifier = .apps
     @Published var deepLink: URL?
     
@@ -69,6 +74,32 @@ class SharedModel: ObservableObject {
     @Published var hiddenApps : [LCAppModel] = []
     
     @Published var pidCallback : ((NSNumber, Error?) -> Void)? = nil
+    @Published var isMultiSelectMode = false
+    @Published var isInAppSettings = false
+
+    /// Shared across all views — loads once, refreshes on demand.
+    @MainActor let sourcesViewModel = AltStoreSourcesViewModel()
+
+    /// URLs queued for sequential installation by LCAppListView.
+    /// Push URLs here from anywhere; LCAppListView drains them one-by-one.
+    @Published var pendingInstallURLs: [URL] = []
+
+    /// Structured install queue — carries isUpdate flag alongside each URL.
+    /// LCAppListView observes this and drains it, processing each entry fully
+    /// (download → wait → switch tab → install) before moving to the next.
+    struct PendingInstall {
+        let url: URL
+        let isUpdate: Bool
+        let appName: String
+        let iconURL: URL?
+    }
+    @Published var pendingInstallQueue: [PendingInstall] = []
+
+    /// Shared download helper — observed by both LCAppListView and LCUpdatesView.
+    let downloadHelper = DownloadHelper()
+    private var downloadHelperCancellable: AnyCancellable?
+    private var sourcesViewModelCancellable: AnyCancellable?
+
     
     static let isPhone: Bool = {
         UIDevice.current.userInterfaceIdiom == .phone
@@ -103,7 +134,62 @@ class SharedModel: ObservableObject {
     
     init() {
         updateMultiLCStatus()
+        // Forward any change from downloadHelper so views observing SharedModel
+        // re-render when isDownloading / appName / progress etc. change.
+        downloadHelperCancellable = downloadHelper.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
+        // Also forward sourcesViewModel changes so LCUpdatesView re-renders
+        // when sources or isRefreshingAll change.
+        sourcesViewModelCancellable = sourcesViewModel.objectWillChange
+            .sink { [weak self] _ in self?.objectWillChange.send() }
     }
+
+    func syncSharedGuestURLIndex() {
+        guard multiLCStatus != 2 else {
+            return
+        }
+
+        let sharedDefaults = UserDefaults.lcShared() ?? .standard
+        var launchMap = [String: String]()
+        var bundleLaunchMap = [String: String]()
+        var directLaunchMap = [String: String]()
+        var schemes = Set<String>()
+
+        for app in apps {
+            guard let bundleName = app.appInfo.relativeBundlePath else {
+                continue
+            }
+
+            if !app.appInfo.isHidden && !app.appInfo.isLocked && !app.appInfo.isJITNeeded {
+                directLaunchMap[bundleName] = app.appInfo.dataUUID ?? ""
+            }
+
+            if let bundleIdentifier = app.appInfo.bundleIdentifier(), !bundleIdentifier.isEmpty {
+                bundleLaunchMap[bundleIdentifier] = bundleName
+            }
+
+            guard let rawSchemes = app.appInfo.urlSchemes() as? [String] else {
+                continue
+            }
+
+            for rawScheme in rawSchemes {
+                let normalizedScheme = rawScheme.lowercased()
+                guard !normalizedScheme.isEmpty else {
+                    continue
+                }
+                schemes.insert(normalizedScheme)
+                if launchMap[normalizedScheme] == nil {
+                    launchMap[normalizedScheme] = bundleName
+                }
+            }
+        }
+
+        sharedDefaults.set(Array(schemes).sorted(), forKey: Self.guestURLSchemesKey)
+        sharedDefaults.set(launchMap, forKey: Self.guestURLLaunchMapKey)
+        sharedDefaults.set(bundleLaunchMap, forKey: Self.guestBundleLaunchMapKey)
+        sharedDefaults.set(directLaunchMap, forKey: Self.guestDirectLaunchMapKey)
+    }
+
 }
 
 class DataManager {
@@ -193,6 +279,7 @@ extension UTType {
     static let tipa = UTType(filenameExtension: "tipa")!
     static let dylib = UTType(filenameExtension: "dylib")!
     static let deb = UTType(filenameExtension: "deb")!
+    static let zipArchive = UTType(filenameExtension: "zip")!
     static let lcFramework = UTType(filenameExtension: "framework", conformingTo: .package)!
     static let p12 = UTType(filenameExtension: "p12")!
 }
@@ -253,23 +340,21 @@ struct SiteAssociationDetailItem : Codable {
     var appIDs: [String]?
     
     func getBundleIds() -> [String] {
-        var ans : [String] = []
-        // get rid of developer id
-        if let appID = appID, appID.count > 11 {
-            let index = appID.index(appID.startIndex, offsetBy: 11)
-            let modifiedString = String(appID[index...])
-            ans.append(modifiedString)
+        var ans: [String] = []
+        if let appID {
+            ans.append(bundleIdentifier(from: appID))
         }
-        if let appIDs = appIDs {
-            for appID in appIDs {
-                if appID.count > 11 {
-                    let index = appID.index(appID.startIndex, offsetBy: 11)
-                    let modifiedString = String(appID[index...])
-                    ans.append(modifiedString)
-                }
-            }
+        if let appIDs {
+            ans.append(contentsOf: appIDs.map { bundleIdentifier(from: $0) })
         }
-        return ans
+        return ans.filter { !$0.isEmpty }
+    }
+
+    private func bundleIdentifier(from appID: String) -> String {
+        guard let separator = appID.firstIndex(of: ".") else {
+            return ""
+        }
+        return String(appID[appID.index(after: separator)...])
     }
 }
 
@@ -314,6 +399,7 @@ public enum LCTabIdentifier: Hashable {
     case tweaks
     case settings
     case search
+    case updates
 }
 
 

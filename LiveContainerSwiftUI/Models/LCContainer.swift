@@ -27,7 +27,27 @@ class LCContainer : ObservableObject, Hashable {
         }
     }
     public var spoofedIdentifier: String?
+    @Published var strictTestMode: Bool
+    @Published var strictAutoWipeOnExit: Bool
+    @Published var blockDeviceInfoReads: Bool
+    @Published var spoofProfileEnabled: Bool
+    @Published var spoofDeviceName: String
+    @Published var spoofDeviceModel: String
+    @Published var spoofSystemName: String
+    @Published var spoofSystemVersion: String
+    @Published var spoofLocaleIdentifier: String
+    @Published var spoofTimeZoneIdentifier: String
+    @Published var spoofBatteryLevel: Double
+    @Published var spoofBatteryState: Int
+    @Published var spoofLowPowerModeEnabled: Bool
+    @Published var spoofSubscriberIdentifier: String
+    @Published var spoofSubscriberCarrierTokenBase64: String
+    @Published var spoofSubscriberSIMInsertedEnabled: Bool
+    @Published var spoofSubscriberSIMInserted: Bool
+    @Published var spoofRadioAccessTechnology: String
+    @Published var spoofHardwareModel: String
     private var infoDict : [String:Any]?
+    
     public var containerURL : URL {
         if let resolvedContainerURL {
             return resolvedContainerURL
@@ -66,12 +86,58 @@ class LCContainer : ObservableObject, Hashable {
         }
     }
     
-    init(folderName: String, name: String, isShared : Bool, isolateAppGroup: Bool = false, spoofIdentifierForVendor: Bool = false, bookmarkData: Data? = nil, resolvedContainerURL: URL? = nil) {
+    init(
+        folderName: String,
+        name: String,
+        isShared : Bool,
+        isolateAppGroup: Bool = false,
+        spoofIdentifierForVendor: Bool = false,
+        strictTestMode: Bool = false,
+        strictAutoWipeOnExit: Bool = false,
+        blockDeviceInfoReads: Bool = false,
+        spoofProfileEnabled: Bool = false,
+        spoofDeviceName: String = "",
+        spoofDeviceModel: String = "",
+        spoofSystemName: String = "",
+        spoofSystemVersion: String = "",
+        spoofLocaleIdentifier: String = "",
+        spoofTimeZoneIdentifier: String = "",
+        spoofBatteryLevel: Double = 0.8,
+        spoofBatteryState: Int = 2,
+        spoofLowPowerModeEnabled: Bool = false,
+        spoofSubscriberIdentifier: String = "",
+        spoofSubscriberCarrierTokenBase64: String = "",
+        spoofSubscriberSIMInsertedEnabled: Bool = false,
+        spoofSubscriberSIMInserted: Bool = false,
+        spoofRadioAccessTechnology: String = "",
+        spoofHardwareModel: String = "",
+        bookmarkData: Data? = nil,
+        resolvedContainerURL: URL? = nil
+    ) {
         self.folderName = folderName
         self.name = name
         self.isShared = isShared
         self.isolateAppGroup = isolateAppGroup
         self.spoofIdentifierForVendor = spoofIdentifierForVendor
+        self.strictTestMode = strictTestMode
+        self.strictAutoWipeOnExit = strictAutoWipeOnExit
+        self.blockDeviceInfoReads = blockDeviceInfoReads
+        self.spoofProfileEnabled = spoofProfileEnabled
+        self.spoofDeviceName = spoofDeviceName
+        self.spoofDeviceModel = spoofDeviceModel
+        self.spoofSystemName = spoofSystemName
+        self.spoofSystemVersion = spoofSystemVersion
+        self.spoofLocaleIdentifier = spoofLocaleIdentifier
+        self.spoofTimeZoneIdentifier = spoofTimeZoneIdentifier
+        self.spoofBatteryLevel = spoofBatteryLevel
+        self.spoofBatteryState = spoofBatteryState
+        self.spoofLowPowerModeEnabled = spoofLowPowerModeEnabled
+        self.spoofSubscriberIdentifier = spoofSubscriberIdentifier
+        self.spoofSubscriberCarrierTokenBase64 = spoofSubscriberCarrierTokenBase64
+        self.spoofSubscriberSIMInsertedEnabled = spoofSubscriberSIMInsertedEnabled
+        self.spoofSubscriberSIMInserted = spoofSubscriberSIMInserted
+        self.spoofRadioAccessTechnology = spoofRadioAccessTechnology
+        self.spoofHardwareModel = spoofHardwareModel
         self.storageBookMark = bookmarkData
         self.resolvedContainerURL = resolvedContainerURL
     }
@@ -82,8 +148,27 @@ class LCContainer : ObservableObject, Hashable {
         self.init(folderName: infoDict["folderName"] as? String ?? "ERROR",
                   name: infoDict["name"] as? String ?? "ERROR",
                   isShared: isShared,
-                  isolateAppGroup: false,
-                  spoofIdentifierForVendor: false,
+                  isolateAppGroup: infoDict["isolateAppGroup"] as? Bool ?? true,
+                  spoofIdentifierForVendor: infoDict["spoofIdentifierForVendor"] as? Bool ?? false,
+                  strictTestMode: infoDict["strictTestMode"] as? Bool ?? false,
+                  strictAutoWipeOnExit: infoDict["strictAutoWipeOnExit"] as? Bool ?? false,
+                  blockDeviceInfoReads: infoDict["blockDeviceInfoReads"] as? Bool ?? false,
+                  spoofProfileEnabled: infoDict["spoofProfileEnabled"] as? Bool ?? false,
+                  spoofDeviceName: infoDict["spoofDeviceName"] as? String ?? "",
+                  spoofDeviceModel: infoDict["spoofDeviceModel"] as? String ?? "",
+                  spoofSystemName: infoDict["spoofSystemName"] as? String ?? "",
+                  spoofSystemVersion: infoDict["spoofSystemVersion"] as? String ?? "",
+                  spoofLocaleIdentifier: infoDict["spoofLocaleIdentifier"] as? String ?? "",
+                  spoofTimeZoneIdentifier: infoDict["spoofTimeZoneIdentifier"] as? String ?? "",
+                  spoofBatteryLevel: infoDict["spoofBatteryLevel"] as? Double ?? 0.8,
+                  spoofBatteryState: infoDict["spoofBatteryState"] as? Int ?? 2,
+                  spoofLowPowerModeEnabled: infoDict["spoofLowPowerModeEnabled"] as? Bool ?? false,
+                  spoofSubscriberIdentifier: infoDict["spoofSubscriberIdentifier"] as? String ?? "",
+                  spoofSubscriberCarrierTokenBase64: infoDict["spoofSubscriberCarrierTokenBase64"] as? String ?? "",
+                  spoofSubscriberSIMInsertedEnabled: infoDict["spoofSubscriberSIMInsertedEnabled"] as? Bool ?? false,
+                  spoofSubscriberSIMInserted: infoDict["spoofSubscriberSIMInserted"] as? Bool ?? false,
+                  spoofRadioAccessTechnology: infoDict["spoofRadioAccessTechnology"] as? String ?? "",
+                  spoofHardwareModel: infoDict["spoofHardwareModel"] as? String ?? "",
                   bookmarkData: bookmarkData,
                   resolvedContainerURL: nil
         )
@@ -111,9 +196,28 @@ class LCContainer : ObservableObject, Hashable {
             
             let plistInfo = try PropertyListSerialization.propertyList(from: Data(contentsOf: infoDictUrl), format: nil)
             if let plistInfo = plistInfo as? [String : Any] {
-                isolateAppGroup = plistInfo["isolateAppGroup"] as? Bool ?? false
+                isolateAppGroup = plistInfo["isolateAppGroup"] as? Bool ?? true
                 spoofIdentifierForVendor = plistInfo["spoofIdentifierForVendor"] as? Bool ?? false
                 spoofedIdentifier = plistInfo["spoofedIdentifierForVendor"] as? String
+                strictTestMode = plistInfo["strictTestMode"] as? Bool ?? false
+                strictAutoWipeOnExit = plistInfo["strictAutoWipeOnExit"] as? Bool ?? false
+                blockDeviceInfoReads = plistInfo["blockDeviceInfoReads"] as? Bool ?? false
+                spoofProfileEnabled = plistInfo["spoofProfileEnabled"] as? Bool ?? false
+                spoofDeviceName = plistInfo["spoofDeviceName"] as? String ?? ""
+                spoofDeviceModel = plistInfo["spoofDeviceModel"] as? String ?? ""
+                spoofSystemName = plistInfo["spoofSystemName"] as? String ?? ""
+                spoofSystemVersion = plistInfo["spoofSystemVersion"] as? String ?? ""
+                spoofLocaleIdentifier = plistInfo["spoofLocaleIdentifier"] as? String ?? ""
+                spoofTimeZoneIdentifier = plistInfo["spoofTimeZoneIdentifier"] as? String ?? ""
+                spoofBatteryLevel = plistInfo["spoofBatteryLevel"] as? Double ?? 0.8
+                spoofBatteryState = plistInfo["spoofBatteryState"] as? Int ?? 2
+                spoofLowPowerModeEnabled = plistInfo["spoofLowPowerModeEnabled"] as? Bool ?? false
+                spoofSubscriberIdentifier = plistInfo["spoofSubscriberIdentifier"] as? String ?? ""
+                spoofSubscriberCarrierTokenBase64 = plistInfo["spoofSubscriberCarrierTokenBase64"] as? String ?? ""
+                spoofSubscriberSIMInsertedEnabled = plistInfo["spoofSubscriberSIMInsertedEnabled"] as? Bool ?? false
+                spoofSubscriberSIMInserted = plistInfo["spoofSubscriberSIMInserted"] as? Bool ?? false
+                spoofRadioAccessTechnology = plistInfo["spoofRadioAccessTechnology"] as? String ?? ""
+                spoofHardwareModel = plistInfo["spoofHardwareModel"] as? String ?? ""
             }
         } catch {
             
@@ -137,10 +241,49 @@ class LCContainer : ObservableObject, Hashable {
             "name" : name,
             "keychainGroupId" : keychainGroupId,
             "isolateAppGroup" : isolateAppGroup,
-            "spoofIdentifierForVendor": spoofIdentifierForVendor
+            "spoofIdentifierForVendor": spoofIdentifierForVendor,
+            "strictTestMode": strictTestMode,
+            "strictAutoWipeOnExit": strictAutoWipeOnExit,
+            "blockDeviceInfoReads": blockDeviceInfoReads,
+            "spoofProfileEnabled": spoofProfileEnabled
         ]
         if let spoofedIdentifier {
             infoDict!["spoofedIdentifierForVendor"] = spoofedIdentifier
+        }
+        if !spoofDeviceName.isEmpty {
+            infoDict!["spoofDeviceName"] = spoofDeviceName
+        }
+        if !spoofDeviceModel.isEmpty {
+            infoDict!["spoofDeviceModel"] = spoofDeviceModel
+        }
+        if !spoofSystemName.isEmpty {
+            infoDict!["spoofSystemName"] = spoofSystemName
+        }
+        if !spoofSystemVersion.isEmpty {
+            infoDict!["spoofSystemVersion"] = spoofSystemVersion
+        }
+        if !spoofLocaleIdentifier.isEmpty {
+            infoDict!["spoofLocaleIdentifier"] = spoofLocaleIdentifier
+        }
+        if !spoofTimeZoneIdentifier.isEmpty {
+            infoDict!["spoofTimeZoneIdentifier"] = spoofTimeZoneIdentifier
+        }
+        infoDict!["spoofBatteryLevel"] = spoofBatteryLevel
+        infoDict!["spoofBatteryState"] = spoofBatteryState
+        infoDict!["spoofLowPowerModeEnabled"] = spoofLowPowerModeEnabled
+        if !spoofSubscriberIdentifier.isEmpty {
+            infoDict!["spoofSubscriberIdentifier"] = spoofSubscriberIdentifier
+        }
+        if !spoofSubscriberCarrierTokenBase64.isEmpty {
+            infoDict!["spoofSubscriberCarrierTokenBase64"] = spoofSubscriberCarrierTokenBase64
+        }
+        infoDict!["spoofSubscriberSIMInsertedEnabled"] = spoofSubscriberSIMInsertedEnabled
+        infoDict!["spoofSubscriberSIMInserted"] = spoofSubscriberSIMInserted
+        if !spoofRadioAccessTechnology.isEmpty {
+            infoDict!["spoofRadioAccessTechnology"] = spoofRadioAccessTechnology
+        }
+        if !spoofHardwareModel.isEmpty {
+            infoDict!["spoofHardwareModel"] = spoofHardwareModel
         }
         
         do {
@@ -166,9 +309,28 @@ class LCContainer : ObservableObject, Hashable {
             return
         }
         name = infoDict["name"] as? String ?? "ERROR"
-        isolateAppGroup = infoDict["isolateAppGroup"] as? Bool ?? false
+        isolateAppGroup = infoDict["isolateAppGroup"] as? Bool ?? true
         spoofIdentifierForVendor = infoDict["spoofIdentifierForVendor"] as? Bool ?? false
         spoofedIdentifier = infoDict["spoofedIdentifierForVendor"] as? String
+        strictTestMode = infoDict["strictTestMode"] as? Bool ?? false
+        strictAutoWipeOnExit = infoDict["strictAutoWipeOnExit"] as? Bool ?? false
+        blockDeviceInfoReads = infoDict["blockDeviceInfoReads"] as? Bool ?? false
+        spoofProfileEnabled = infoDict["spoofProfileEnabled"] as? Bool ?? false
+        spoofDeviceName = infoDict["spoofDeviceName"] as? String ?? ""
+        spoofDeviceModel = infoDict["spoofDeviceModel"] as? String ?? ""
+        spoofSystemName = infoDict["spoofSystemName"] as? String ?? ""
+        spoofSystemVersion = infoDict["spoofSystemVersion"] as? String ?? ""
+        spoofLocaleIdentifier = infoDict["spoofLocaleIdentifier"] as? String ?? ""
+        spoofTimeZoneIdentifier = infoDict["spoofTimeZoneIdentifier"] as? String ?? ""
+        spoofBatteryLevel = infoDict["spoofBatteryLevel"] as? Double ?? 0.8
+        spoofBatteryState = infoDict["spoofBatteryState"] as? Int ?? 2
+        spoofLowPowerModeEnabled = infoDict["spoofLowPowerModeEnabled"] as? Bool ?? false
+        spoofSubscriberIdentifier = infoDict["spoofSubscriberIdentifier"] as? String ?? ""
+        spoofSubscriberCarrierTokenBase64 = infoDict["spoofSubscriberCarrierTokenBase64"] as? String ?? ""
+        spoofSubscriberSIMInsertedEnabled = infoDict["spoofSubscriberSIMInsertedEnabled"] as? Bool ?? false
+        spoofSubscriberSIMInserted = infoDict["spoofSubscriberSIMInserted"] as? Bool ?? false
+        spoofRadioAccessTechnology = infoDict["spoofRadioAccessTechnology"] as? String ?? ""
+        spoofHardwareModel = infoDict["spoofHardwareModel"] as? String ?? ""
     }
     
     static func == (lhs: LCContainer, rhs: LCContainer) -> Bool {
@@ -194,7 +356,9 @@ extension LCAppInfo {
             if let oldDataUUID = dataUUID, containerInfo == nil {
                 containerInfo = [[
                     "folderName": oldDataUUID,
-                    "name": oldDataUUID
+                    "name": oldDataUUID,
+                    "isolateAppGroup": true,
+                    "spoofIdentifierForVendor": false,
                 ]]
                 upgrade = true
             }
@@ -213,5 +377,4 @@ extension LCAppInfo {
             }
         }
     }
-
 }

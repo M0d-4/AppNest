@@ -14,6 +14,8 @@ void DyldHooksInit(bool hideLiveContainer, bool hookDlopen, uint32_t spoofSDKVer
 void NSFMGuestHooksInit(void);
 void initDead10ccFix(void);
 void IDFVHookInit(NSUUID* uuid);
+// Device spoofing
+void DeviceSpoofingGuestHooksInit(void);
 
 @interface NSBundle(LiveContainer)
 - (instancetype)initWithPathForMainBundle:(NSString *)path;

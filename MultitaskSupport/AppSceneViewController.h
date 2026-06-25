@@ -4,6 +4,7 @@
 //
 //  Created by s s on 2025/5/17.
 //
+#pragma once
 #import "UIKitPrivate+MultitaskSupport.h"
 #import "FoundationPrivate.h"
 @import UIKit;
@@ -31,13 +32,17 @@ API_AVAILABLE(ios(16.0))
 @property(nonatomic) CGFloat scaleRatio;
 @property(nonatomic) UIView* contentView;
 @property(nonatomic) _UIScenePresenter *presenter;
-@property(nonatomic) UIMutableApplicationSceneSettings *settings;
-- (instancetype)initWithBundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID delegate:(id<AppSceneViewControllerDelegate>)delegate;
+@property(nonatomic) _UISceneHostingController *hostingController;
+@property(nonatomic) BSServiceConnectionEndpointInjector *injector;
+- (instancetype)initWithBundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID hostScene:(UIWindowScene *)hostScene delegate:(id<AppSceneViewControllerDelegate>)delegate;
 - (void)setBackgroundNotificationEnabled:(bool)enabled;
 - (void)updateFrameWithSettingsBlock:(void (^)(UIMutableApplicationSceneSettings *settings))block;
+- (void)updateSettingsWithBlock:(void(^)(UIMutableApplicationSceneSettings *settings))block;
 - (void)appTerminationCleanUp;
 - (void)terminate;
 - (void)openURLScheme:(NSString *)urlString;
 - (void)handleStatusBarTapAction:(UIAction *)action;
+- (void)setEnableVisibility:(BOOL)visible;
+- (void)acquireForegroundAssertionForChildProcesses;
 @end
 

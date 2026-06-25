@@ -83,21 +83,16 @@ final class LCStorageManagementModel: ObservableObject {
         var sizesByCategory: [StorageCategory: Int64] = [:]
         
         let knownRoots = uniquePaths([LCPath.docPath, LCPath.lcGroupDocPath])
-        let bundleRoots = uniquePaths([LCPath.bundlePath, LCPath.lcGroupBundlePath])
-        let containerRoots = uniquePaths([LCPath.dataPath, LCPath.lcGroupDataPath])
         let appGroupRoots = uniquePaths([LCPath.appGroupPath, LCPath.lcGroupAppGroupPath])
         let tweakRoots = uniquePaths([LCPath.tweakPath, LCPath.lcGroupTweakPath])
         
         
         sizesByCategory[.appBundle] = 0
         sizesByCategory[.containers] = 0
-        
-        var sideStoreContainerSize: Int64 = 0
+                
         for appItem in appItems {
             if !(appItem.appModel.appInfo is BuiltInSideStoreAppInfo) {
                 sizesByCategory[.appBundle]! += appItem.bundleSize ?? 0
-            } else {
-                sideStoreContainerSize = appItem.containersSize
             }
             
             for containerDetail in appItem.containerDetails {
@@ -269,6 +264,7 @@ final class LCStorageManagementModel: ObservableObject {
         return uniqueURLs
     }
 
+
     nonisolated private static func calculateSize(at url: URL) async throws -> Int64 {
         let fileManager = FileManager.default
         let resourceKeys: Set<URLResourceKey> = [
@@ -287,7 +283,11 @@ final class LCStorageManagementModel: ObservableObject {
         }
 
         var totalSize: Int64 = 0
-        for case let fileURL as URL in enumerator {
+        // Collect all URLs upfront to avoid Swift 6 error:
+        // "instance method 'makeIterator' is unavailable from asynchronous contexts"
+        // NSDirectoryEnumerator's iterator is not safe to use directly in async code.
+        let allURLs = enumerator.compactMap { $0 as? URL }
+        for fileURL in allURLs {
             try Task.checkCancellation()
 
             let resourceValues = try fileURL.resourceValues(forKeys: resourceKeys)
@@ -305,4 +305,3 @@ final class LCStorageManagementModel: ObservableObject {
         return totalSize
     }
 }
-

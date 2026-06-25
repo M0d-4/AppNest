@@ -20,7 +20,9 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
         
         var tempApps: [LCAppModel] = []
         var tempHiddenApps: [LCAppModel] = []
-        var tempURLSchemes: Set<String>? = DataManager.shared.model.multiLCStatus != 2 ? Set() : nil
+
+        // Cleanup stale export temp artifacts from previous runs/interrupted shares.
+        cleanupStaleExportArtifacts(fileManager: fm)
 
         do {
             // load apps
@@ -37,7 +39,6 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
                     tempHiddenApps.append(LCAppModel(appInfo: newApp))
                 } else {
                     tempApps.append(LCAppModel(appInfo: newApp))
-                    tempURLSchemes?.formUnion(newApp.urlSchemes() as! [String])
                 }
             }
             if LCPath.lcGroupDocPath != LCPath.docPath {
@@ -54,7 +55,6 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
                         tempHiddenApps.append(LCAppModel(appInfo: newApp))
                     } else {
                         tempApps.append(LCAppModel(appInfo: newApp))
-                        tempURLSchemes?.formUnion(newApp.urlSchemes() as! [String])
                     }
                 }
             }
@@ -85,9 +85,7 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
         
         DataManager.shared.model.apps = tempApps
         DataManager.shared.model.hiddenApps = tempHiddenApps
-        if let tempURLSchemes {
-            UserDefaults.lcShared().set(Array(tempURLSchemes), forKey: "LCGuestURLSchemes")
-        }
+        DataManager.shared.model.syncSharedGuestURLIndex()
         
         _appDataFolderNames = State(initialValue: tempAppDataFolderNames)
         _tweakFolderNames = State(initialValue: tempTweakFolderNames)
@@ -111,4 +109,29 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
         }
     }
     
+}
+
+private func cleanupStaleExportArtifacts(fileManager: FileManager) {
+    let exportDirectoryURL = fileManager.temporaryDirectory.appendingPathComponent("LCExports", isDirectory: true)
+    if fileManager.fileExists(atPath: exportDirectoryURL.path) {
+        try? fileManager.removeItem(at: exportDirectoryURL)
+    }
+
+    // Legacy staging folders used during export creation.
+    let legacyPrefixes = ["LCAppExport-", "LCDataExport-", "LCBinaryExport-"]
+    let tempRoot = fileManager.temporaryDirectory
+    guard let tempItems = try? fileManager.contentsOfDirectory(
+        at: tempRoot,
+        includingPropertiesForKeys: [.isDirectoryKey],
+        options: [.skipsHiddenFiles]
+    ) else {
+        return
+    }
+
+    for itemURL in tempItems {
+        let name = itemURL.lastPathComponent
+        if legacyPrefixes.contains(where: { name.hasPrefix($0) }) {
+            try? fileManager.removeItem(at: itemURL)
+        }
+    }
 }

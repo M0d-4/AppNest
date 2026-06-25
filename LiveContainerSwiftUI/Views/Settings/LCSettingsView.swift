@@ -18,7 +18,7 @@ enum JITEnablerType : Int, CaseIterable, Identifiable {
     case SideStore = 4
     case StosDebug = 5
     case StosDebugLC = 6
-    
+
     var displayName: String {
         switch self {
         case .StikJIT: "StikDebug"
@@ -28,6 +28,19 @@ enum JITEnablerType : Int, CaseIterable, Identifiable {
         case .SideStore: "SideStore"
         case .JITStreamerEBLegacy: "JitStreamer-EB (Relaunch)"
         case .SideJITServer: "SideJITServer/JITStreamer 2.0"
+        }
+    }
+}
+
+enum LCAppListInterfaceStyle : Int, CaseIterable, Identifiable {
+    var id: Int { rawValue }
+    case list = 0
+    case grid = 1
+    
+    var displayName: String {
+        switch self {
+        case .list: "lc.settings.interface.list".loc
+        case .grid: "lc.settings.interface.grid".loc
         }
     }
 }
@@ -48,13 +61,13 @@ struct LCSettingsView: View {
     @StateObject private var certificateImportFileAlert = AlertHelper<URL>()
     @StateObject private var certificateImportPasswordAlert = InputHelper()
     
-    @AppStorage("LCFrameShortcutIcons") var frameShortIcon = false
     @AppStorage("LCSwitchAppWithoutAsking") var silentSwitchApp = false
     @AppStorage("LCOpenWebPageWithoutAsking") var silentOpenWebPage = false
     @AppStorage("LCDontSignApp", store: LCUtils.appGroupUserDefault) var dontSignApp = false
-    @AppStorage("LCStrictHiding", store: LCUtils.appGroupUserDefault) var strictHiding = false
     @AppStorage("dynamicColors", store: LCUtils.appGroupUserDefault) var dynamicColors = true
     @AppStorage("darkModeIcon", store: LCUtils.appGroupUserDefault) var darkModeIcon = false
+    @AppStorage("LCAppListInterfaceStyle", store: LCUtils.appGroupUserDefault) var appListInterfaceStyle: LCAppListInterfaceStyle = .list
+    @AppStorage("LCAppGridShowLabels", store: LCUtils.appGroupUserDefault) var appGridShowLabels = false
     
     @AppStorage("LCSideJITServerAddress", store: LCUtils.appGroupUserDefault) var sideJITServerAddress : String = ""
     @AppStorage("LCDeviceUDID", store: LCUtils.appGroupUserDefault) var deviceUDID: String = ""
@@ -97,6 +110,7 @@ struct LCSettingsView: View {
                                 Text("lc.settings.importCertificate".loc)
                             }
                         } else {
+                            // SideStore/AltStore import option
                             Button {
                                 Task{ await removeCertificate() }
                             } label: {
@@ -113,6 +127,24 @@ struct LCSettingsView: View {
                                     Text("lc.settings.importCertificateFromStore %@".localizeWithFormat(storeName))
                                 }
                             }
+                            
+                            // Manual certificate import option (always show)
+                            Button {
+                                Task{ await importCertificate() }
+                            } label: {
+                                Text("lc.settings.importCertificate".loc)
+                            }
+                            
+                            // Remove certificate option (only if certificate exists)
+                            if certificateDataFound {
+                                Button {
+                                    Task{ await removeCertificate() }
+                                } label: {
+                                    Text("lc.settings.removeCertificate".loc)
+                                }
+                                .foregroundColor(.red)
+                            }
+                        
                         }
                         
                         NavigationLink {
@@ -189,6 +221,15 @@ struct LCSettingsView: View {
                     } label: {
                         Text("lc.settings.jitEnabler".loc)
                     }
+                    
+                    // DEBUGGER STATUS INDICATOR
+                    HStack {
+                        Text("Debugger Attached")
+                        Spacer()
+                        Circle()
+                            .fill(isDebuggerAttached() ? Color.green : Color.red)
+                            .frame(width: 12, height: 12)
+                    }
 
                 } header: {
                     Text("JIT")
@@ -205,48 +246,37 @@ struct LCSettingsView: View {
                             Text("lc.settings.darkModeIcon".loc)
                         }
                     }
-                    
+                    Picker(selection: $appListInterfaceStyle) {
+                        ForEach(LCAppListInterfaceStyle.allCases) { interfaceStyle in
+                            Text(interfaceStyle.displayName).tag(interfaceStyle)
+                        }
+                    } label: {
+                        Text("lc.settings.interface.appLayout".loc)
+                    }
+                    if appListInterfaceStyle == .grid {
+                        Toggle(isOn: $appGridShowLabels) {
+                            Text("lc.settings.interface.showAppLabels".loc)
+                        }
+                    }
                 } header: {
                     Text("lc.settings.interface".loc)
                 } footer: {
                     Text("lc.settings.dynamicColors.desc".loc)
-                }
-                Section{
-                    Toggle(isOn: $frameShortIcon) {
-                        Text("lc.settings.FrameIcon".loc)
-                    }
-                } header: {
-                    Text("lc.common.miscellaneous".loc)
-                } footer: {
-                    Text("lc.settings.FrameIconDesc".loc)
                 }
                 
                 Section {
                     Toggle(isOn: $silentSwitchApp) {
                         Text("lc.settings.silentSwitchApp".loc)
                     }
-                } footer: {
-                    Text("lc.settings.silentSwitchAppDesc".loc)
-                }
-                
-                Section {
                     Toggle(isOn: $silentOpenWebPage) {
                         Text("lc.settings.silentOpenWebPage".loc)
                     }
+                } header: {
+                    Text("lc.common.miscellaneous".loc)
                 } footer: {
-                    Text("lc.settings.silentOpenWebPageDesc".loc)
+                    Text("lc.settings.silentSwitchAppDesc".loc)
                 }
-                
-                if sharedModel.isHiddenAppUnlocked {
-                    Section {
-                        Toggle(isOn: $strictHiding) {
-                            Text("lc.settings.strictHiding".loc)
-                        }
-                    } footer: {
-                        Text("lc.settings.strictHidingDesc".loc)
-                    }
-                }
-                
+
                 Section {
                     Toggle(isOn: $dontSignApp) {
                         Text("lc.settings.dontSign".loc)
@@ -264,13 +294,6 @@ struct LCSettingsView: View {
                 }
 
                 Section {
-                    if sharedModel.multiLCStatus != 2 {
-                        NavigationLink {
-                            LCStorageManagementView()
-                        } label: {
-                            Text("lc.settings.storageManagement".loc)
-                        }
-                    }
                     NavigationLink {
                         LCDataManagementView(appDataFolderNames: $appDataFolderNames)
                     } label: {
@@ -299,15 +322,29 @@ struct LCSettingsView: View {
                     }
                 } header: {
                     Text("lc.settings.about".loc)
-                } footer: {
-                    Text("lc.settings.warning".loc)
+                }
+                Section {
+                    HStack {
+                        Image("GitHub")
+                        Button("M0d-4") {
+                            openForkOwnerGitHub()
+                        }
+                    }
+                    HStack {
+                        Image("GitHub")
+                        Button("M0d-4/AppNest") {
+                            openForkedRepo()
+                        }
+                    }
+                } header: {
+                    Text("About Fork and the Fork's Owner")
                 }
                 
                 VStack{
                     Text(LCUtils.getVersionInfo())
                         .foregroundStyle(.gray)
                         .onTapGesture(count: 5) {
-                            sharedModel.developerMode = true
+                            sharedModel.developerMode.toggle()
                         }
                 }
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
@@ -485,6 +522,41 @@ struct LCSettingsView: View {
         }
     }
 
+    func openForkOwnerGitHub() {
+        UIApplication.shared.open(URL(string: "https://github.com/M0d-4")!)
+    }
+
+    func openForkedRepo() {
+        UIApplication.shared.open(URL(string: "https://github.com/M0d-4/AppNest")!)
+    }
+
+    func isDebuggerAttached() -> Bool {
+        // Method 1: Check P_TRACED flag (works for lldb, etc)
+        var info = kinfo_proc()
+        var mib: [Int32] = [CTL_KERN, KERN_PROC, KERN_PROC_PID, getpid()]
+        var size = MemoryLayout<kinfo_proc>.stride
+
+        let result = sysctl(&mib, UInt32(mib.count), &info, &size, nil, 0)
+
+        if result == 0 && (info.kp_proc.p_flag & P_TRACED) != 0 {
+            return true
+        }
+
+        // Method 2: Check for JIT-enabled memory (works for StikDebug)
+        // If we can allocate executable memory, JIT is enabled
+        let testSize = 1024
+        let ptr = mmap(nil, testSize, PROT_READ | PROT_WRITE | PROT_EXEC, 
+                      MAP_PRIVATE | MAP_ANONYMOUS | MAP_JIT, -1, 0)
+
+        if ptr != MAP_FAILED {
+            munmap(ptr, testSize)
+            return true
+        }
+
+        return false
+    }
+
+    
     func export() {
         let fileManager = FileManager.default
         let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask).first!

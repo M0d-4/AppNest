@@ -46,8 +46,8 @@ extension View {
         self.modifier(DocModifier(isPresented: isPresented, types: types, multiple: multiple, callback: callback, onDismiss: onDismiss))
     }
     
-    func betterContextMenu(menuProvider: @escaping () -> UIMenu) -> some View {
-        self.modifier(UIKitContextMenuModifier(menuProvider: menuProvider))
+    func betterContextMenu(menuProvider: @escaping () -> UIMenu, onMenuVisibilityChanged: ((Bool) -> Void)? = nil) -> some View {
+        self.modifier(UIKitContextMenuModifier(menuProvider: menuProvider, onMenuVisibilityChanged: onMenuVisibilityChanged))
     }
     
     func onBackground(_ f: @escaping () -> Void) -> some View {
@@ -316,9 +316,10 @@ struct ActivityViewController: UIViewControllerRepresentable {
 
 private struct UIKitContextMenuModifier : ViewModifier {
     let menuProvider: () -> UIMenu
+    let onMenuVisibilityChanged: ((Bool) -> Void)?
     
     func body(content: Content) -> some View {
-        UIKitContextMenuContainer(menuProvider: menuProvider, content: content)
+        UIKitContextMenuContainer(menuProvider: menuProvider, onMenuVisibilityChanged: onMenuVisibilityChanged, content: content)
     }
 }
 
@@ -335,15 +336,17 @@ private class SizedHostingController<Content: View>: UIHostingController<Content
 
 private struct UIKitContextMenuContainer<Content: View>: UIViewControllerRepresentable {
     let menuProvider: () -> UIMenu
+    let onMenuVisibilityChanged: ((Bool) -> Void)?
     let content: Content
 
-    init(menuProvider: @escaping () -> UIMenu,  content: Content) {
+    init(menuProvider: @escaping () -> UIMenu, onMenuVisibilityChanged: ((Bool) -> Void)?, content: Content) {
         self.menuProvider = menuProvider
+        self.onMenuVisibilityChanged = onMenuVisibilityChanged
         self.content = content
     }
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(menuProvider: menuProvider)
+        Coordinator(menuProvider: menuProvider, onMenuVisibilityChanged: onMenuVisibilityChanged)
     }
 
     func makeUIViewController(context: Context) -> UIHostingController<Content> {
@@ -363,6 +366,7 @@ private struct UIKitContextMenuContainer<Content: View>: UIViewControllerReprese
     func updateUIViewController(_ uiViewController: UIHostingController<Content>, context: Context) {
         uiViewController.rootView = content
         context.coordinator.menuProvider = menuProvider
+        context.coordinator.onMenuVisibilityChanged = onMenuVisibilityChanged
     }
 
     @available(iOS 16.0, *)
@@ -377,15 +381,29 @@ private struct UIKitContextMenuContainer<Content: View>: UIViewControllerReprese
 
     final class Coordinator: NSObject, UIContextMenuInteractionDelegate {
         var menuProvider: () -> UIMenu
+        var onMenuVisibilityChanged: ((Bool) -> Void)?
 
-        init(menuProvider: @escaping () -> UIMenu) {
+        init(menuProvider: @escaping () -> UIMenu, onMenuVisibilityChanged: ((Bool) -> Void)?) {
             self.menuProvider = menuProvider
+            self.onMenuVisibilityChanged = onMenuVisibilityChanged
         }
 
         func contextMenuInteraction(_ interaction: UIContextMenuInteraction, configurationForMenuAtLocation location: CGPoint) -> UIContextMenuConfiguration? {
             UIContextMenuConfiguration(identifier: nil, previewProvider: nil) { _ in
                 self.menuProvider()
             }
+        }
+        
+        func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willDisplayMenuFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
+            onMenuVisibilityChanged?(true)
+        }
+        
+        func contextMenuInteraction(_ interaction: UIContextMenuInteraction, willEndFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
+            onMenuVisibilityChanged?(false)
+        }
+        
+        func contextMenuInteraction(_ interaction: UIContextMenuInteraction, didEndFor configuration: UIContextMenuConfiguration, animator: UIContextMenuInteractionAnimating?) {
+            onMenuVisibilityChanged?(false)
         }
     }
 }

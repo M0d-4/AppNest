@@ -1,17 +1,205 @@
 @import UIKit;
 #import "LCSharedUtils.h"
 #import "UIKitPrivate.h"
-#import "utils.h"
+#import "../LiveContainer/utils.h"
 #import <LocalAuthentication/LocalAuthentication.h>
 #import "Localization.h"
+#import "../LiveProcess/LiveProcessHandler.h"
+#import "../MultitaskSupport/UIKitPrivate+MultitaskSupport.h"
 
+extern void _objc_msgForward(void);
+@interface LCRealIPhoneModeHelper : NSObject
++ (void)repositionAllWindows;
+@end
 UIInterfaceOrientation LCOrientationLock = UIInterfaceOrientationUnknown;
 NSMutableArray<NSString*>* LCSupportedUrlSchemes = nil;
+BOOL strictTestMode = NO;
+UIPasteboard *strictPrivatePasteboard = nil;
 BOOL launchURLProcessed = NO;
 
+@interface LCNetworkExtensionStrictHookProvider : NSObject
+@end
+
+static void LCSwizzleClassIfPresent(Class cls, SEL originalAction, SEL swizzledAction) {
+    if(!cls) {
+        return;
+    }
+    Method originalMethod = class_getClassMethod(cls, originalAction);
+    Method swizzledMethod = class_getClassMethod(cls, swizzledAction);
+    if(originalMethod && swizzledMethod) {
+        method_exchangeImplementations(originalMethod, swizzledMethod);
+    }
+}
+
+static void LCSwizzleIfPresent(Class cls, SEL originalAction, SEL swizzledAction) {
+    if(!cls) {
+        return;
+    }
+    Method originalMethod = class_getInstanceMethod(cls, originalAction);
+    Method swizzledMethod = class_getInstanceMethod(cls, swizzledAction);
+    if(originalMethod && swizzledMethod) {
+        method_exchangeImplementations(originalMethod, swizzledMethod);
+    }
+}
+
+static void LCSwizzleClassIfPresentWithSourceClass(Class cls, Class sourceCls, SEL originalAction, SEL swizzledAction) {
+    if(!cls || !sourceCls) {
+        return;
+    }
+    Method originalMethod = class_getClassMethod(cls, originalAction);
+    Method sourceMethod = class_getClassMethod(sourceCls, swizzledAction);
+    if(!originalMethod || !sourceMethod) {
+        return;
+    }
+    Class metaClass = object_getClass((id)cls);
+    class_addMethod(
+        metaClass,
+        swizzledAction,
+        method_getImplementation(sourceMethod),
+        method_getTypeEncoding(sourceMethod)
+    );
+    Method swizzledMethod = class_getClassMethod(cls, swizzledAction);
+    if(swizzledMethod) {
+        method_exchangeImplementations(originalMethod, swizzledMethod);
+    }
+}
+
+//⭐️⭐️⭐️⤵️
+static void Real_UIKitGuestHooksInit(void);
+static NSString *const LCExternalURLBlockBypassDepthKey = @"LCExternalURLBlockBypassDepth";
+
+static BOOL LCIsExternalURLBlockBypassed(void) {
+    NSNumber *depth = NSThread.currentThread.threadDictionary[LCExternalURLBlockBypassDepthKey];
+    return depth.integerValue > 0;
+}
+
+static void LCWithExternalURLBlockBypass(void (^block)(void)) {
+    if (!block) {
+        return;
+    }
+    NSMutableDictionary *threadDictionary = NSThread.currentThread.threadDictionary;
+    NSInteger depth = [threadDictionary[LCExternalURLBlockBypassDepthKey] integerValue];
+    threadDictionary[LCExternalURLBlockBypassDepthKey] = @(depth + 1);
+    block();
+    depth = [threadDictionary[LCExternalURLBlockBypassDepthKey] integerValue] - 1;
+    if (depth <= 0) {
+        [threadDictionary removeObjectForKey:LCExternalURLBlockBypassDepthKey];
+    } else {
+        threadDictionary[LCExternalURLBlockBypassDepthKey] = @(depth);
+    }
+}
+
+static NSSet<NSString *> *LCBlockedExternalURLSchemes(void) {
+    static NSSet<NSString *> *blockedSchemes = nil;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        blockedSchemes = [NSSet setWithArray:@[
+            @"github",
+            @"sidestore",
+            @"livecontainer",
+            // TODO: Shadowrocket
+        ]];
+    });
+    return blockedSchemes;
+}
+
+static BOOL LCShouldBlockExternalURL(NSURL *url) {
+    if (!url || LCIsExternalURLBlockBypassed()) {
+        return NO;
+    }
+    NSString *scheme = url.scheme.lowercaseString;
+    if (scheme.length == 0) {
+        return NO;
+    }
+    return [LCBlockedExternalURLSchemes() containsObject:scheme];
+}
+
+static UIWindowScene *LCForegroundWindowScene(void) {
+    UIWindowScene *fallbackScene = nil;
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class]) {
+            continue;
+        }
+        UIWindowScene *windowScene = (UIWindowScene *)scene;
+        if (windowScene.activationState == UISceneActivationStateForegroundActive) {
+            return windowScene;
+        }
+        if (!fallbackScene) {
+            fallbackScene = windowScene;
+        }
+    }
+    return fallbackScene;
+}
+
+static UIWindow *LCKeyWindowForScene(UIWindowScene *scene) {
+    if (!scene) {
+        return nil;
+    }
+    UIWindow *keyWindow = scene.keyWindow;
+    if (keyWindow) {
+        return keyWindow;
+    }
+    for (UIWindow *window in scene.windows) {
+        if (window.isKeyWindow) {
+            return window;
+        }
+    }
+    return scene.windows.firstObject;
+}
+
+static UIWindowLevel LCOverlayWindowLevel(void) {
+    UIWindow *keyWindow = LCKeyWindowForScene(LCForegroundWindowScene());
+    return (keyWindow ? keyWindow.windowLevel : UIWindowLevelNormal) + 1;
+}
+
 __attribute__((constructor))
-static void UIKitGuestHooksInit() {
+static void UIKitGuestHooksInit(void) {
+    //NSString *AppId = [NSUserDefaults lcGuestAppId];
+    //if ([AppId.lowercaseString containsString:@"sidestore"]) {
+        //dispatch_async(dispatch_get_main_queue(), ^{
+            //Real_UIKitGuestHooksInit();
+        //});
+    //} else {
+       Real_UIKitGuestHooksInit();
+    //}
+}
+
+//⭐️⭐️⭐️⤴️
+
+static void Real_UIKitGuestHooksInit(void) {
+    NSString *lcGuestAppId = NSUserDefaults.lcGuestAppId;
     if(!NSUserDefaults.lcGuestAppId) return;
+    if (!([lcGuestAppId isEqualToString:@"com.SideStore.SideStore"] || 
+          [lcGuestAppId.lowercaseString containsString:@"sidestore"] ||
+          NSUserDefaults.isSideStore)) { 
+        //⭐️⭐️⭐️Real iPhone mode 9:16 hook(swizzle)
+          swizzle(UIWindow.class, @selector(setFrame:), @selector(hook_setFrame:));
+          swizzle(UIScreen.class, @selector(bounds), @selector(hook_UIScreen_bounds));
+
+    }
+
+
+
+//if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
+        [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification
+                                                          object:nil
+                                                           queue:NSOperationQueue.mainQueue
+                                                      usingBlock:^(NSNotification *note) {
+            [LCRealIPhoneModeHelper repositionAllWindows];
+        }];
+        [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification
+                                                          object:nil
+                                                           queue:NSOperationQueue.mainQueue
+                                                      usingBlock:^(NSNotification *note) {
+            [LCRealIPhoneModeHelper repositionAllWindows];
+        }];
+    //}
+
+
+
+
+
+
     swizzle(UIApplication.class, @selector(_applicationOpenURLAction:payload:origin:), @selector(hook__applicationOpenURLAction:payload:origin:));
     swizzle(UIApplication.class, @selector(_connectUISceneFromFBSScene:transitionContext:), @selector(hook__connectUISceneFromFBSScene:transitionContext:));
     swizzle(UIApplication.class, @selector(openURL:options:completionHandler:), @selector(hook_openURL:options:completionHandler:));
@@ -32,13 +220,33 @@ static void UIKitGuestHooksInit() {
                 break;
         }
         if(!NSUserDefaults.isLiveProcess && LCOrientationLock != UIInterfaceOrientationUnknown) {
-//            swizzle(UIApplication.class, @selector(_handleDelegateCallbacksWithOptions:isSuspended:restoreState:), @selector(hook__handleDelegateCallbacksWithOptions:isSuspended:restoreState:));
+            swizzle(UIApplication.class, @selector(_handleDelegateCallbacksWithOptions:isSuspended:restoreState:), @selector(hook__handleDelegateCallbacksWithOptions:isSuspended:restoreState:));
             swizzle(FBSSceneParameters.class, @selector(initWithXPCDictionary:), @selector(hook_initWithXPCDictionary:));
             swizzle(UIViewController.class, @selector(__supportedInterfaceOrientations), @selector(hook___supportedInterfaceOrientations));
             swizzle(UIViewController.class, @selector(shouldAutorotateToInterfaceOrientation:), @selector(hook_shouldAutorotateToInterfaceOrientation:));
             swizzle(UIWindow.class, @selector(setAutorotates:forceUpdateInterfaceOrientation:), @selector(hook_setAutorotates:forceUpdateInterfaceOrientation:));
         }
 
+    }
+    if(@available(iOS 17.0, *)) {
+        if(NSUserDefaults.isLiveProcess) {
+            swizzle(_UIRemoteKeyboards.class, @selector(startConnection), @selector(hook_startConnection));
+        }
+    }
+
+    NSDictionary* guestContainerInfo = [NSUserDefaults guestContainerInfo];
+    strictTestMode = [guestContainerInfo[@"strictTestMode"] boolValue];
+    if(strictTestMode) {
+        strictPrivatePasteboard = [UIPasteboard pasteboardWithUniqueName];
+        LCSwizzleClassIfPresent(UIPasteboard.class, @selector(generalPasteboard), @selector(hook_generalPasteboard));
+        LCSwizzleIfPresent(NSURLSessionTask.class, @selector(resume), @selector(hook_resume));
+        Class hotspotNetworkClass = NSClassFromString(@"NEHotspotNetwork");
+        LCSwizzleClassIfPresentWithSourceClass(
+            hotspotNetworkClass,
+            LCNetworkExtensionStrictHookProvider.class,
+            @selector(fetchCurrentWithCompletionHandler:),
+            @selector(hook_fetchCurrentWithCompletionHandler:)
+        );
     }
 }
 
@@ -64,7 +272,10 @@ void forEachInstalledNotCurrentLC(BOOL isFree, void (^block)(NSString* scheme, B
         if([scheme isEqualToString:NSUserDefaults.lcAppUrlScheme]) {
             continue;
         }
-        BOOL isInstalled = [UIApplication.sharedApplication canOpenURL:[NSURL URLWithString: [NSString stringWithFormat: @"%@://", scheme]]];
+        __block BOOL isInstalled = NO;
+        LCWithExternalURLBlockBypass(^{
+            isInstalled = [UIApplication.sharedApplication canOpenURL:[NSURL URLWithString:[NSString stringWithFormat:@"%@://", scheme]]];
+        });
         if(!isInstalled) {
             continue;
         }
@@ -87,7 +298,9 @@ void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId, bool isSharedAp
         __block BOOL anotherLCLaunched = false;
         forEachInstalledNotCurrentLC(YES, ^(NSString * scheme, BOOL* isBreak) {
             newUrlComp.scheme = scheme;
-            [UIApplication.sharedApplication openURL:newUrlComp.URL options:@{} completionHandler:nil];
+            LCWithExternalURLBlockBypass(^{
+                [UIApplication.sharedApplication openURL:newUrlComp.URL options:@{} completionHandler:nil];
+            });
             *isBreak = YES;
             anotherLCLaunched = YES;
             return;
@@ -117,7 +330,9 @@ void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId, bool isSharedAp
         forEachInstalledNotCurrentLC(NO, ^(NSString * scheme, BOOL* isBreak) {
             UIAlertAction* openlcAction = [UIAlertAction actionWithTitle:[@"lc.guestTweak.openInLc %@" localizeWithFormat:scheme] style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
                 newUrlComp.scheme = scheme;
-                [UIApplication.sharedApplication openURL:newUrlComp.URL options:@{} completionHandler:nil];
+                LCWithExternalURLBlockBypass(^{
+                    [UIApplication.sharedApplication openURL:newUrlComp.URL options:@{} completionHandler:nil];
+                });
                 window.windowScene = nil;
             }];
             [alert addAction:openlcAction];
@@ -129,8 +344,8 @@ void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId, bool isSharedAp
     }];
     [alert addAction:cancelAction];
     window.rootViewController = [UIViewController new];
-    window.windowLevel = UIApplication.sharedApplication.windows.lastObject.windowLevel + 1;
-    window.windowScene = (id)UIApplication.sharedApplication.connectedScenes.anyObject;
+    window.windowLevel = LCOverlayWindowLevel();
+    window.windowScene = LCForegroundWindowScene();
     [window makeKeyAndVisible];
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
     objc_setAssociatedObject(alert, @"window", window, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -144,8 +359,8 @@ void LCShowAlert(NSString* message) {
     }];
     [alert addAction:okAction];
     window.rootViewController = [UIViewController new];
-    window.windowLevel = UIApplication.sharedApplication.windows.lastObject.windowLevel + 1;
-    window.windowScene = (id)UIApplication.sharedApplication.connectedScenes.anyObject;
+    window.windowLevel = LCOverlayWindowLevel();
+    window.windowScene = LCForegroundWindowScene();
     [window makeKeyAndVisible];
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
     objc_setAssociatedObject(alert, @"window", window, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -157,14 +372,19 @@ void LCShowAppNotFoundAlert(NSString* bundleId) {
 
 void openUniversalLink(NSString* decodedUrl) {
     NSURL* urlToOpen = [NSURL URLWithString: decodedUrl];
+    if (LCShouldBlockExternalURL(urlToOpen)) {
+        NSLog(@"[LC] Blocked external URL scheme: %@", urlToOpen.scheme);
+        return;
+    }
     if(![urlToOpen.scheme isEqualToString:@"https"] && ![urlToOpen.scheme isEqualToString:@"http"]) {
         NSData *data = [decodedUrl dataUsingEncoding:NSUTF8StringEncoding];
         NSString *encodedUrl = [data base64EncodedStringWithOptions:0];
         
         NSString* finalUrl = [NSString stringWithFormat:@"%@://open-url?url=%@", NSUserDefaults.lcAppUrlScheme, encodedUrl];
         NSURL* url = [NSURL URLWithString: finalUrl];
-        
-        [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
+        LCWithExternalURLBlockBypass(^{
+            [[UIApplication sharedApplication] openURL:url options:@{} completionHandler:nil];
+        });
         return;
     }
     
@@ -195,7 +415,9 @@ void LCOpenWebPage(NSString* webPageUrlString, NSString* originalUrl) {
     __block BOOL anotherLCLaunched = false;
     forEachInstalledNotCurrentLC(YES, ^(NSString * scheme, BOOL* isBreak) {
         newUrlComp.scheme = scheme;
-        [UIApplication.sharedApplication openURL:newUrlComp.URL options:@{} completionHandler:nil];
+        LCWithExternalURLBlockBypass(^{
+            [UIApplication.sharedApplication openURL:newUrlComp.URL options:@{} completionHandler:nil];
+        });
         *isBreak = YES;
         anotherLCLaunched = YES;
         return;
@@ -220,7 +442,9 @@ void LCOpenWebPage(NSString* webPageUrlString, NSString* originalUrl) {
     forEachInstalledNotCurrentLC(NO, ^(NSString * scheme, BOOL* isBreak) {
         UIAlertAction* openlc2Action = [UIAlertAction actionWithTitle:[@"lc.guestTweak.openInLc %@" localizeWithFormat:scheme] style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
             newUrlComp.scheme = scheme;
-            [UIApplication.sharedApplication openURL:newUrlComp.URL options:@{} completionHandler:nil];
+            LCWithExternalURLBlockBypass(^{
+                [UIApplication.sharedApplication openURL:newUrlComp.URL options:@{} completionHandler:nil];
+            });
             window.windowScene = nil;
         }];
         [alert addAction:openlc2Action];
@@ -232,8 +456,8 @@ void LCOpenWebPage(NSString* webPageUrlString, NSString* originalUrl) {
     }];
     [alert addAction:cancelAction];
     window.rootViewController = [UIViewController new];
-    window.windowLevel = UIApplication.sharedApplication.windows.lastObject.windowLevel + 1;
-    window.windowScene = (id)UIApplication.sharedApplication.connectedScenes.anyObject;
+    window.windowLevel = LCOverlayWindowLevel();
+    window.windowScene = LCForegroundWindowScene();
     [window makeKeyAndVisible];
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
     objc_setAssociatedObject(alert, @"window", window, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -262,8 +486,8 @@ void LCOpenSideStoreURL(NSURL* sidestoreUrl) {
     }];
     [alert addAction:cancelAction];
     window.rootViewController = [UIViewController new];
-    window.windowLevel = UIApplication.sharedApplication.windows.lastObject.windowLevel + 1;
-    window.windowScene = (id)UIApplication.sharedApplication.connectedScenes.anyObject;
+    window.windowLevel = LCOverlayWindowLevel();
+    window.windowScene = LCForegroundWindowScene();
     [window makeKeyAndVisible];
     [window.rootViewController presentViewController:alert animated:YES completion:nil];
     objc_setAssociatedObject(alert, @"window", window, OBJC_ASSOCIATION_RETAIN_NONATOMIC);
@@ -340,7 +564,9 @@ void handleLiveContainerLaunch(NSURL* url) {
                 runningLC = runningLC.stringByDeletingPathExtension;
             }
             NSString* urlStr = [NSString stringWithFormat:@"%@://livecontainer-launch?bundle-name=%@&container-folder-name=%@", runningLC, bundleName, containerFolderName];
-            [UIApplication.sharedApplication openURL:[NSURL URLWithString:urlStr] options:@{} completionHandler:nil];
+            LCWithExternalURLBlockBypass(^{
+                [UIApplication.sharedApplication openURL:[NSURL URLWithString:urlStr] options:@{} completionHandler:nil];
+            });
             return;
         }
         
@@ -351,7 +577,7 @@ void handleLiveContainerLaunch(NSURL* url) {
             lcAppInfo = [NSDictionary dictionaryWithContentsOfURL:[bundle URLForResource:@"LCAppInfo" withExtension:@"plist"]];
         }
         
-        if(!bundle || ([lcAppInfo[@"isHidden"] boolValue] && [NSUserDefaults.lcSharedDefaults boolForKey:@"LCStrictHiding"])) {
+        if(!bundle) {
             LCShowAppNotFoundAlert(bundleName);
         } else if ([lcAppInfo[@"isLocked"] boolValue]) {
             // need authentication
@@ -374,6 +600,42 @@ void handleLiveContainerLaunch(NSURL* url) {
     }
 }
 
+void handleCustomSchemeLaunch(NSURL* url) {
+    NSString *scheme = url.scheme.lowercaseString;
+    NSString *docPath = [NSString stringWithFormat:@"%s/Documents", getenv("LC_HOME_PATH")];
+    NSString *appsPath = [docPath stringByAppendingPathComponent:@"Applications"];
+    NSFileManager *fm = NSFileManager.defaultManager;
+    NSArray *apps = [fm contentsOfDirectoryAtPath:appsPath error:nil];
+    
+    NSString* targetBundleName = nil;
+    for (NSString *appFolder in apps) {
+        NSString *infoPath = [NSString stringWithFormat:@"%@/%@/LCAppInfo.plist", appsPath, appFolder];
+        NSDictionary *appInfo = [NSDictionary dictionaryWithContentsOfFile:infoPath];
+        NSArray *customSchemes = appInfo[@"LCCustomUrlSchemes"];
+        if (customSchemes && [customSchemes containsObject:scheme]) {
+            targetBundleName = appFolder;
+            break;
+        }
+    }
+    
+    if (targetBundleName) {
+        // Construct livecontainer-launch URL required by launchToGuestAppWithURL
+        NSData *data = [url.absoluteString dataUsingEncoding:NSUTF8StringEncoding];
+        NSString *encodedUrl = [data base64EncodedStringWithOptions:0];
+        NSString *lcUrlStr = [NSString stringWithFormat:@"%@://livecontainer-launch?bundle-name=%@&open-url=%@",
+                              NSUserDefaults.lcAppUrlScheme, targetBundleName, encodedUrl];
+        NSURL *lcUrl = [NSURL URLWithString:lcUrlStr];
+        
+        bool isSharedApp = false;
+        NSBundle* bundle = [NSClassFromString(@"LCSharedUtils") findBundleWithBundleId:targetBundleName isSharedAppOut:&isSharedApp];
+        if (bundle) {
+            LCShowSwitchAppConfirmation(lcUrl, targetBundleName, isSharedApp);
+        } else {
+            LCShowAppNotFoundAlert(targetBundleName);
+        }
+    }
+}
+
 BOOL shouldRedirectOpenURLToHost(NSURL* url) {
     NSUserDefaults *ud = NSUserDefaults.lcSharedDefaults;
     return NSUserDefaults.isLiveProcess &&
@@ -392,8 +654,22 @@ BOOL canAppOpenItself(NSURL* url) {
                 [LCSupportedUrlSchemes addObject:[scheme lowercaseString]];
             }
         }
-    });
+    }); // It now correctly checks all CFBundleURLSchemes, including our injected ones!
     return [LCSupportedUrlSchemes containsObject:[url.scheme lowercaseString]];
+}
+
+BOOL strictModeAllowsOpenURL(NSURL *url) {
+    if(!strictTestMode) {
+        return YES;
+    }
+    if(!url) {
+        return NO;
+    }
+    if(canAppOpenItself(url)) {
+        return YES;
+    }
+    NSString *scheme = url.scheme.lowercaseString;
+    return [scheme isEqualToString:NSUserDefaults.lcAppUrlScheme.lowercaseString];
 }
 
 // Handler for AppDelegate
@@ -429,6 +705,7 @@ BOOL canAppOpenItself(NSURL* url) {
         NSURLComponents* lcUrl = [NSURLComponents componentsWithString:url];
         NSString* realUrlEncoded = lcUrl.queryItems[0].value;
         if(!realUrlEncoded) return;
+        realUrlEncoded = [realUrlEncoded stringByReplacingOccurrencesOfString:@" " withString:@"+"];
         // Convert the base64 encoded url into String
         NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
         NSString *decodedUrl = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
@@ -436,8 +713,9 @@ BOOL canAppOpenItself(NSURL* url) {
         if([decodedUrl hasPrefix:@"https"]) {
             openUniversalLink(decodedUrl);
         } else {
+            NSURL *decodedUrlObj = [NSURL URLWithString:decodedUrl];
             NSMutableDictionary* newPayload = [payload mutableCopy];
-            newPayload[UIApplicationLaunchOptionsURLKey] = decodedUrl;
+            newPayload[UIApplicationLaunchOptionsURLKey] = decodedUrlObj ? [decodedUrlObj absoluteString] : decodedUrl;
             [self hook__applicationOpenURLAction:action payload:newPayload origin:origin];
         }
         
@@ -450,6 +728,20 @@ BOOL canAppOpenItself(NSURL* url) {
         LCShowAlert(@"lc.guestTweak.restartToInstall".loc);
         return;
     }
+    
+    // Intercept URLs belonging to other guest apps running in LiveContainer
+    NSURL *parsedUrl = [NSURL URLWithString:url];
+    if (parsedUrl && ![NSBundle.mainBundle.bundlePath.lastPathComponent isEqualToString:@"LiveContainer"]) {
+        NSString *scheme = parsedUrl.scheme.lowercaseString;
+        BOOL isStandardLC = [scheme hasPrefix:@"livecontainer"] || [scheme isEqualToString:@"sidestore"] || [scheme isEqualToString:@"file"] || [scheme hasPrefix:@"http"];
+        
+        if (!isStandardLC && !canAppOpenItself(parsedUrl)) {
+            // It's not standard LC, and it doesn't belong to the current guest app
+            handleCustomSchemeLaunch(parsedUrl);
+            return;
+        }
+    }
+    
     [self hook__applicationOpenURLAction:action payload:payload origin:origin];
     return;
 }
@@ -466,6 +758,7 @@ BOOL canAppOpenItself(NSURL* url) {
                 NSURLComponents* lcUrl = [NSURLComponents componentsWithString:urlStr];
                 NSString* realUrlEncoded = lcUrl.queryItems[0].value;
                 if(!realUrlEncoded) break;
+                realUrlEncoded = [realUrlEncoded stringByReplacingOccurrencesOfString:@" " withString:@"+"];
                 // Convert the base64 encoded url into String
                 NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
                 decodedUrlStr = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
@@ -527,8 +820,30 @@ BOOL canAppOpenItself(NSURL* url) {
 }
 
 - (void)hook_openURL:(NSURL *)url options:(NSDictionary<NSString *,id> *)options completionHandler:(void (^)(_Bool))completion {
-    if(NSUserDefaults.isSideStore && ![url.scheme isEqualToString:@"livecontainer"]) {
+    if(strictTestMode) {
+        BOOL allowed = strictModeAllowsOpenURL(url);
+        if(!allowed) {
+            if(completion) {
+                completion(NO);
+            }
+            return;
+        }
         [self hook_openURL:url options:options completionHandler:completion];
+        return;
+    }
+
+    // When running as built-in SideStore, pass ALL URLs straight through — including
+    // livecontainer:// which is otherwise in the blocked list. relaunchLC needs it.
+    // This check must come BEFORE LCShouldBlockExternalURL.
+    if(NSUserDefaults.isSideStore) {
+        [self hook_openURL:url options:options completionHandler:completion];
+        return;
+    }
+    if (LCShouldBlockExternalURL(url)) {
+        NSLog(@"[LC] Blocked external URL scheme: %@", url.scheme);
+        if (completion) {
+            completion(NO);
+        }
         return;
     }
     
@@ -546,6 +861,18 @@ BOOL canAppOpenItself(NSURL* url) {
     }
 }
 - (BOOL)hook_canOpenURL:(NSURL *) url {
+    if(strictTestMode) {
+        return strictModeAllowsOpenURL(url);
+    }
+    // When running as built-in SideStore pass through directly — livecontainer://
+    // is in the blocked list but SideStore needs it for relaunchLC.
+    // This check must come BEFORE LCShouldBlockExternalURL.
+    if (NSUserDefaults.isSideStore) {
+        return [self hook_canOpenURL:url];
+    }
+    if (LCShouldBlockExternalURL(url)) {
+        return NO;
+    }
     return canAppOpenItself(url) || shouldRedirectOpenURLToHost(url) || [self hook_canOpenURL:url];
 }
 
@@ -573,6 +900,11 @@ BOOL canAppOpenItself(NSURL* url) {
     } else {
         return [self hook_statusBarFrame];
     }
+}
+
+- (BOOL)hook_openURL:(NSURL*)url {
+    [self hook_openURL:url options:@{} completionHandler:nil];
+    return YES;
 }
 
 @end
@@ -656,6 +988,25 @@ BOOL canAppOpenItself(NSURL* url) {
 }
 
 - (void)hook_openURL:(NSURL *)url options:(UISceneOpenExternalURLOptions *)options completionHandler:(void (^)(BOOL success))completion {
+    if(strictTestMode) {
+        BOOL allowed = strictModeAllowsOpenURL(url);
+        if(!allowed) {
+            if(completion) {
+                completion(NO);
+            }
+            return;
+        }
+        [self hook_openURL:url options:options completionHandler:completion];
+        return;
+    }
+
+    if (LCShouldBlockExternalURL(url)) {
+        NSLog(@"[LC] Blocked external URL scheme: %@", url.scheme);
+        if (completion) {
+            completion(NO);
+        }
+        return;
+    }
     BOOL openSelf = canAppOpenItself(url);
     BOOL redirectToHost = shouldRedirectOpenURLToHost(url);
     if(openSelf || redirectToHost) {
@@ -703,6 +1054,74 @@ BOOL canAppOpenItself(NSURL* url) {
 }
 
 @end
+//⭐️⭐️⭐️Real iPhone mode 9:16 hook
+@implementation UIScreen (LiveContainerHook)
+- (CGRect)hook_UIScreen_bounds {
+    NSString *appId = NSUserDefaults.lcGuestAppId;
+    BOOL isSideStore = [appId.lowercaseString containsString:@"sidestore"];
+    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && !isSideStore
+) {
+        CGRect nativeBounds = [self hook_UIScreen_bounds];
+        CGFloat screenH = nativeBounds.size.height;
+        CGFloat screenW = nativeBounds.size.width;
+        CGFloat targetW = MIN(screenW, screenH * (9.0 / 16.0));
+        return CGRectMake(0, 0, targetW, screenH);
+    }
+
+    CGRect nativeBounds = [self hook_UIScreen_bounds];
+        CGFloat screenH = nativeBounds.size.height;
+        CGFloat targetW = nativeBounds.size.width; 
+        return CGRectMake(0, 0, targetW, screenH);
+}
+@end
+
+
+
+@implementation LCRealIPhoneModeHelper
+//⭐️⭐️⭐️Real iPhone mode 9:16 hook
++ (void)repositionAllWindows {
+    //if (![NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) return;
+
+    UIWindowScene *scene = nil;
+    for (UIWindowScene *s in UIApplication.sharedApplication.connectedScenes) {
+        if ([s isKindOfClass:UIWindowScene.class]) {
+            scene = s;
+            break;
+        }
+    }
+    if (!scene) return;
+
+    CGRect realBounds = scene.coordinateSpace.bounds;
+    CGFloat realH = realBounds.size.height;
+    CGFloat realW = realBounds.size.width;
+
+
+NSString *lcappId = NSUserDefaults.lcGuestAppId;
+BOOL isSideStore = [lcappId.lowercaseString containsString:@"sidestore"]; 
+BOOL isReal = [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"];
+CGFloat targetW, offsetX;
+if (isReal && !isSideStore) {
+
+        targetW = MIN(realH * (9.0/16.0), realW);
+        offsetX = (realW - targetW) / 2.0;
+
+    } else {
+        targetW = realW;
+        offsetX = 0;
+    }
+    CGRect targetFrame = CGRectMake(offsetX, 0, targetW, realH);
+
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    for (UIWindow *window in scene.windows) {
+        window.layer.frame = targetFrame;
+    }
+    [CATransaction commit];
+}
+
+@end
+
+//⭐️⭐️⭐️Real iPhone Mode 9:16 hook(black background)
 
 @implementation UIWindow(hook)
 - (void)hook_setAutorotates:(BOOL)autorotates forceUpdateInterfaceOrientation:(BOOL)force {
@@ -711,8 +1130,49 @@ BOOL canAppOpenItself(NSURL* url) {
 
 - (void)hook_makeKeyAndVisible {
     [self updateWindowScene];
+    NSString *appid = NSUserDefaults.lcGuestAppId;
+    BOOL isSideStore = [appid.lowercaseString containsString:@"sidestore"];
+    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && !isSideStore) {
+        self.backgroundColor = [UIColor blackColor];
+    }
     [self hook_makeKeyAndVisible];
 }
+
+
+//⭐️⭐️⭐️Real iPhone mode 9:16 hook
+- (void)hook_setFrame:(CGRect)frame {
+    NSString *lcappid = NSUserDefaults.lcGuestAppId;
+    BOOL isSideStore = [lcappid.lowercaseString containsString:@"sidestore"];
+    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && !isSideStore) {
+
+        UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
+        CGRect screenBounds = scene ? scene.coordinateSpace.bounds : frame;
+
+        CGFloat realH = screenBounds.size.height;
+        CGFloat realW = screenBounds.size.width;
+        if (realH == 0 || realW == 0) {
+            [self hook_setFrame:frame];
+            return;
+        }
+
+        CGFloat targetW = MIN(realW, realH * (9.0 / 16.0));
+        CGFloat offsetX = (realW - targetW) / 2.0;
+
+        [self hook_setFrame:CGRectMake(offsetX, 0, targetW, realH)];
+    } else {
+        UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
+        CGRect screenBounds = scene ? scene.coordinateSpace.bounds : frame;
+        CGFloat realH = screenBounds.size.height;
+        CGFloat realW = screenBounds.size.width;
+        if (realH == 0 || realW == 0) {
+            [self hook_setFrame:frame];
+            return;
+        }
+        [self hook_setFrame:CGRectMake(0, 0, realW, realH)];
+        //frame];
+    }
+}
+
 - (void)hook_makeKeyWindow {
     [self updateWindowScene];
     [self hook_makeKeyWindow];
@@ -733,4 +1193,80 @@ BOOL canAppOpenItself(NSURL* url) {
         }
     }
 }
+@end
+
+static id<LCMultitaskXPCServiceProtocol> server;
+@implementation _UIRemoteKeyboards(hook)
+// from UIKeyboardArbitration proxy
+- (void)hook_focusApplicationWithProcessIdentifier:(int)pid context:(UIKBArbiterClientFocusContext *)context stealingKeyboard:(BOOL)steal onCompletion:(void (^)(BOOL success))completion {
+    // Fix #524: destroy LiveProcessHandler monitor such that it will pass focus check
+    // See https://gist.github.com/khanhduytran0/504b16d86a2091e676c412bd0a517306 for more info
+    /// Visibility graph search found root scene (null) and ultimate host <none>
+    [server destroyEndpointInjector];
+
+    void(*orig)(id, SEL, int, id, BOOL, void (^)(BOOL)) = (void *)_objc_msgForward;
+    orig(self, _cmd, pid, context, steal, ^(BOOL success){
+        completion(success);
+        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+            // Fix #844, #870: re-init "com.apple.frontboard.visibility" monitor back otherwise things will break because runningboardd falsely see us as background process
+            NSString *selfEnv = [@"UIScene:" stringByAppendingString:context.sceneIdentity.stringRepresentation];
+            [server createEndpointInjectorWithSelfToken:selfEnv sourceToken:NSUserDefaults.lcAppIdentityToken];
+        });
+    });
+}
+
+- (void)hook_startConnection {
+    if (!server) server = [[NSClassFromString(@"LiveProcessHandler") sharedInstance] server];
+    [server destroyEndpointInjector];
+
+    [self hook_startConnection];
+
+    // Initialize LiveProcessHandler XPC and perform first init of "com.apple.frontboard.visibility" monitor
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+        NSString *selfEnv = [@"UIScene:" stringByAppendingString:UIApplication.sharedApplication.connectedScenes.anyObject._FBSScene.identityToken.stringRepresentation];
+        [server createEndpointInjectorWithSelfToken:selfEnv sourceToken:NSUserDefaults.lcAppIdentityToken];
+    });
+
+    Method method = class_getInstanceMethod(self.class, @selector(hook_focusApplicationWithProcessIdentifier:context:stealingKeyboard:onCompletion:));
+    Class proxyClass = self.proxy.class;
+    class_replaceMethod(proxyClass, @selector(focusApplicationWithProcessIdentifier:context:stealingKeyboard:onCompletion:),
+                        method_getImplementation(method), method_getTypeEncoding(method));
+}
+@end
+
+@implementation UIPasteboard(hook)
+
++ (UIPasteboard *)hook_generalPasteboard {
+    if(strictTestMode) {
+        return strictPrivatePasteboard ?: [self hook_generalPasteboard];
+    }
+    return [self hook_generalPasteboard];
+}
+
+@end
+
+@implementation NSURLSessionTask(hook)
+
+- (void)hook_resume {
+    if(strictTestMode) {
+        [self cancel];
+        return;
+    }
+    [self hook_resume];
+}
+
+@end
+
+@implementation LCNetworkExtensionStrictHookProvider
+
++ (void)hook_fetchCurrentWithCompletionHandler:(void (^)(id currentNetwork))completionHandler {
+    if(strictTestMode) {
+        if(completionHandler) {
+            completionHandler(nil);
+        }
+        return;
+    }
+    [self hook_fetchCurrentWithCompletionHandler:completionHandler];
+}
+
 @end

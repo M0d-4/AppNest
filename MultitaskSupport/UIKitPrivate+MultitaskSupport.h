@@ -9,6 +9,7 @@
 #import "UIKitPrivate.h"
 
 #define PrivClass(NAME) NSClassFromString(@#NAME)
+extern const UIApplication *UIApp;
 
 @interface LSResourceProxy : NSObject
     @property (setter=_setLocalizedName:,nonatomic,copy) NSString *localizedName;
@@ -46,7 +47,7 @@
 
 // FrontBoard
 
-@class RBSProcessIdentity, FBProcessExecutableSlice, UIMutableApplicationSceneClientSettings, UIMutableScenePresentationContext, UIScenePresentationManager, _UIScenePresenter, _UISceneEventDeferringHostComponent, _UISceneRelationshipManagementHostComponent;
+@class RBSProcessIdentity, FBProcessExecutableSlice, UIMutableApplicationSceneClientSettings, UIMutableScenePresentationContext, UIScenePresentationManager, _UIScenePresenter, _UIScenePresenterOwner, _UISceneEventDeferringHostComponent, _UISceneRelationshipManagementHostComponent;
 
 @interface FBApplicationProcessLaunchTransaction : BSTransaction
 - (instancetype) initWithProcessIdentity:(RBSProcessIdentity *)identity executionContextProvider:(id)providerBlock;
@@ -74,12 +75,22 @@
 -(id)copyWithZone:(NSZone*)arg1 ;
 @end
 
+@interface FBSSceneIdentityToken : NSObject
+- (NSString *)stringRepresentation;
+@end
+
+@interface FBSScene : NSObject
+- (FBSSceneIdentityToken *)identityToken;
+@end
+
 @interface FBProcess : NSObject
 - (id)name;
 @end
 
 @interface FBScene : NSObject
 @property(nonatomic, assign, readonly) _UISceneRelationshipManagementHostComponent *_relationshipManagementHostComponent API_AVAILABLE(ios(17.4));
+- (NSString *)identifier;
+- (FBSSceneIdentityToken *)identityToken;
 - (FBProcess *)clientProcess;
 - (UIScenePresentationManager *)uiPresentationManager;
 - (void)updateSettings:(UIMutableApplicationSceneSettings *)settings withTransitionContext:(id)context completion:(id)completion;
@@ -127,6 +138,20 @@
 @end
 
 @interface RBSTarget : NSObject
++ (instancetype)targetWithPid:(pid_t)pid environmentIdentifier:(NSString *)identifier;
++ (instancetype)targetWithPid:(pid_t)pid;
++ (instancetype)targetWithPid:(pid_t)pid environmentIdentifier:(NSString *)environmentIdentifier;
+@end
+
+@interface RBSDomainAttribute : NSObject
++ (instancetype)attributeWithDomain:(NSString *)domain name:(NSString *)name;
++ (instancetype)attributeWithDomain:(NSString *)domain name:(NSString *)name sourceEnvironment:(NSString *)env;
+@end
+
+@interface RBSAssertion : NSObject
+- (instancetype)initWithExplanation:(NSString *)explanation target:(RBSTarget *)target attributes:(NSArray *)attributes;
+- (BOOL)acquireWithError:(NSError **)error;
+- (void)invalidate;
 @end
 
 @interface UIApplicationSceneSpecification : FBSSceneSpecification
@@ -191,6 +216,7 @@
 + (instancetype)sharedInstance;
 - (FBScene *)createSceneWithDefinition:(id)def initialParameters:(id)params;
 -(void)destroyScene:(id)arg1 withTransitionContext:(id)arg2 ;
+- (FBScene *)sceneFromIdentityTokenStringRepresentation:(NSString *)token;
 @end
 
 @interface FBSSceneSettingsDiff : NSObject
@@ -224,13 +250,19 @@
 - (void)addScene:(id)scene;
 @end
 
-@interface UIScenePresentationManager : NSObject
+@interface UIScenePresentationManager : NSObject {
+    id _keyboardProxyLayerManager;
+    id _scene;
+    _UIScenePresenterOwner *_scenePresenterOwner;
+};
 - (instancetype)_initWithScene:(FBScene *)scene;
 - (_UIScenePresenter *)createPresenterWithIdentifier:(NSString *)identifier;
+- (_UIScenePresenter *)_presenterWithIdentifier:(NSString *)identifier;
 @end
 
 @interface _UIScenePresenterOwner : NSObject
 - (instancetype)initWithScenePresentationManager:(UIScenePresentationManager *)manager context:(FBScene *)scene;
+- (_UIScenePresenter *)activePrioritizedPresenter;
 @end
 
 @interface _UIScenePresentationView : UIView
@@ -273,9 +305,66 @@
 @interface UIMutableScenePresentationContext : UIScenePresentationContext
 @property(nonatomic, assign) NSUInteger appearanceStyle;
 @end
+@interface UIMutableScenePresentationContext(LiveContainerHooks)
+- (void)_setVisibilityPropagationEnabled:(BOOL)enabled;
+@end
 
 @interface UIViewController(Private)
 - (void)viewDidMoveToWindow:(UIWindow *)window shouldAppearOrDisappear:(BOOL)appear;
+@end
+
+@protocol BSServiceConnectionEndpointInjectorConfiguring
+@required
+- (void)setAdditionalAttributes:(NSArray *)arg1;
+- (void)setDomain:(NSString *)arg1;
+- (void)setInheritingEnvironment:(NSString *)arg1;
+- (void)setInstance:(NSString *)arg1;
+- (void)setService:(NSString *)arg1;
+- (void)setTarget:(id)arg1;
+@end
+
+@interface BSServiceConnectionEndpointInjector : NSObject
++ (instancetype)injectorWithConfigurator:(void (^)(id<BSServiceConnectionEndpointInjectorConfiguring>))configurator;
+- (void)invalidate;
+@end
+
+@interface RBSEndowmentGrant : NSObject
++ (instancetype)grantWithNamespace:(NSString *)ns endowment:(id)endowment;
+@end
+@interface RBSHereditaryGrant : NSObject
++ (instancetype)grantWithNamespace:(NSString *)ns sourceEnvironment:(NSString *)source attributes:(id)attrs;
+@end
+
+@interface UIKBArbiterClientFocusContext : NSObject
+- (FBSSceneIdentityToken *)sceneIdentity;
+@end
+
+@protocol UIKeyboardArbitration <NSObject>
+- (void)focusApplicationWithProcessIdentifier:(int)pid context:(UIKBArbiterClientFocusContext *)context stealingKeyboard:(BOOL)steal onCompletion:(void (^)(BOOL success))completion;
+@end
+
+@interface _UIRemoteKeyboards : NSObject
++ (instancetype)sharedRemoteKeyboards;
+- (id<UIKeyboardArbitration>)proxy;
+- (void)startConnection;
+@end
+
+@interface UIScene(Private2)
+- (FBSScene *)_FBSScene;
+@end
+
+@interface _UIVisibilityPropagationInteraction : NSObject
++ (instancetype)interactionWithPID:(pid_t)pid environmentIdentifier:(id)identifier;
+- (void)_setVisibilityPropagationEnabled:(uint64_t)enabled;
+@end
+
+@interface _UIKeyboardChangedInformation : NSObject
+- (NSString *)sourceSceneIdentityString;
+@end
+
+@interface _UISceneRelationshipManagementHostComponent : NSObject {
+    @public _UIScenePresenter *_prioritizedPresenter;
+};
 @end
 
 /// The following private API is used to properly configure keyboard focus for iOS 17.4+
@@ -286,18 +375,18 @@ API_AVAILABLE(ios(17.4))
 - (instancetype)initWithProcessIdentity:(RBSProcessIdentity *)identity;
 @end
 
-API_AVAILABLE(ios(17.4)) // 17.0
+API_AVAILABLE(ios(17.0))
 @interface _UISceneHostingView : UIView
 - (_UIScenePresenter *)_scenePresenter;
 @end
-API_AVAILABLE(ios(17.4)) // 17.0
+// Keep the class available on all versions for quick null check
 @interface _UISceneHostingController : NSObject
 - (instancetype)initWithAdvancedConfiguration:(_UISceneHostingControllerAdvancedConfiguration *)config API_AVAILABLE(ios(17.4));
-- (instancetype)initWithProcessIdentity:(RBSProcessIdentity *)identity sceneSpecification:(FBSSceneSpecification *)spec;
-- (_UISceneEventDeferringHostComponent *)_eventDeferringComponent;
-- (_UISceneHostingView *)sceneView;
-- (UIViewController *)sceneViewController;
-- (void)invalidate;
+//- (instancetype)initWithProcessIdentity:(RBSProcessIdentity *)identity sceneSpecification:(FBSSceneSpecification *)spec API_AVAILABLE(ios(17.0));
+- (_UISceneEventDeferringHostComponent *)_eventDeferringComponent API_AVAILABLE(ios(17.4));
+- (_UISceneHostingView *)sceneView API_AVAILABLE(ios(17.0));
+- (UIViewController *)sceneViewController; // API_AVAILABLE(ios(17.0))
+- (void)invalidate; // API_AVAILABLE(ios(17.0))
 @end
 
 API_AVAILABLE(ios(17.4)) // 17.0

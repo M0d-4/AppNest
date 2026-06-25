@@ -1,4 +1,5 @@
 #include "zsign.hpp"
+#import "zsigner.h"
 #include "common/common.h"
 #include "common/json.h"
 #include "openssl.h"
@@ -17,8 +18,55 @@
 #include <openssl/asn1.h>
 #include "timer.h"
 #include "common/log.h"
-#include "Utils.hpp"
-#include "zsigner.h"
+
+
+extern "C" {
+
+NSError* makeErrorFromLog(const std::vector<std::string>& vec) {
+    NSMutableString *result = [NSMutableString string];
+    
+    for (size_t i = 0; i < vec.size(); ++i) {
+        // Convert each std::string to NSString
+        NSString *str = [NSString stringWithUTF8String:vec[i].c_str()];
+        [result appendString:str];
+        
+        // Append newline if it's not the last element
+        if (i != vec.size() - 1) {
+            [result appendString:@"\n"];
+        }
+    }
+    
+    NSDictionary* userInfo = @{
+        NSLocalizedDescriptionKey : result
+    };
+    return [NSError errorWithDomain:@"Failed to Sign" code:-1 userInfo:userInfo];
+}
+
+NSError* makePartialSignError(const std::string& failedFiles, const std::vector<std::string>& logs) {
+    NSMutableString *result = [NSMutableString string];
+
+    if (!failedFiles.empty()) {
+        [result appendString:[NSString stringWithUTF8String:failedFiles.c_str()]];
+    }
+
+    if (!logs.empty()) {
+        if (result.length > 0) {
+            [result appendString:@"\n\n"];
+        }
+        for (size_t i = 0; i < logs.size(); ++i) {
+            NSString *str = [NSString stringWithUTF8String:logs[i].c_str()];
+            [result appendString:str];
+            if (![str hasSuffix:@"\n"] && i != logs.size() - 1) {
+                [result appendString:@"\n"];
+            }
+        }
+    }
+
+    NSDictionary* userInfo = @{
+        NSLocalizedDescriptionKey : result
+    };
+    return [NSError errorWithDomain:@"Failed to Sign" code:-1 userInfo:userInfo];
+}
 
 // copy, remove and rename back the file to prevent crash due to kernel signature cache
 // see https://developer.apple.com/documentation/security/updating-mac-software
@@ -32,9 +80,6 @@ void refreshFile(NSString* path) {
     [NSFileManager.defaultManager removeItemAtPath:path error:&error];
     [NSFileManager.defaultManager moveItemAtPath:newPath toPath:path error:&error];
 }
-
-
-extern "C" {
 
 int checkCert(NSData *key,
               NSString *pass,

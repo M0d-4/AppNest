@@ -172,7 +172,7 @@ struct LCWebView: View {
             return
         }
         
-        if sharedModel.isHiddenAppUnlocked || !LCUtils.appGroupUserDefault.bool(forKey: "LCStrictHiding") {
+        if sharedModel.isHiddenAppUnlocked {
             appListsToConsider.append(sharedModel.hiddenApps)
         }
         appLoop:
@@ -224,7 +224,7 @@ struct LCWebView: View {
         for app in sharedModel.apps {
             bundleIDToAppDict[app.appInfo.bundleIdentifier()!] = app
         }
-        if !LCUtils.appGroupUserDefault.bool(forKey: "LCStrictHiding") || sharedModel.isHiddenAppUnlocked {
+        if sharedModel.isHiddenAppUnlocked {
             for app in sharedModel.hiddenApps {
                 bundleIDToAppDict[app.appInfo.bundleIdentifier()!] = app
             }
