@@ -1,9 +1,5 @@
 #import "utils.h"
 
-void swizzle(Class class, SEL originalAction, SEL swizzledAction) {
-    method_exchangeImplementations(class_getInstanceMethod(class, originalAction), class_getInstanceMethod(class, swizzledAction));
-}
-
 void swizzleClassMethod(Class class, SEL originalAction, SEL swizzledAction) {
     method_exchangeImplementations(class_getClassMethod(class, originalAction), class_getClassMethod(class, swizzledAction));
 }
@@ -156,4 +152,3 @@ uint64_t aarch64_emulate_adrp_ldr(uint32_t instruction, uint32_t ldrInstruction,
 }
 
 @end
-
