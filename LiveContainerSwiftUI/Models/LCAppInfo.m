@@ -531,7 +531,7 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
 - (void)patchExecAndSignIfNeedWithCompletionHandler:(void(^)(bool success, NSString* errorInfo))completetionHandler progressHandler:(void(^)(NSProgress* progress))progressHandler forceSign:(BOOL)forceSign {
     [NSUserDefaults.standardUserDefaults setObject:@(YES) forKey:@"SigningInProgress"];
     NSString *appPath = self.bundlePath;
-    NSString *infoPath = [NSString stringWithFormat:@"%@/Info.plist", appPath];
+
     NSMutableDictionary *info = _info;
     NSMutableDictionary *infoPlist = _infoPlist;
     if (!info) {
@@ -565,6 +565,9 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
                 if(patchResult & PATCH_EXEC_RESULT_NO_SPACE_FOR_TWEAKLOADER) {
                     info[@"LCTweakLoaderCantInject"] = @YES;
                     info[@"dontInjectTweakLoader"] = @YES;
+                }
+                if(patchResult & PATCH_EXEC_RESULT_SEG_COUNT_MISMATCH) {
+                    info[@"segCountMismatch"] = @YES;
                 }
             }
             isEncrypted |= LCIsMachOEncrypted(header);

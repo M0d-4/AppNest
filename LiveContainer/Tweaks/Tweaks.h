@@ -12,6 +12,7 @@ void NUDGuestHooksInit(void);
 void SecItemGuestHooksInit(void);
 void DyldHooksInit(bool hideLiveContainer, bool hookDlopen, uint32_t spoofSDKVersion);
 void NSFMGuestHooksInit(void);
+void NSURLSCGuestHooksInit(void);
 void initDead10ccFix(void);
 void IDFVHookInit(NSUUID* uuid);
 // Device spoofing
@@ -30,5 +31,6 @@ void* getDSCAddr(void);
 void* getCachedSymbol(NSString* symbolName, struct mach_header_64* header);
 void saveCachedSymbol(NSString* symbolName, struct mach_header_64* header, uint64_t offset);
 void* dlopen_nolock(const char *path, int mode);
+void bypass_seg_count_check(void (^block)(void));
 
 static void hook_do_nothing(void) {}

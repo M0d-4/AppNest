@@ -25,6 +25,7 @@
 
 @interface AppSceneViewController()
 @property int resizeDebounceToken;
+@property CFTimeInterval lastResizeRequestTime;
 @property CGPoint normalizedOrigin;
 @property bool isNativeWindow;
 @property NSUUID* identifier;
@@ -289,20 +290,17 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
             ]];
         }
         self.hostingController = [[_UISceneHostingController alloc] initWithAdvancedConfiguration:config];
-        FBScene *scene = [self.hostingController valueForKey:@"_fbScene"];
+        /// !! do NOT use self.hostingController.sceneView here as it breaks keyboard focus on iOS 26 below. I have no idea why this happens even though both return the same object. Maybe sceneView didn't initialize its ViewController properly?
+        self.contentView = self.hostingController.sceneViewController.view;
+        self.contentView.clipsToBounds = NO;
+        // _scenePresenter was a property in 26, but made only ivar in 27
+        self.presenter = [self.contentView valueForKey:@"_scenePresenter"];
+        self.sceneID = self.presenter.identifier;
+        FBScene *scene = self.presenter.scene;
         [scene configureParameters:^(FBSMutableSceneParameters *parameters) {
             [parameters updateSettingsWithBlock:updateSceneSettings];
             [parameters updateClientSettingsWithBlock:updateSceneClientSettings];
         }];
-
-        self.contentView = self.hostingController.sceneViewController.view;
-        self.contentView.clipsToBounds = NO;
-        self.contentView.frame = CGRectMake(0, 0, scene.settings.frame.size.width, scene.settings.frame.size.height);
-        self.contentView.safeAreaInsets = self.view.safeAreaInsets;
-        if(!self.isNativeWindow) {
-            // Freeze safe area insets for virtual window
-            [self.contentView _setSafeAreaInsetsFrozen:YES updateForUnfreeze:NO];
-        }
         
         /// Fix keyboard focus by setting up event deferring extension. Previously we worked around it by changing identifier, but that broke other things
         _UISceneEventDeferringHostComponent *deferringComponent = self.hostingController._eventDeferringComponent;
@@ -320,11 +318,9 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
 
             deferringComponent.grantBehavior = 2;
             deferringComponent.selectionRequestBehavior = 2;
-        } else {
-            /// UIKitCore`-[_UISceneHostingController createSceneWithConfiguration:]
-            /// Lower iOS uses _UISceneHostingEventDeferringExtension. Maybe setting this is optional
-            deferringComponent.requestEventDeferralForAllFirstResponderChanges = YES;
         }
+        /// UIKitCore`-[_UISceneHostingController createSceneWithConfiguration:]
+        /// Lower iOS uses _UISceneHostingEventDeferringExtension, no further setup needed
 
         [self addChildViewController:self.hostingController.sceneViewController];
         // _scenePresenter was a property in 26, but made only ivar in 27
@@ -466,7 +462,6 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     if(!tempSettings) {
         tempSettings = [UIMutableApplicationSceneSettings new];
     }
-    tempSettings.peripheryInsets = self.contentView.safeAreaInsets;
     updateSettingsBlock(tempSettings);
     CGRect frame = tempSettings.frame;
     if(UIInterfaceOrientationIsLandscape(tempSettings.interfaceOrientation)) {
@@ -479,18 +474,9 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         // Discard position
         frame.origin = CGPointZero;
         self.contentView.frame = frame;
-        self.contentView.safeAreaInsets = tempSettings.peripheryInsets;
-        if(isiOS26) {
-            // iOS 26.x changed to some weird _UISceneSafeAreaSettingsExtension API which only works with Liquid Glass-enabled apps for some reason, so we update via settings path here. iOS 27 fixes this so no need to apply there
-            [self.presenter.scene updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
-                settings.peripheryInsets = tempSettings.peripheryInsets;
-                settings.safeAreaInsetsPortrait = tempSettings.safeAreaInsetsPortrait;
-            }];
-        }
     } else {
-        // This method can be called while contentView is nil to set up initial frame and safe area
+        // This method can be called while contentView is nil to set up initial frame
         self.view.frame = frame;
-        self.view.safeAreaInsets = tempSettings.peripheryInsets;
     }
 }
 
@@ -574,10 +560,12 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         if(self.sceneID) {
             [[PrivClass(FBSceneManager) sharedInstance] destroyScene:self.sceneID withTransitionContext:nil];
         }
-        if(self.hostingController) {
-            [self.hostingController invalidate];
-            [self.hostingController.sceneViewController removeFromParentViewController];
-            self.hostingController = nil;
+        if(self.usesHostingControllerAPI) {
+            if(@available(iOS 17.0, *)) {
+                [self.hostingController invalidate];
+                [self.hostingController.sceneViewController removeFromParentViewController];
+                self.hostingController = nil;
+            }
         } else if(self.presenter){
             [self.presenter deactivate];
             [self.presenter invalidate];

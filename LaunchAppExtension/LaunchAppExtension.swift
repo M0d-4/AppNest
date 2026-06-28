@@ -199,7 +199,7 @@ struct LaunchAppExtension: AppIntent {
             if isSharedApp {
                 schemeToLaunch = firstFreeInstalledLC(preferredScheme: preferredScheme)
             } else {
-                schemeToLaunch = firstFreeInstalledLC(preferredScheme: preferredScheme)
+                schemeToLaunch = "livecontainer"
             }
         }
 

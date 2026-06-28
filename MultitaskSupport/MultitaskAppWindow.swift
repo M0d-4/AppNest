@@ -69,6 +69,35 @@ struct AppSceneViewSwiftUI: UIViewControllerRepresentable {
             }
             onAppInitialize(vc.pid, error)
         }
+        
+        func appSceneVCWillActivateScene(_ vc: AppSceneViewController!) {
+            vc.updateSettings { settings in
+                guard let settings else { return }
+                let defaultInsets = vc.view.window?.safeAreaInsets ?? .zero
+                settings.peripheryInsets = defaultInsets
+                settings.safeAreaInsetsPortrait = defaultInsets
+                settings.deviceOrientation = UIDevice.current.orientation
+                settings.setInterfaceOrientation(UIApplication.shared.statusBarOrientation)
+                if(settings.interfaceOrientation().isLandscape) {
+                    settings.setFrame(CGRect(x: 0, y: 0, width: vc.view.frame.size.height, height: vc.view.frame.size.width))
+                } else {
+                    settings.setFrame(CGRect(x: 0, y: 0, width: vc.view.frame.size.width, height: vc.view.frame.size.height))
+                }
+            }
+            // fix live resize
+            vc.contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        }
+        
+        func appSceneVC(_ vc: AppSceneViewController!, didUpdateFrom settings: UIMutableApplicationSceneSettings!, transitionContext context: Any!, lifecycleActionType actionType: UInt32) {
+            settings.interruptionPolicy = 0
+            //settings.peripheryInsets = vc.view.window?.safeAreaInsets ?? .zero
+            vc.presenter.scene.updateSettings(settings, withTransitionContext: context, completion: nil)
+            // Not sure what actionType 2 is, but it's only set when this scene enters foreground, so we can pass URL scheme here
+            if actionType == 2, let launchUrl = UserDefaults.standard.string(forKey: "launchAppUrlScheme") {
+                UserDefaults.standard.removeObject(forKey: "launchAppUrlScheme")
+                vc.openURLScheme(launchUrl)
+            }
+        }
     }
     
     func makeCoordinator() -> Coordinator {

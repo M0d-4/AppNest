@@ -52,7 +52,7 @@
 
 @interface UIMutableApplicationSceneSettings : UIApplicationSceneSettings
 @property (assign,nonatomic) UIDeviceOrientation deviceOrientation;
-- (void)setInterfaceOrientation:(NSInteger)o;
+- (void)setInterfaceOrientation:(UIInterfaceOrientation)o;
 @end
 
 
@@ -109,7 +109,6 @@
 @interface UIView(private)
 - (UIViewController *)_viewDelegate;
 - (void)setSafeAreaInsets:(UIEdgeInsets)safeAreaInsets;
-- (void)_setSafeAreaInsetsFrozen:(BOOL)frozen updateForUnfreeze:(BOOL)unfreeze API_AVAILABLE(ios(17.0));
 @end
 
 

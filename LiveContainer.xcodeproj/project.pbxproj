@@ -306,6 +306,7 @@
 				PiPManager.m,
 				ResizeHandleView.h,
 				ResizeHandleView.m,
+				UIKitHooks.m,
 				"UIKitPrivate+MultitaskSupport.h",
 				VirtualWindowsHostView.h,
 				VirtualWindowsHostView.m,

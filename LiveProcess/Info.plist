@@ -41,7 +41,52 @@
 	<array>
 		<string>_googlezone._tcp</string>
 		<string>_wled._tcp.</string>
+		<string>_airplay._tcp</string>
+		<string>_raop._tcp</string>
+		<string>_companion-link._tcp</string>
+		<string>_homekit._tcp</string>
+		<string>_airdrop._tcp</string>
+		<string>_apple-mobdev2._tcp</string>
+		<string>_remotepairing._tcp</string>
 		<string>_googlecast._tcp</string>
+		<string>_spotify-connect._tcp</string>
+		<string>_sonos._tcp</string>
+		<string>_roku-rcp._tcp</string>
+		<string>_daap._tcp</string>
+		<string>_dpap._tcp</string>
+		<string>_printer._tcp</string>
+		<string>_ipp._tcp</string>
+		<string>_ipps._tcp</string>
+		<string>_pdl-datastream._tcp</string>
+		<string>_scanner._tcp</string>
+		<string>_uscan._tcp</string>
+		<string>_http._tcp</string>
+		<string>_https._tcp</string>
+		<string>_smb._tcp</string>
+		<string>_afpovertcp._tcp</string>
+		<string>_nfs._tcp</string>
+		<string>_ftp._tcp</string>
+		<string>_sftp-ssh._tcp</string>
+		<string>_webdav._tcp</string>
+		<string>_webdavs._tcp</string>
+		<string>_ssh._tcp</string>
+		<string>_rfb._tcp</string>
+		<string>_rdp._tcp</string>
+		<string>_net-assistant._udp</string>
+		<string>_hap._tcp</string>
+		<string>_matter._tcp</string>
+		<string>_hue._tcp</string>
+		<string>_mqtt._tcp</string>
+		<string>_coap._udp</string>
+		<string>_wemo._tcp</string>
+		<string>_presence._tcp</string>
+		<string>_sip._tcp</string>
+		<string>_h323._tcp</string>
+		<string>_device-info._tcp</string>
+		<string>_sleep-proxy._udp</string>
+		<string>_dns-sd._udp</string>
+        <string>_remotepairing-pairable-host._tcp</string>
+        <string>_stikpairprobe._tcp</string>
 	</array>
 	<key>NSCalendarsFullAccessUsageDescription</key>
 	<string>The guest app is requesting for this permission.</string>
