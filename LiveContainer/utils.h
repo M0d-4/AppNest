@@ -4,7 +4,6 @@
 #include <os/lock.h>
 #define PrivClass(name) ((Class)objc_lookUpClass(#name))
 
-void swizzle(Class class, SEL originalAction, SEL swizzledAction);
 void swizzleClassMethod(Class class, SEL originalAction, SEL swizzledAction);
 // Cross-class swizzling (adds method from class2 to class, then swizzles)
 void swizzle2(Class class, SEL originalAction, Class class2, SEL swizzledAction);
