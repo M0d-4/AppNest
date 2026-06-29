@@ -35,6 +35,7 @@ API_AVAILABLE(ios(16.0))
 @property(nonatomic) _UIScenePresenter *presenter;
 @property(nonatomic) _UISceneHostingController *hostingController;
 @property(nonatomic, readonly) BOOL usesHostingControllerAPI;
+@property(nonatomic, copy) void(^nextUpdateSettingsBlock)(UIMutableApplicationSceneSettings *);
 @property(nonatomic) BSServiceConnectionEndpointInjector *injector;
 - (instancetype)initWithBundleId:(NSString*)bundleId dataUUID:(NSString*)dataUUID hostScene:(UIWindowScene *)hostScene delegate:(id<AppSceneViewControllerDelegate>)delegate;
 - (void)setBackgroundNotificationEnabled:(bool)enabled;
