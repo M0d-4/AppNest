@@ -449,9 +449,10 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
             }
         }
    } else {
-        [self.delegate appSceneVC:self didUpdateFromSettings:baseSettings transitionContext:newContext];
-
-}
+        if([self.delegate respondsToSelector:@selector(appSceneVC:didUpdateFromSettings:transitionContext:lifecycleActionType:)]) {
+            [self.delegate appSceneVC:self didUpdateFromSettings:baseSettings transitionContext:newContext];
+        }
+    }
 }
 - (void)updateSettingsWithBlock:(void(^)(UIMutableApplicationSceneSettings *settings))updateSettingsBlock {
     if(!self.hostingController && self.contentView) {
