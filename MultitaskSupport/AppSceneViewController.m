@@ -222,6 +222,10 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     return self;
 }
 //⭐️⭐️⭐️Real iPhone mode + multitask mode
+- (BOOL)usesHostingControllerAPI {
+    return self.hostingController != nil;
+}
+
 - (void)setUpAppPresenter {
     RBSProcessPredicate* predicate = [PrivClass(RBSProcessPredicate) predicateMatchingIdentifier:@(self.pid)];
     
