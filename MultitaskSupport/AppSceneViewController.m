@@ -450,7 +450,7 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         }
    } else {
         if([self.delegate respondsToSelector:@selector(appSceneVC:didUpdateFromSettings:transitionContext:lifecycleActionType:)]) {
-            [self.delegate appSceneVC:self didUpdateFromSettings:baseSettings transitionContext:newContext];
+            [self.delegate appSceneVC:self didUpdateFromSettings:baseSettings transitionContext:newContext lifecycleActionType:actionType];
         }
     }
 }
