@@ -86,7 +86,6 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 @property (nonatomic) NSString* deviceSpoofCustomVersion; // Independent iOS version override
 
 // Per-feature toggles (Ghost parity)
-@property bool forceIPhoneMode;
 @property bool deviceSpoofDeviceName;
 @property (nonatomic) NSString* deviceSpoofDeviceNameValue;
 @property bool deviceSpoofCarrier;

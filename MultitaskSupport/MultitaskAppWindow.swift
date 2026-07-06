@@ -131,7 +131,6 @@ struct MultitaskAppWindow: View {
     @Environment(\.openWindow) var openWindow
     @AppStorage("LCMultitaskMode", store: LCUtils.appGroupUserDefault) var multitaskMode: MultitaskMode = .virtualWindow
     @AppStorage("LCSkipTerminatedScreen", store: LCUtils.appGroupUserDefault) var skipTerminatedScreen = false
-    @AppStorage("LCRealIPhoneMode", store: LCUtils.appGroupUserDefault) var isiPhoneMode = false
     let pub = NotificationCenter.default.publisher(for: UIScene.didDisconnectNotification)
     init(id: String) {
         guard let appInfo = MultitaskWindowManager.appDict[id] else {
@@ -144,9 +143,7 @@ struct MultitaskAppWindow: View {
         let isVirtualWindowMode = multitaskMode == .virtualWindow
         if show, let appInfo {
             GeometryReader { geometry in
-                // Pass full geometry to the native VC — it handles iPhone centering
-                // internally via LCRealIPhoneMode in viewWillLayoutSubviews.
-                // We just add a black background so the letterbox areas are filled.
+                // Pass full geometry to the native VC.
                 ZStack {
                     Color.black
                         .frame(maxWidth: .infinity, maxHeight: .infinity)

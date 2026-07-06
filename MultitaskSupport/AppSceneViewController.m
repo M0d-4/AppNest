@@ -255,9 +255,6 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
             CGFloat vW = strongSelf.view.frame.size.width;
             CGFloat vH = strongSelf.view.frame.size.height;
             CGFloat fW = vW, fH = vH;
-            if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-                fW = MIN(vH * (9.0 / 16.0), vW);
-            }
             if (UIInterfaceOrientationIsLandscape(settings.interfaceOrientation)) {
                 settings.frame = CGRectMake(0, 0, fH, fW);
             } else {
@@ -426,18 +423,6 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     if(self.isNativeWindow) {
         baseSettings.interruptionPolicy = 0;
         baseSettings.peripheryInsets = self.view.window.safeAreaInsets;
-        // Honor Real iPhone Mode: constrain the scene frame to a 9:16 portrait width
-        // so the guest app renders at iPhone dimensions rather than full-screen.
-        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-            CGFloat w = self.view.frame.size.width / self.scaleRatio;
-            CGFloat h = self.view.frame.size.height / self.scaleRatio;
-            CGFloat targetW = MIN(h * (9.0 / 16.0), w);
-            if (UIInterfaceOrientationIsLandscape(baseSettings.interfaceOrientation)) {
-                baseSettings.frame = CGRectMake(0, 0, h, targetW);
-            } else {
-                baseSettings.frame = CGRectMake(0, 0, targetW, h);
-            }
-        }
         [self.presenter.scene updateSettings:baseSettings withTransitionContext:newContext completion:nil];
         
         // Not sure what actionType 2 is, but it's only set when this scene enters foreground, so we can pass URL scheme here
@@ -493,15 +478,8 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     CGFloat viewW = self.view.bounds.size.width;
     CGFloat viewH = self.view.bounds.size.height;
     if (self.presenter.presentationView) {
-        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-            CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
-            CGFloat offsetX = (viewW - targetW) / 2.0;
-            self.contentView.autoresizingMask = UIViewAutoresizingNone;
-            self.contentView.frame = CGRectMake(offsetX, 0, targetW, viewH);
-        } else {
-            self.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-            self.contentView.frame = CGRectMake(0, 0, viewW, viewH);
-        }
+        self.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        self.contentView.frame = CGRectMake(0, 0, viewW, viewH);
     }
     [self updateFrameWithSettingsBlock:self.nextUpdateSettingsBlock];
     self.nextUpdateSettingsBlock = nil;
@@ -519,19 +497,6 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         }
         CGFloat w = self.view.frame.size.width / self.scaleRatio;
         CGFloat h = self.view.frame.size.height / self.scaleRatio;
-        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-            CGFloat targetW = MIN(h * (9.0 / 16.0), w);
-            // In native-window mode, center the contentView horizontally so the
-            // guest app appears as an iPhone pillar-boxed in the center of the display.
-            if (self.isNativeWindow) {
-                CGFloat offsetX = (w - targetW) / 2.0;
-                self.contentView.autoresizingMask = UIViewAutoresizingNone;
-                self.contentView.frame = CGRectMake(offsetX * self.scaleRatio, 0,
-                                                    targetW * self.scaleRatio,
-                                                    h * self.scaleRatio);
-            }
-            w = targetW;
-        }
         CGRect frame = CGRectMake(0, 0, w, h);
 
         [self updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {

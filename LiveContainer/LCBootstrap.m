@@ -816,21 +816,6 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     LCSetSpoofedKernelVersion(nil);
     LCSetSpoofedKernelRelease(nil);
 
-    // MARK: Force iPhone Mode - independent of device spoofing
-    BOOL forceIPhoneMode = [guestAppInfo[@"forceIPhoneMode"] boolValue];
-    if (forceIPhoneMode) {
-        [lcSharedDefaults setBool:YES forKey:@"LCRealIPhoneMode"];
-        // When device spoofing isn't already enabled, activate it with a minimal
-        // iPhone profile so UIDevice.currentDevice.userInterfaceIdiom returns Phone.
-        // Without this the guest app lays out as iPad even if the window is made narrow.
-        if (!useProfileSpoofing) {
-            LCSetDeviceProfile(@"iPhone 17");
-            useProfileSpoofing = YES;
-        }
-    } else {
-        [lcSharedDefaults setBool:NO forKey:@"LCRealIPhoneMode"];
-    }
-
     if(useProfileSpoofing) {
         NSString *deviceProfile = guestAppInfo[@"deviceSpoofProfile"];
         if (deviceProfile.length == 0) {

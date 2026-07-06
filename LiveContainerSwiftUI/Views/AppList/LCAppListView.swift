@@ -95,11 +95,6 @@ private struct LCGridDropDelegate: DropDelegate {
     }
 }
 
-enum AppLaunchMode: Int {
-    case native = 0
-    case realIPhone = 1
-}
-
 class SearchContext: ObservableObject {
     @Published var query: String = ""
     @Published var debouncedQuery: String = ""
@@ -171,9 +166,6 @@ struct AppSigningProgressBar: View {
 }
 
 struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
-    //⭐️⭐️⭐️Switch mode
-    @AppStorage("LCNativeFullscreen") var isNative = true
-    @AppStorage("LCRealiPhoneMode") var isiPhone = false
     @Binding var appDataFolderNames: [String]
     @Binding var tweakFolderNames: [String]
     
@@ -245,17 +237,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @State private var isLockHideMode = false
     @State private var isDeleteMode = false
 
- //⭐️⭐️⭐️Switch mode
-   var currentLaunchMode: AppLaunchMode {
-    if UserDefaults.standard.bool(forKey: "LCNativeFullscreen") {
-        return .native
-    }
-    if LCUtils.appGroupUserDefault.bool(forKey: "LCRealIPhoneMode") {
-        return .realIPhone
-    }
-
-    return .native 
-}
 
 
 
@@ -266,30 +247,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
 
 
 
-
-
- //⭐️⭐️⭐️Switch mode
-func setMode(_ mode: AppLaunchMode) {
-    withAnimation(.easeInOut(duration: 0.2)) {
-        switch mode {
-        case .native:
-
-            isNative = true
-            isiPhone = false
-
-            LCUtils.appGroupUserDefault.set(false, forKey: "LCRealIPhoneMode")
-            UserDefaults.standard.set(true, forKey: "LCNativeFullscreen")
-        case .realIPhone:
-
-            isNative = false
-            isiPhone = true
-
-            LCUtils.appGroupUserDefault.set(true, forKey: "LCRealIPhoneMode")
-            UserDefaults.standard.set(false, forKey: "LCNativeFullscreen")
-        }
-    }
-    sharedModel.objectWillChange.send()
-}
 
 
 

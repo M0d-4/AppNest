@@ -442,22 +442,10 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
             self.pidAvailableHandler(@(self.pid), nil);
             }
     
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.3 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-                 CGFloat viewW = self.view.frame.size.width / self.scaleRatio;
-                 CGFloat viewH = (self.view.frame.size.height - self.navigationBar.frame.size.height) / self.scaleRatio;
-                 CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
-                 CGFloat offsetX = (viewW - targetW) / 2.0;
-                 _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingNone;
-                 _appSceneVC.contentView.frame = CGRectMake(offsetX, 0, targetW, viewH);
-                 [_appSceneVC updateFrameWithSettingsBlock:nil];
-                 }
-          });
        }
 
     });
 }
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
 - (void)appSceneVC:(AppSceneViewController*)vc didUpdateFromSettings:(UIMutableApplicationSceneSettings *)baseSettings transitionContext:(id)newContext {
     UIMutableApplicationSceneSettings *newSettings = [vc.presenter.scene.settings mutableCopy];
     newSettings.userInterfaceStyle = baseSettings.userInterfaceStyle;
@@ -480,20 +468,9 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     [_appSceneVC.presenter.scene updateSettings:newSettings withTransitionContext:newContext completion:nil];
     return;
     }
-    CGRect newFrame;
-    BOOL isRealIPhoneMode = [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"];
-    if (isRealIPhoneMode) {
-    CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
-    CGFloat offsetX = (viewW - targetW) / 2.0;
-    newFrame = CGRectMake(0, 0, targetW, viewH);
-    
-    _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingNone;
-    _appSceneVC.contentView.frame = CGRectMake(offsetX, 0, targetW, viewH);
-    } else {
-    newFrame = CGRectMake(0, 0, viewW, viewH);
+    CGRect newFrame = CGRectMake(0, 0, viewW, viewH);
     _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     _appSceneVC.contentView.frame = CGRectMake(0, 0, viewW, viewH);
-    }
 
 
     
@@ -632,14 +609,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     CGFloat viewW = self.view.frame.size.width / self.scaleRatio;
     CGFloat viewH = (self.view.frame.size.height - self.navigationBar.frame.size.height) / self.scaleRatio;
     
-    BOOL isRealIPhoneMode = [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"];
-    if (isRealIPhoneMode) {
-        CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
-        CGFloat offsetX = (viewW - targetW) / 2.0;
-        _appSceneVC.contentView.frame = CGRectMake(offsetX, 0, targetW, viewH);
-    } else {
-        _appSceneVC.contentView.frame = CGRectMake(0, 0, viewW, viewH);
-    }
+    _appSceneVC.contentView.frame = CGRectMake(0, 0, viewW, viewH);
     [self.appSceneVC updateFrameWithSettingsBlock:nil];
 }
 
