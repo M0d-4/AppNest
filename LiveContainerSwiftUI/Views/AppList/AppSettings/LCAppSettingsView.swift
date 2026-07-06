@@ -2353,7 +2353,7 @@ struct LCAppSettingsView: View {
             }
 
             if !model.isHostDeviceIPhone {
-                Section(header: Label("Device Mode", systemImage: "iphone")) {
+                Section {
                    Toggle(isOn: $model.uiForceIPhoneMode) {
                        HStack {
                            Image(systemName: "iphone")
@@ -2362,11 +2362,11 @@ struct LCAppSettingsView: View {
                            Text("Force iPhone Mode")
                        }
                    }
-
+                } header: {
+                    Label("Device Mode", systemImage: "iphone")
+                } footer: {
                    if model.uiForceIPhoneMode {
-                       Text("This app will always run in iPhone layout, regardless of device type.")
-                           .font(.caption2)
-                           .foregroundColor(.secondary)
+                       Text("This app will run in iPhone layout, regardless of device type.")
                    }
                 }
             }
