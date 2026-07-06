@@ -2366,7 +2366,7 @@ struct LCAppSettingsView: View {
                     Label("Device Mode", systemImage: "iphone")
                 } footer: {
                    if model.uiForceIPhoneMode {
-                       Text("This app will run in iPhone layout, regardless of device type.")
+                       Text("This app will run in iPhone layout.")
                    }
                 }
             }
