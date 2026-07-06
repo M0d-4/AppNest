@@ -1612,14 +1612,14 @@ func setMode(_ mode: AppLaunchMode) {
         //⭐️⭐️⭐️switch mode
     if launchInMultitaskMode {
         do {
-            try await appFound.runApp(multitask: nil, containerFolderName: container, forceJIT: forceJIT)
+            try await appFound.runApp(multitask: nil, containerFolderName: container, urlStr: openURL, forceJIT: forceJIT)
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
         }
     } else {
         do {
-            try await appFound.runApp(containerFolderName: container, forceJIT: forceJIT)
+            try await appFound.runApp(containerFolderName: container, urlStr: openURL, forceJIT: forceJIT)
         } catch {
             errorInfo = error.localizedDescription
             errorShow = true
@@ -1806,7 +1806,6 @@ func setMode(_ mode: AppLaunchMode) {
                 var containerName : String? = nil
                 var openURL : String? = nil
                 var forceJIT: Bool? = nil
-                var openUrl: String? = nil
                 for queryItem in components.queryItems ?? [] {
                     if queryItem.name == "bundle-name", let bundleId1 = queryItem.value {
                         bundleId = bundleId1
@@ -1821,17 +1820,9 @@ func setMode(_ mode: AppLaunchMode) {
                         } else if forceJIT1 == "false" {
                             forceJIT = false
                         }
-                    } else if queryItem.name == "open-url",
-                              let encoded = queryItem.value,
-                              let decodedData = Data(base64Encoded: encoded),
-                              let decodedUrl = String(data: decodedData, encoding: .utf8) {
-                        openUrl = decodedUrl
                     }
                 }
                 if let bundleId, bundleId != "ui"{
-                    if let openUrl {
-                        UserDefaults.standard.setValue(openUrl, forKey: "launchAppUrlScheme")
-                    }
                     Task { await launchAppWithBundleId(bundleId: bundleId, container: containerName, openURL: openURL, forceJIT: forceJIT) }
                 }
             }
