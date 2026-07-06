@@ -1208,7 +1208,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
     // sense on an iPad running an app in a wider layout, so the toggle is hidden
     // and the mode is never applied when the host device is already an iPhone.
     var isHostDeviceIPhone: Bool {
-        return UIDevice.current.userInterfaceIdiom == .phone
+        return SharedModel.isPhone
     }
     
     // Determines whether this launch should run in forced iPhone (9:16) mode and
