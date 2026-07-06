@@ -10,6 +10,28 @@ static uint32_t rnd32(uint32_t v, uint32_t r) {
     return (v + r) & ~r;
 }
 
+static uint32_t get_chained_fixups_seg_count(void *macho, struct linkedit_data_command *fixups) {
+    printf("[*] Found DYLD_CHAINED_FIXUPS!\n");
+    
+    if (fixups->dataoff == 0 || fixups->datasize < sizeof(struct dyld_chained_fixups_header)) {
+        printf("\t\t[!] Invalid chained fixups payload\n");
+        return 0;
+    }
+    
+    off_t fixups_offset = fixups->dataoff;
+    struct dyld_chained_fixups_header *header = (struct dyld_chained_fixups_header *)(macho+fixups_offset);
+    
+    if (header->starts_offset == 0 || header->starts_offset + sizeof(struct dyld_chained_starts_in_image) > fixups->datasize) {
+        printf("\t\t[!] No chained starts to patch\n");
+        return 0;
+    }
+    
+    off_t starts_offset = fixups_offset + header->starts_offset;
+    uint32_t *seg_count = (uint32_t *)(macho+starts_offset);
+
+    return *seg_count;
+}
+
 struct dyld_all_image_infos *_alt_dyld_get_all_image_infos(void) {
     static struct dyld_all_image_infos *result;
     if (result) {
@@ -25,30 +47,6 @@ struct dyld_all_image_infos *_alt_dyld_get_all_image_infos(void) {
                     &count);
     if (ret != KERN_SUCCESS) {
         return NULL;
-static uint32_t get_chained_fixups_seg_count(void *macho, struct linkedit_data_command *fixups) {
-    printf("[*] Found DYLD_CHAINED_FIXUPS!\n");
-    
-    if (fixups->dataoff == 0 || fixups->datasize < sizeof(struct dyld_chained_fixups_header)) {
-        printf("\t\t[!] Invalid chained fixups payload\n");
-        return 0;
-    }
-    
-    off_t fixups_offset = fixups->dataoff;
-    struct dyld_chained_fixups_header *header = (struct dyld_chained_fixups_header *)(macho+fixups_offset);
-    
-    if (header->starts_offset == 0 || header->starts_offset + sizeof(struct dyld_chained_starts_in_image) > fixups->datasize) {
-        printf("\t\t[!] No chained starts to patch\n");
-
-        return 0;
-    }
-    
-    off_t starts_offset = fixups_offset + header->starts_offset;
-    uint32_t *seg_count = (uint32_t *)(macho+starts_offset);
-
-    return *seg_count;
-}
-
-
     }
     image_infos = dyld_info.all_image_info_addr;
     result = (struct dyld_all_image_infos *)image_infos;
