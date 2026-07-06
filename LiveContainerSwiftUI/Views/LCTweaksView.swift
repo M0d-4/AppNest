@@ -342,16 +342,32 @@ struct LCTweakFolderView : View {
 
     @ViewBuilder
     private func rowView(for tweakItem: LCTweakItem) -> some View {
-        if tweakItem.isFolder || tweakItem.isFramework {
-            NavigationLink {
-                LCTweakFolderView(baseUrl: tweakItem.fileUrl, isRoot: false, tweakFolders: $tweakFolders, copyMode: copyMode)
-                    .environmentObject(moveContext)
-            } label: {
+        HStack {
+            if tweakItem.isFolder || tweakItem.isFramework {
+                // hidden NavigationLink so the row still navigates without the toggle triggering it
+                ZStack(alignment: .leading) {
+                    NavigationLink {
+                        LCTweakFolderView(baseUrl: tweakItem.fileUrl, isRoot: false, tweakFolders: $tweakFolders, copyMode: copyMode)
+                            .environmentObject(moveContext)
+                    } label: {
+                        EmptyView()
+                    }
+                    .opacity(0)
+                    tweakItemLabel(tweakItem)
+                }
+            } else {
                 tweakItemLabel(tweakItem)
             }
-        } else {
-            tweakItemLabel(tweakItem)
+            Spacer()
+            if tweakItem.supportsDisableToggle {
+                Toggle("", isOn: Binding(
+                    get: { !isTweakDisabled(tweakItem) },
+                    set: { _ in toggleTweakDisabled(tweakItem) }
+                ))
+                .labelsHidden()
+            }
         }
+        .contentShape(Rectangle())
     }
 
     private func tweakItemLabel(_ tweakItem: LCTweakItem) -> some View {
@@ -359,20 +375,10 @@ struct LCTweakFolderView : View {
             Text(tweakItem.fileUrl.lastPathComponent)
                 .lineLimit(1)
         } icon: {
-            ZStack(alignment: .topTrailing) {
-                Image(systemName: iconName(for: tweakItem))
-                    .frame(width: 20, height: 20)
-                if tweakItem.supportsDisableToggle {
-                    Circle()
-                        .fill(isTweakDisabled(tweakItem) ? Color.red : Color.green)
-                        .frame(width: 8, height: 8)
-                        .overlay(
-                            Circle().stroke(Color(.systemBackground), lineWidth: 1)
-                        )
-                        .offset(x: 4, y: -4)
-                }
-            }
+            Image(systemName: iconName(for: tweakItem))
+                .frame(width: 20, height: 20)
         }
+        .opacity(tweakItem.supportsDisableToggle && isTweakDisabled(tweakItem) ? 0.4 : 1)
     }
 
     private func iconName(for tweakItem: LCTweakItem) -> String {
