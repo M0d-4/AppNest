@@ -170,9 +170,12 @@ static void Real_UIKitGuestHooksInit(void) {
     NSString *lcGuestAppId = NSUserDefaults.lcGuestAppId;
     if(!NSUserDefaults.lcGuestAppId) return;
 
+    // Always install these hooks (unless SideStore); each hook checks the live
+    // value of LCRealIPhoneMode itself, so toggling the setting per app takes
+    // effect immediately without depending on the flag's value at process start.
     NSString *forceIPhoneAppId = NSUserDefaults.lcGuestAppId;
     BOOL isSideStore = [forceIPhoneAppId.lowercaseString containsString:@"sidestore"];
-    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && !isSideStore) {
+    if (!isSideStore) {
         swizzle(UIWindow.class, @selector(setFrame:), @selector(hook_setFrame:));
         swizzle(UIScreen.class, @selector(bounds), @selector(hook_UIScreen_bounds));
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification
