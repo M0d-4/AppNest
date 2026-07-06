@@ -88,6 +88,11 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             appInfo.orientationLock = uiOrientationLock
         }
     }
+    @Published var uiForceIPhoneMode: Bool {
+        didSet {
+            appInfo.forceIPhoneMode = uiForceIPhoneMode
+        }
+    }
     @Published var uiSelectedLanguage : String {
         didSet {
             appInfo.selectedLanguage = uiSelectedLanguage
@@ -727,6 +732,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         self.uiIsLocked = appInfo.isLocked
         self.uiIsShared = appInfo.isShared
         self.uiSelectedLanguage = appInfo.selectedLanguage ?? ""
+        self.uiForceIPhoneMode = appInfo.forceIPhoneMode
         self.uiDefaultDataFolder = appInfo.dataUUID
         self.uiContainers = appInfo.containers
         self.uiAddonSettingsContainerFolderName = appInfo.dataUUID ?? appInfo.containers.first?.folderName ?? ""
@@ -979,6 +985,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         self.uiSpoofCameraTransformFlip = appInfo.spoofCameraTransformFlip
 
         // Device spoofing
+        self.uiForceIPhoneMode = appInfo.forceIPhoneMode
         self.uiDeviceSpoofingEnabled = appInfo.deviceSpoofingEnabled
         self.uiDeviceSpoofProfile = normalizedDeviceSpoofProfile(appInfo.deviceSpoofProfile)
         self.uiDeviceSpoofCustomVersion = appInfo.deviceSpoofCustomVersion ?? "26.3"
@@ -1197,6 +1204,23 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         hasher.combine(ObjectIdentifier(self))
     }
     
+    // True when this device itself is an iPhone. Forcing "iPhone mode" only makes
+    // sense on an iPad running an app in a wider layout, so the toggle is hidden
+    // and the mode is never applied when the host device is already an iPhone.
+    var isHostDeviceIPhone: Bool {
+        return UIDevice.current.userInterfaceIdiom == .phone
+    }
+    
+    // Determines whether this launch should run in forced iPhone (9:16) mode and
+    // writes the shared flag the guest-process hooks read at runtime.
+    func syncIPhoneMode(isMultitask: Bool) {
+        var finalForceIPhone = false
+        if !isMultitask && !isHostDeviceIPhone {
+            finalForceIPhone = uiForceIPhoneMode
+        }
+        LCUtils.appGroupUserDefault.set(finalForceIPhone, forKey: "LCRealIPhoneMode")
+    }
+    
     // You should let LCAppModel.runApp to decide whether to run in multitask mode, but you may override the multitask parameter if necessary
     func runApp(multitask: Bool? = nil, containerFolderName : String? = nil, bundleIdOverride : String? = nil, urlStr : String? = nil, forceJIT: Bool? = nil) async throws{
         if isAppRunning {
@@ -1306,6 +1330,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
                 isAppRunning = false
             }}
         }
+        syncIPhoneMode(isMultitask: multitask)
         try await signApp(force: false)
         
         if let bundleIdOverride {

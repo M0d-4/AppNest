@@ -21,6 +21,7 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
     NSMutableDictionary* _infoPlist;
     NSString* _bundlePath;
 }
+
 @property NSString* relativeBundlePath;
 @property bool isShared;
 @property bool isJITNeeded;
@@ -28,6 +29,7 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 @property bool isHidden;
 @property bool doSymlinkInbox;
 @property bool hideLiveContainer;
+@property bool forceIPhoneMode;
 @property bool dontLoadTweakLoader;
 @property bool dontInjectTweakLoader;
 @property LCOrientationLock orientationLock;
