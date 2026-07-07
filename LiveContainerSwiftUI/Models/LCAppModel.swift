@@ -1325,81 +1325,86 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         await MainActor.run {
             isAppRunning = true
         }
-        defer {
-            Task { await MainActor.run {
-                isAppRunning = false
-            }}
-        }
-        syncIPhoneMode(isMultitask: multitask)
-        try await signApp(force: false)
-        
-        if let bundleIdOverride {
-            UserDefaults.standard.set(bundleIdOverride, forKey: "selected")
-        } else {
-            UserDefaults.standard.set(self.appInfo.relativeBundlePath, forKey: "selected")
-        }
-        if let urlStr {
-            UserDefaults.standard.setValue(urlStr, forKey: "launchAppUrlScheme")
-        }
-        UserDefaults.standard.set(uiSelectedContainer?.folderName, forKey: "selectedContainer")
-        var is32bit = false
-        
-        #if is32BitSupported
-        is32bit = appInfo.is32bit
-        #endif
-        var jitNeeded = appInfo.isJITNeeded
-        if let forceJIT {
-            jitNeeded = forceJIT
-        }
-        if jitNeeded || is32bit {
-            if multitask, #available(iOS 17.4, *) {
-                try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
-                    LCUtils.launchMultitaskGuestApp(appInfo.displayName()) { pidNumber, error in
-                        if let error {
-                            continuation.resume(throwing: error)
-                            return
-                        }
-                        guard let pidNumber = pidNumber else {
-                            continuation.resume(throwing: "Failed to obtain PID from LiveProcess")
-                            return
-                        }
-                        Task { @MainActor [weak self] in
-                            guard let self else {
-                                continuation.resume()
+        do {
+            syncIPhoneMode(isMultitask: multitask)
+            try await signApp(force: false)
+            
+            if let bundleIdOverride {
+                UserDefaults.standard.set(bundleIdOverride, forKey: "selected")
+            } else {
+                UserDefaults.standard.set(self.appInfo.relativeBundlePath, forKey: "selected")
+            }
+            if let urlStr {
+                UserDefaults.standard.setValue(urlStr, forKey: "launchAppUrlScheme")
+            }
+            UserDefaults.standard.set(uiSelectedContainer?.folderName, forKey: "selectedContainer")
+            var is32bit = false
+            
+            #if is32BitSupported
+            is32bit = appInfo.is32bit
+            #endif
+            var jitNeeded = appInfo.isJITNeeded
+            if let forceJIT {
+                jitNeeded = forceJIT
+            }
+            if jitNeeded || is32bit {
+                if multitask, #available(iOS 17.4, *) {
+                    try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
+                        LCUtils.launchMultitaskGuestApp(appInfo.displayName()) { pidNumber, error in
+                            if let error {
+                                continuation.resume(throwing: error)
                                 return
                             }
-                            if let scriptData = self.jitLaunchScriptJs, !scriptData.isEmpty {
-                                await self.delegate?.jitLaunch(withPID: pidNumber.intValue, withScript: scriptData, appName: self.appInfo.displayName())
-                            } else {
-                                await self.delegate?.jitLaunch(withPID: pidNumber.intValue, withScript: nil, appName: self.appInfo.displayName())
+                            guard let pidNumber = pidNumber else {
+                                continuation.resume(throwing: "Failed to obtain PID from LiveProcess")
+                                return
                             }
-                            continuation.resume()
+                            Task { @MainActor [weak self] in
+                                guard let self else {
+                                    continuation.resume()
+                                    return
+                                }
+                                if let scriptData = self.jitLaunchScriptJs, !scriptData.isEmpty {
+                                    await self.delegate?.jitLaunch(withPID: pidNumber.intValue, withScript: scriptData, appName: self.appInfo.displayName())
+                                } else {
+                                    await self.delegate?.jitLaunch(withPID: pidNumber.intValue, withScript: nil, appName: self.appInfo.displayName())
+                                }
+                                continuation.resume()
+                            }
                         }
                     }
-                }
-            } else {
-                // Non-multitask JIT flow remains unchanged
-                if let scriptData = jitLaunchScriptJs, !scriptData.isEmpty {
-                    await delegate?.jitLaunch(withScript: scriptData, appName: self.appInfo.displayName())
                 } else {
-                    await delegate?.jitLaunch(appName: self.appInfo.displayName())
+                    // Non-multitask JIT flow remains unchanged
+                    if let scriptData = jitLaunchScriptJs, !scriptData.isEmpty {
+                        await delegate?.jitLaunch(withScript: scriptData, appName: self.appInfo.displayName())
+                    } else {
+                        await delegate?.jitLaunch(appName: self.appInfo.displayName())
+                    }
                 }
+            } else if multitask, #available(iOS 16.0, *) {
+                try await LCUtils.launchMultitaskGuestApp(appInfo.displayName())
+            } else {
+                if #available(iOS 26.0, *), FileManager.default.fileExists(atPath: "\(appInfo.bundlePath()!)/Frameworks/MetalANGLE.framework/MetalANGLE") {
+                    let fileContents = "\(appInfo.bundlePath()!)/Frameworks/MetalANGLE.framework/MetalANGLE".data(using: .utf8)
+                    let fileURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("preloadLibraries.txt")
+                    try fileContents?.write(to: fileURL)
+                }
+                LCSharedUtils.launchToGuestApp()
             }
-        } else if multitask, #available(iOS 16.0, *) {
-            try await LCUtils.launchMultitaskGuestApp(appInfo.displayName())
-        } else {
-            if #available(iOS 26.0, *), FileManager.default.fileExists(atPath: "\(appInfo.bundlePath()!)/Frameworks/MetalANGLE.framework/MetalANGLE") {
-                let fileContents = "\(appInfo.bundlePath()!)/Frameworks/MetalANGLE.framework/MetalANGLE".data(using: .utf8)
-                let fileURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("preloadLibraries.txt")
-                try fileContents?.write(to: fileURL)
+            
+            // Record the launch time
+            appInfo.lastLaunched = Date()
+            await MainActor.run {
+                isAppRunning = false
             }
-            LCSharedUtils.launchToGuestApp()
-        }
-        
-        // Record the launch time
-        appInfo.lastLaunched = Date()
-        await MainActor.run {
-            isAppRunning = false
+        } catch {
+            // Ensure the running flag is cleared *before* control returns to the
+            // caller, so a retry right after a failed launch isn't silently
+            // swallowed by the isAppRunning guard at the top of this function.
+            await MainActor.run {
+                isAppRunning = false
+            }
+            throw error
         }
     }
     
