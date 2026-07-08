@@ -222,6 +222,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @State private var isViewAppeared = false
     
     @ObservedObject var searchContext: SearchContext
+    @State private var isSearchPresented = false
     private var downloadHelper: DownloadHelper { sharedModel.downloadHelper }
 
     
@@ -234,6 +235,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @State private var selectedAppsForDeletion: Set<LCAppModel> = []
     @State private var isDeleting = false
     @State private var isDeleteArmed = false
+    @State private var isLockArmed = false
     @State private var deleteAppData = false
     @State private var deleteConfirmDialogPresented = false
     @StateObject private var lockHideActionAlert = AlertHelper<String>()
@@ -458,6 +460,11 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 // Leading: spinner / SideStore / Help
                 ToolbarItemGroup(placement: .topBarLeading) {
                     if !isMultiSelectMode {
+                        Button {
+                            isSearchPresented = true
+                        } label: {
+                            Image(systemName: "magnifyingglass")
+                        }
                         if installprogressVisible {
                             ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
                         } else if UserDefaults.sideStoreExist() {
@@ -476,6 +483,16 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                                 helpPresent = true
                             }
                         }
+                        // Moved here from the trailing toolbar group, per request
+                        // to put "Select" on the opposite side of the bar.
+                        Button {
+                            withAnimation { isMultiSelectMode = true }
+                            sharedModel.isMultiSelectMode = true
+                        } label: {
+                            Image(systemName: "checkmark.circle")
+                                .foregroundColor(.green)
+                                .font(.system(size: 18, weight: .semibold))
+                        }
                     }
                 }
                 // Trailing: swaps between normal and multiselect content
@@ -491,23 +508,16 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                         }
                         .disabled(isDeleting || !isDeleteArmed)
 
-                        // Lock & Hide / Unlock & Unhide: acts directly on whatever is
-                        // currently selected — no separate "enter lock mode" step.
-                        Button {
-                            Task { await toggleLockHideSelectedApps() }
-                        } label: {
-                            Image(systemName: "lock.shield.fill")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty ? .secondary : .orange)
-                        }
-                        .disabled(isDeleting || selectedAppsForDeletion.isEmpty)
-
                         // Trash: first press arms delete intent (enables the data
                         // toggle above); second press with apps selected confirms;
-                        // second press with nothing selected disarms again.
+                        // second press with nothing selected disarms again. Can't
+                        // be armed while Lock/Hide is armed — the two are mutually
+                        // exclusive so you can't multi-lock and multi-delete at once.
                         Button {
                             withAnimation {
                                 if !isDeleteArmed {
                                     isDeleteArmed = true
+                                    isLockArmed = false
                                 } else if selectedAppsForDeletion.isEmpty {
                                     isDeleteArmed = false
                                     deleteAppData = false
@@ -519,7 +529,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             Image(systemName: "trash")
                                 .foregroundColor(isDeleteArmed ? .red : .secondary)
                         }
-                        .disabled(isDeleting)
+                        .disabled(isDeleting || isLockArmed)
                         .confirmationDialog(
                             "lc.appList.deleteSelectedConfirm".loc,
                             isPresented: $deleteConfirmDialogPresented,
@@ -533,6 +543,27 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             Text("lc.appList.deleteSelectedMessage %lld".localizeWithFormat(selectedAppsForDeletion.count))
                         }
 
+                        // Lock & Hide / Unlock & Unhide: same arm-then-act pattern as
+                        // Trash, so it's pressable before selecting anything too.
+                        // Can't be armed while delete is armed (mutually exclusive).
+                        Button {
+                            withAnimation {
+                                if !isLockArmed {
+                                    isLockArmed = true
+                                    isDeleteArmed = false
+                                    deleteAppData = false
+                                } else if selectedAppsForDeletion.isEmpty {
+                                    isLockArmed = false
+                                } else {
+                                    Task { await toggleLockHideSelectedApps() }
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "lock.shield.fill")
+                                .foregroundColor(isLockArmed ? .orange : .secondary)
+                        }
+                        .disabled(isDeleting || isDeleteArmed)
+
                         // Cancel multiselect
                         Button {
                             withAnimation {
@@ -540,6 +571,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                                 selectedAppsForDeletion.removeAll()
                                 deleteAppData = false
                                 isDeleteArmed = false
+                                isLockArmed = false
                             }
                             sharedModel.isMultiSelectMode = false
                         } label: {
@@ -574,14 +606,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             }
                         } label: {
                             Label("Sort by", systemImage: "line.3.horizontal.decrease.circle")
-                        }
-                        Button {
-                            withAnimation { isMultiSelectMode = true }
-                            sharedModel.isMultiSelectMode = true
-                        } label: {
-                            Image(systemName: "checkmark.circle")
-                                .foregroundColor(.green)
-                                .font(.system(size: 18, weight: .semibold))
                         }
                     }
                 }
@@ -771,13 +795,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             guard !queue.isEmpty else { return }
             Task { await drainPendingInstallQueue() }
         }
-        .apply {
-            if #available(iOS 19.0, *), SharedModel.isLiquidGlassSearchEnabled {
-                $0
-            } else {
-                $0.searchable(text: $searchContext.query)
-            }
-        }
+        .searchable(text: $searchContext.query, isPresented: $isSearchPresented)
 
     }
     

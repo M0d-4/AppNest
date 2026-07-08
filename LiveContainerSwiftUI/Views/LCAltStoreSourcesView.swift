@@ -191,6 +191,12 @@ final class AltStoreSourcesViewModel: ObservableObject {
         // Do not guard on sources.isEmpty — the updates tab calls this on appear
         // and sources may still be loading from UserDefaults at that point.
         // An empty loop is harmless.
+        // Guard against overlapping calls: onAppear, onChange(sources.count), and
+        // the manual refresh button can all fire close together, and without this
+        // an in-flight refresh's completion could flip isRefreshingAll back to
+        // false while a second, newer refresh is still running underneath it —
+        // making the button appear to silently "not work".
+        guard !isRefreshingAll else { return }
         isRefreshingAll = true
         for url in sources.map({ $0.url }) {
             await refreshSource(url: url)

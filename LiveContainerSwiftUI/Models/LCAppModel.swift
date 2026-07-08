@@ -1211,7 +1211,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
     // MultitaskManager.isMultitasking() can route even an ordinary tap through the
     // multitask path whenever another app is already multitasking, so gating this
     // on isMultitask made the toggle silently do nothing in that common case.
-    func syncIPhoneMode(isMultitask: Bool) {
+    func syncIPhoneMode(isMultitask: Bool?) {
         let finalForceIPhone = !isHostDeviceIPhone && uiForceIPhoneMode
         LCUtils.appGroupUserDefault.set(finalForceIPhone, forKey: "LCRealIPhoneMode")
     }
