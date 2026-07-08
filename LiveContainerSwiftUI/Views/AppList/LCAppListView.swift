@@ -225,17 +225,20 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     private var downloadHelper: DownloadHelper { sharedModel.downloadHelper }
 
     
-    // Multi-select deletion
+    // Multi-select: apps are selected once (freely, regardless of which action
+    // you intend), then Delete or Lock/Hide act directly on that selection.
+    // The one exception is the "delete data" toggle: it stays disabled until
+    // the trash button has been pressed once to arm delete intent, so it can't
+    // be flipped while e.g. only intending to lock/hide.
     @State private var isMultiSelectMode = false
     @State private var selectedAppsForDeletion: Set<LCAppModel> = []
-    @State private var deleteAppData = false
     @State private var isDeleting = false
-    @StateObject private var multiDeleteConfirmAlert = YesNoHelper()
+    @State private var isDeleteArmed = false
+    @State private var deleteAppData = false
+    @State private var deleteConfirmDialogPresented = false
     @StateObject private var lockHideActionAlert = AlertHelper<String>()
     @StateObject private var unhideActionAlert = AlertHelper<String>()
     @State private var isDrainingInstallQueue = false
-    @State private var isLockHideMode = false
-    @State private var isDeleteMode = false
 
 
 
@@ -478,57 +481,57 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 // Trailing: swaps between normal and multiselect content
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if isMultiSelectMode {
-                        // Delete-data toggle
+                        // Delete-data toggle: only meaningful once delete intent is
+                        // armed (trash pressed once), so it's disabled until then.
                         Button {
                             withAnimation { deleteAppData.toggle() }
                         } label: {
                             Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
-                                .foregroundColor(deleteAppData ? .red : .primary)
+                                .foregroundColor(!isDeleteArmed ? .secondary : (deleteAppData ? .red : .primary))
                         }
-                        .disabled(isDeleting)
+                        .disabled(isDeleting || !isDeleteArmed)
 
-                        // Lock & Hide / Unlock & Unhide:
-                        // First press: enter lock-pick mode, hidden apps show unlock icon
-                        // Second press with nothing selected: exit lock mode
-                        // Second press with apps selected: lock visible, unlock hidden
+                        // Lock & Hide / Unlock & Unhide: acts directly on whatever is
+                        // currently selected — no separate "enter lock mode" step.
                         Button {
-                            withAnimation {
-                                if !isLockHideMode {
-                                    isLockHideMode = true
-                                    isDeleteMode = false
-                                    selectedAppsForDeletion.removeAll()
-                                } else if selectedAppsForDeletion.isEmpty {
-                                    isLockHideMode = false
-                                } else {
-                                    Task { await toggleLockHideSelectedApps() }
-                                }
-                            }
+                            Task { await toggleLockHideSelectedApps() }
                         } label: {
                             Image(systemName: "lock.shield.fill")
-                                .foregroundColor(isLockHideMode ? .orange : .secondary)
+                                .foregroundColor(selectedAppsForDeletion.isEmpty ? .secondary : .orange)
                         }
-                        .disabled(isDeleting)
+                        .disabled(isDeleting || selectedAppsForDeletion.isEmpty)
 
-                        // Trash: first press enters delete mode (turns red),
-                        // second press with apps selected shows confirmation,
-                        // second press with nothing selected exits delete mode
+                        // Trash: first press arms delete intent (enables the data
+                        // toggle above); second press with apps selected confirms;
+                        // second press with nothing selected disarms again.
                         Button {
                             withAnimation {
-                                if !isDeleteMode {
-                                    isDeleteMode = true
-                                    isLockHideMode = false
-                                    selectedAppsForDeletion.removeAll()
+                                if !isDeleteArmed {
+                                    isDeleteArmed = true
                                 } else if selectedAppsForDeletion.isEmpty {
-                                    isDeleteMode = false
+                                    isDeleteArmed = false
+                                    deleteAppData = false
                                 } else {
-                                    Task { await deleteSelectedApps() }
+                                    deleteConfirmDialogPresented = true
                                 }
                             }
                         } label: {
                             Image(systemName: "trash")
-                                .foregroundColor(isDeleteMode ? .red : .secondary)
+                                .foregroundColor(isDeleteArmed ? .red : .secondary)
                         }
                         .disabled(isDeleting)
+                        .confirmationDialog(
+                            "lc.appList.deleteSelectedConfirm".loc,
+                            isPresented: $deleteConfirmDialogPresented,
+                            titleVisibility: .visible
+                        ) {
+                            Button("lc.common.delete".loc, role: .destructive) {
+                                Task { await deleteSelectedApps() }
+                            }
+                            Button("lc.common.cancel".loc, role: .cancel) {}
+                        } message: {
+                            Text("lc.appList.deleteSelectedMessage %lld".localizeWithFormat(selectedAppsForDeletion.count))
+                        }
 
                         // Cancel multiselect
                         Button {
@@ -536,8 +539,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                                 isMultiSelectMode = false
                                 selectedAppsForDeletion.removeAll()
                                 deleteAppData = false
-                                isLockHideMode = false
-                                isDeleteMode = false
+                                isDeleteArmed = false
                             }
                             sharedModel.isMultiSelectMode = false
                         } label: {
@@ -660,12 +662,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             Button("lc.common.cancel".loc, role: .cancel) {
                 generatedIconStyleSelector.close(result: nil)
             }
-        }
-        .alert("lc.appList.deleteSelectedConfirm".loc, isPresented: $multiDeleteConfirmAlert.show) {
-            Button(role: .destructive) { multiDeleteConfirmAlert.close(result: true) } label: { Text("lc.common.delete".loc) }
-            Button("lc.common.cancel".loc, role: .cancel) { multiDeleteConfirmAlert.close(result: false) }
-        } message: {
-            Text("lc.appList.deleteSelectedMessage %lld".localizeWithFormat(selectedAppsForDeletion.count))
         }
         // Lock options alert — for visible apps
         .alert("Lock / Hide Apps", isPresented: $lockHideActionAlert.show) {
@@ -1727,8 +1723,9 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                     }
                     return
                 }
+            }
 
-                let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
+            let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
                 if jitEnabler == .StikJITLC {
                     if let app = sharedModel.apps.first(where: { app in
                         return app.appInfo.urlSchemes().contains("stikjit") &&
@@ -1939,39 +1936,21 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
 
             if isMultiSelectMode {
                 let isSelected = selectedAppsForDeletion.contains(app)
-                Group {
-                    if isLockHideMode {
-                        if isHidden {
-                            // Hidden app in lock mode: selectable to UNHIDE/UNLOCK
-                            Image(systemName: isSelected ? "lock.open.fill" : "lock.open")
-                                .foregroundColor(isSelected ? .green : .secondary)
-                        } else {
-                            // Visible app in lock mode: selectable to LOCK/HIDE
-                            Image(systemName: isSelected ? "lock.fill" : "lock.open")
-                                .foregroundColor(isSelected ? .orange : .secondary)
-                        }
-                    } else if isDeleteMode {
-                        // Delete mode: all apps selectable
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isSelected ? .red : .secondary)
-                    } else {
-                        // Default mode: circle for all
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isSelected ? .green : .secondary)
-                    }
-                }
-                .font(.title2)
-                .padding(.leading, 6)
-                .transition(.opacity.combined(with: .move(edge: .leading)))
+                // Selection is action-agnostic now — the same checkbox is used
+                // whether you'll end up tapping Delete or Lock/Hide afterward.
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isSelected ? .green : .secondary)
+                    .font(.title2)
+                    .padding(.leading, 6)
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
             }
         }
             .frame(height: 88)
             .contentShape(Rectangle())
             .onTapGesture {
                 guard isMultiSelectMode, !isDeleting else { return }
-                // All apps are selectable in all modes:
-                // - lock mode: visible apps → lock/hide, hidden apps → unlock/unhide
-                // - delete mode: any app → delete
+                // Selection is free and action-agnostic: tap any app to
+                // select/deselect it, then choose Delete or Lock/Hide afterward.
                 withAnimation(.easeInOut(duration: 0.1)) {
                     if selectedAppsForDeletion.contains(app) {
                         selectedAppsForDeletion.remove(app)
@@ -2034,7 +2013,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             }
             return
         }
-        guard let confirmed = await multiDeleteConfirmAlert.open(), confirmed else { return }
         
         // Snapshot the set so UI changes mid-loop don't affect iteration
         let appsToDelete = selectedAppsForDeletion
@@ -2092,7 +2070,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 selectedAppsForDeletion.removeAll()
                 isMultiSelectMode = false
                 deleteAppData = false
-                isDeleteMode = false
+                isDeleteArmed = false
                 isDeleting = false
             }
             sharedModel.isMultiSelectMode = false
@@ -2200,7 +2178,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             withAnimation {
                 selectedAppsForDeletion.removeAll()
                 isMultiSelectMode = false
-                isLockHideMode = false
                 isDeleting = false
             }
             sharedModel.isMultiSelectMode = false
