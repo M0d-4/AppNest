@@ -795,7 +795,13 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             guard !queue.isEmpty else { return }
             Task { await drainPendingInstallQueue() }
         }
-        .searchable(text: $searchContext.query, isPresented: $isSearchPresented)
+        .apply {
+            if #available(iOS 17.0, *) {
+                $0.searchable(text: $searchContext.query, isPresented: $isSearchPresented)
+            } else {
+                $0.searchable(text: $searchContext.query)
+            }
+        }
 
     }
     
