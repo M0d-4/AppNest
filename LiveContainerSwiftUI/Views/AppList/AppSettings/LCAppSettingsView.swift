@@ -1871,6 +1871,7 @@ struct LCAppSettingsView: View {
     
 
     @StateObject private var renameFolderInput = InputHelper()
+    @StateObject private var addUrlSchemeInput = InputHelper()
     @StateObject private var moveToAppGroupAlert = YesNoHelper()
     @StateObject private var moveToPrivateDocAlert = YesNoHelper()
     @StateObject private var signUnsignedAlert = YesNoHelper()
@@ -1910,77 +1911,98 @@ struct LCAppSettingsView: View {
         // Without this, the Swift runtime's TypeDecoder recurses deeply enough on iOS 26+
         // to overflow the thread stack when instantiating the Form's generic content type
         // (crash: KERN_PROTECTION_FAILURE hitting Stack Guard from swift_getTypeByMangledName).
-        Form {
-            AnyView(settingsTopSections)
-            AnyView(settingsSecuritySections)
-            AnyView(settingsLockSections)
-            AnyView(settingsBottomSections)
-        }
-        .navigationTitle(appInfo.displayName())
-        .navigationBarTitleDisplayMode(.inline)
-        .onAppear { sharedModel.isInAppSettings = true }
-        .onDisappear { sharedModel.isInAppSettings = false }
-        // Alerts (previously in settingsFormAlerts)
-        .alert("lc.common.error".loc, isPresented: $errorShow) {
-            Button("lc.common.ok".loc, action: {})
-        } message: {
-            Text(errorInfo)
-        }
-        .alert("lc.common.success".loc, isPresented: $successShow) {
-            Button("lc.common.ok".loc, action: {})
-        } message: {
-            Text(successInfo)
-        }
-        .textFieldAlert(
-            isPresented: $renameFolderInput.show,
-            title: "lc.common.enterNewFolderName".loc,
-            text: $renameFolderInput.initVal,
-            placeholder: "",
-            action: { newText in renameFolderInput.close(result: newText!) },
-            actionCancel: { _ in renameFolderInput.close(result: "") }
+        //
+        // The same issue reappears one level up: chaining every .alert/.textFieldAlert/.sheet
+        // modifier directly onto the Form makes `body` one giant expression, which is exactly
+        // what blew past the type-checker's time budget once the URL-scheme alert was added
+        // ("unable to type-check this expression in reasonable time"). Fix is the same idea:
+        // break it into AnyView-erased stages so each modifier group is its own expression.
+        let baseForm = AnyView(
+            Form {
+                AnyView(settingsTopSections)
+                AnyView(settingsSecuritySections)
+                AnyView(settingsLockSections)
+                AnyView(settingsBottomSections)
+            }
+            .navigationTitle(appInfo.displayName())
+            .navigationBarTitleDisplayMode(.inline)
+            .onAppear { sharedModel.isInAppSettings = true }
+            .onDisappear { sharedModel.isInAppSettings = false }
         )
-        .textFieldAlert(
-            isPresented: $addUrlSchemeInput.show,
-            title: "lc.appSettings.enterUrlScheme".loc,
-            text: $addUrlSchemeInput.initVal,
-            placeholder: "e.g. scrcpy2",
-            action: { newText in addUrlSchemeInput.close(result: newText!) },
-            actionCancel: { _ in addUrlSchemeInput.close(result: "") }
+
+        let withBasicAlerts = AnyView(
+            baseForm
+                .alert("lc.common.error".loc, isPresented: $errorShow) {
+                    Button("lc.common.ok".loc, action: {})
+                } message: {
+                    Text(errorInfo)
+                }
+                .alert("lc.common.success".loc, isPresented: $successShow) {
+                    Button("lc.common.ok".loc, action: {})
+                } message: {
+                    Text(successInfo)
+                }
+                .textFieldAlert(
+                    isPresented: $renameFolderInput.show,
+                    title: "lc.common.enterNewFolderName".loc,
+                    text: $renameFolderInput.initVal,
+                    placeholder: "",
+                    action: { newText in renameFolderInput.close(result: newText!) },
+                    actionCancel: { _ in renameFolderInput.close(result: "") }
+                )
+                .textFieldAlert(
+                    isPresented: $addUrlSchemeInput.show,
+                    title: "lc.appSettings.enterUrlScheme".loc,
+                    text: $addUrlSchemeInput.initVal,
+                    placeholder: "e.g. scrcpy2",
+                    action: { newText in addUrlSchemeInput.close(result: newText!) },
+                    actionCancel: { _ in addUrlSchemeInput.close(result: "") }
+                )
         )
-        .alert("lc.appSettings.toSharedApp".loc, isPresented: $moveToAppGroupAlert.show) {
-            Button { self.moveToAppGroupAlert.close(result: true) } label: { Text("lc.common.move".loc) }
-            Button("lc.common.cancel".loc, role: .cancel) { self.moveToAppGroupAlert.close(result: false) }
-        } message: {
-            Text("lc.appSettings.toSharedAppDesc".loc)
-        }
-        .alert("lc.appSettings.toPrivateApp".loc, isPresented: $moveToPrivateDocAlert.show) {
-            Button { self.moveToPrivateDocAlert.close(result: true) } label: { Text("lc.common.move".loc) }
-            Button("lc.common.cancel".loc, role: .cancel) { self.moveToPrivateDocAlert.close(result: false) }
-        } message: {
-            Text("lc.appSettings.toPrivateAppDesc".loc)
-        }
-        // Alerts (previously in settingsForm)
-        .alert("lc.appSettings.forceSign".loc, isPresented: $signUnsignedAlert.show) {
-            Button { self.signUnsignedAlert.close(result: true) } label: { Text("lc.common.ok".loc) }
-            Button("lc.common.cancel".loc, role: .cancel) { self.signUnsignedAlert.close(result: false) }
-        } message: {
-            Text("lc.appSettings.signUnsignedDesc".loc)
-        }
-        .alert("lc.appSettings.addExternalNonLocalContainer".loc, isPresented: $addExternalNonLocalContainerWarningAlert.show) {
-            Button { self.addExternalNonLocalContainerWarningAlert.close(result: true) } label: { Text("lc.common.continue".loc) }
-            Button("lc.common.cancel".loc, role: .cancel) { self.addExternalNonLocalContainerWarningAlert.close(result: false) }
-        } message: {
-            Text("lc.appSettings.addExternalNonLocalContainerWarningAlert".loc)
-        }
-        .sheet(isPresented: $selectUnusedContainerSheetShow) {
-            LCSelectContainerView(isPresent: $selectUnusedContainerSheetShow, delegate: self)
-        }
-        .fileImporter(isPresented: $choosingStorage, allowedContentTypes: [.folder]) { result in
-            Task { await importDataStorage(result: result) }
-        }
-        .task(id: model.uiContainers.count) {
-            await refreshAppStorageMetrics()
-        }
+
+        let withMoveAlerts = AnyView(
+            withBasicAlerts
+                .alert("lc.appSettings.toSharedApp".loc, isPresented: $moveToAppGroupAlert.show) {
+                    Button { self.moveToAppGroupAlert.close(result: true) } label: { Text("lc.common.move".loc) }
+                    Button("lc.common.cancel".loc, role: .cancel) { self.moveToAppGroupAlert.close(result: false) }
+                } message: {
+                    Text("lc.appSettings.toSharedAppDesc".loc)
+                }
+                .alert("lc.appSettings.toPrivateApp".loc, isPresented: $moveToPrivateDocAlert.show) {
+                    Button { self.moveToPrivateDocAlert.close(result: true) } label: { Text("lc.common.move".loc) }
+                    Button("lc.common.cancel".loc, role: .cancel) { self.moveToPrivateDocAlert.close(result: false) }
+                } message: {
+                    Text("lc.appSettings.toPrivateAppDesc".loc)
+                }
+        )
+
+        let withRemainingAlerts = AnyView(
+            withMoveAlerts
+                // Alerts (previously in settingsForm)
+                .alert("lc.appSettings.forceSign".loc, isPresented: $signUnsignedAlert.show) {
+                    Button { self.signUnsignedAlert.close(result: true) } label: { Text("lc.common.ok".loc) }
+                    Button("lc.common.cancel".loc, role: .cancel) { self.signUnsignedAlert.close(result: false) }
+                } message: {
+                    Text("lc.appSettings.signUnsignedDesc".loc)
+                }
+                .alert("lc.appSettings.addExternalNonLocalContainer".loc, isPresented: $addExternalNonLocalContainerWarningAlert.show) {
+                    Button { self.addExternalNonLocalContainerWarningAlert.close(result: true) } label: { Text("lc.common.continue".loc) }
+                    Button("lc.common.cancel".loc, role: .cancel) { self.addExternalNonLocalContainerWarningAlert.close(result: false) }
+                } message: {
+                    Text("lc.appSettings.addExternalNonLocalContainerWarningAlert".loc)
+                }
+        )
+
+        return withRemainingAlerts
+            .sheet(isPresented: $selectUnusedContainerSheetShow) {
+                LCSelectContainerView(isPresent: $selectUnusedContainerSheetShow, delegate: self)
+            }
+            .fileImporter(isPresented: $choosingStorage, allowedContentTypes: [.folder]) { result in
+                Task { await importDataStorage(result: result) }
+            }
+            .task(id: model.uiContainers.count) {
+                await refreshAppStorageMetrics()
+            }
     }
 
     @ViewBuilder

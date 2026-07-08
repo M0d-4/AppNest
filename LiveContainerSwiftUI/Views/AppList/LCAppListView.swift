@@ -1725,13 +1725,13 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 }
             }
 
-            let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
+            let encodedStikDirect = encodedData.map { "&script-data=\($0)" } ?? ""
                 if jitEnabler == .StikJITLC {
                     if let app = sharedModel.apps.first(where: { app in
                         return app.appInfo.urlSchemes().contains("stikjit") &&
                         (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                     }) {
-                        let urlString = "stikjit://enable-jit?bundle-id=\(multitaskPIDJITBundleId(for: app))&pid=\(pid)\(encoded)"
+                        let urlString = "stikjit://enable-jit?bundle-id=\(multitaskPIDJITBundleId(for: app))&pid=\(pid)\(encodedStikDirect)"
                         let encodedStr = Data(urlString.utf8).base64EncodedString().addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
                         Task { _ = await openJITInAnotherLC(encodedURL: encodedStr, appToLaunch: app, errorMessage: "No free LiveContainer is available. Please either: \n(1)close one, \n(2)install a new one, \n(3)choose another method to enable JIT.") }
                     } else {
@@ -1739,7 +1739,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                         errorShow = true
                         return
                         }
-                    } else if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encoded)") {
+                    } else if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encodedStikDirect)") {
                     UIApplication.shared.open(url)
                 }
             }
