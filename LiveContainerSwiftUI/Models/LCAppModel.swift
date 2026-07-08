@@ -123,11 +123,6 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         }
     }
     
-    @Published var uiCustomUrlSchemes : [String] {
-        didSet {
-            appInfo.customUrlSchemes = uiCustomUrlSchemes
-        }
-    }
 
     @Published var uiAutoCleanCacheOnLaunch: Bool {
         didSet {
@@ -751,7 +746,6 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         self.jitLaunchScriptJs = appInfo.jitLaunchScriptJs
         self.uiSpoofSDKVersion = appInfo.spoofSDKVersion
         self.uiRemark = appInfo.remark ?? ""
-        self.uiCustomUrlSchemes = appInfo.customUrlSchemes ?? []
         self.uiAutoCleanCacheOnLaunch = appInfo.autoCleanCacheOnLaunch
 #if is32BitSupported
         self.uiIs32bit = appInfo.is32bit

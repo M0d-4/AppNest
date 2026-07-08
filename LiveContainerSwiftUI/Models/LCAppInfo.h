@@ -48,7 +48,6 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 @property NSDate* lastLaunched;
 @property NSDate* installationDate;
 @property NSString* remark;
-@property NSArray<NSString*>* customUrlSchemes;
 @property bool autoCleanCacheOnLaunch;
 @property NSDate* lastAutoCleanDate;
 @property long long autoCleanTotalBytesSaved;

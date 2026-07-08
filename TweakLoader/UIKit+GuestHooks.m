@@ -588,42 +588,6 @@ void handleLiveContainerLaunch(NSURL* url) {
     }
 }
 
-void handleCustomSchemeLaunch(NSURL* url) {
-    NSString *scheme = url.scheme.lowercaseString;
-    NSString *docPath = [NSString stringWithFormat:@"%s/Documents", getenv("LC_HOME_PATH")];
-    NSString *appsPath = [docPath stringByAppendingPathComponent:@"Applications"];
-    NSFileManager *fm = NSFileManager.defaultManager;
-    NSArray *apps = [fm contentsOfDirectoryAtPath:appsPath error:nil];
-    
-    NSString* targetBundleName = nil;
-    for (NSString *appFolder in apps) {
-        NSString *infoPath = [NSString stringWithFormat:@"%@/%@/LCAppInfo.plist", appsPath, appFolder];
-        NSDictionary *appInfo = [NSDictionary dictionaryWithContentsOfFile:infoPath];
-        NSArray *customSchemes = appInfo[@"LCCustomUrlSchemes"];
-        if (customSchemes && [customSchemes containsObject:scheme]) {
-            targetBundleName = appFolder;
-            break;
-        }
-    }
-    
-    if (targetBundleName) {
-        // Construct livecontainer-launch URL required by launchToGuestAppWithURL
-        NSData *data = [url.absoluteString dataUsingEncoding:NSUTF8StringEncoding];
-        NSString *encodedUrl = [data base64EncodedStringWithOptions:0];
-        NSString *lcUrlStr = [NSString stringWithFormat:@"%@://livecontainer-launch?bundle-name=%@&open-url=%@",
-                              NSUserDefaults.lcAppUrlScheme, targetBundleName, encodedUrl];
-        NSURL *lcUrl = [NSURL URLWithString:lcUrlStr];
-        
-        bool isSharedApp = false;
-        NSBundle* bundle = [NSClassFromString(@"LCSharedUtils") findBundleWithBundleId:targetBundleName isSharedAppOut:&isSharedApp];
-        if (bundle) {
-            LCShowSwitchAppConfirmation(lcUrl, targetBundleName, isSharedApp);
-        } else {
-            LCShowAppNotFoundAlert(targetBundleName);
-        }
-    }
-}
-
 BOOL shouldRedirectOpenURLToHost(NSURL* url) {
     NSUserDefaults *ud = NSUserDefaults.lcSharedDefaults;
     return NSUserDefaults.isLiveProcess &&
@@ -642,7 +606,7 @@ BOOL canAppOpenItself(NSURL* url) {
                 [LCSupportedUrlSchemes addObject:[scheme lowercaseString]];
             }
         }
-    }); // It now correctly checks all CFBundleURLSchemes, including our injected ones!
+    });
     return [LCSupportedUrlSchemes containsObject:[url.scheme lowercaseString]];
 }
 
@@ -693,7 +657,6 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
         NSURLComponents* lcUrl = [NSURLComponents componentsWithString:url];
         NSString* realUrlEncoded = lcUrl.queryItems[0].value;
         if(!realUrlEncoded) return;
-        realUrlEncoded = [realUrlEncoded stringByReplacingOccurrencesOfString:@" " withString:@"+"];
         // Convert the base64 encoded url into String
         NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
         NSString *decodedUrl = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
@@ -701,9 +664,8 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
         if([decodedUrl hasPrefix:@"https"]) {
             openUniversalLink(decodedUrl);
         } else {
-            NSURL *decodedUrlObj = [NSURL URLWithString:decodedUrl];
             NSMutableDictionary* newPayload = [payload mutableCopy];
-            newPayload[UIApplicationLaunchOptionsURLKey] = decodedUrlObj ? [decodedUrlObj absoluteString] : decodedUrl;
+            newPayload[UIApplicationLaunchOptionsURLKey] = decodedUrl;
             [self hook__applicationOpenURLAction:action payload:newPayload origin:origin];
         }
         
@@ -716,20 +678,6 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
         LCShowAlert(@"lc.guestTweak.restartToInstall".loc);
         return;
     }
-    
-    // Intercept URLs belonging to other guest apps running in LiveContainer
-    NSURL *parsedUrl = [NSURL URLWithString:url];
-    if (parsedUrl && ![NSBundle.mainBundle.bundlePath.lastPathComponent isEqualToString:@"LiveContainer"]) {
-        NSString *scheme = parsedUrl.scheme.lowercaseString;
-        BOOL isStandardLC = [scheme hasPrefix:@"livecontainer"] || [scheme isEqualToString:@"sidestore"] || [scheme isEqualToString:@"file"] || [scheme hasPrefix:@"http"];
-        
-        if (!isStandardLC && !canAppOpenItself(parsedUrl)) {
-            // It's not standard LC, and it doesn't belong to the current guest app
-            handleCustomSchemeLaunch(parsedUrl);
-            return;
-        }
-    }
-    
     [self hook__applicationOpenURLAction:action payload:payload origin:origin];
     return;
 }
@@ -746,7 +694,6 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
                 NSURLComponents* lcUrl = [NSURLComponents componentsWithString:urlStr];
                 NSString* realUrlEncoded = lcUrl.queryItems[0].value;
                 if(!realUrlEncoded) break;
-                realUrlEncoded = [realUrlEncoded stringByReplacingOccurrencesOfString:@" " withString:@"+"];
                 // Convert the base64 encoded url into String
                 NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
                 decodedUrlStr = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
@@ -888,11 +835,6 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
     } else {
         return [self hook_statusBarFrame];
     }
-}
-
-- (BOOL)hook_openURL:(NSURL*)url {
-    [self hook_openURL:url options:@{} completionHandler:nil];
-    return YES;
 }
 
 @end

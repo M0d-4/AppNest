@@ -1633,7 +1633,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 if jitEnabler == .StosDebug || jitEnabler == .StosDebugLC {
                     let encoded = encodedData.map { "&script=\($0)" } ?? ""
                     if jitEnabler == .StosDebugLC {
-                        if sharedModel.apps.contains(where: { app in
+                        if let app = sharedModel.apps.first(where: { app in
                             app.appInfo.urlSchemes().contains("stosdebug") &&
                             (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                         }) {
@@ -1656,7 +1656,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
                 if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encoded)") {
                     if jitEnabler == .StikJITLC {
-                        if sharedModel.apps.contains(where: { app in
+                        if let app = sharedModel.apps.first(where: { app in
                             app.appInfo.urlSchemes().contains("stikjit") &&
                             (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                         }) {

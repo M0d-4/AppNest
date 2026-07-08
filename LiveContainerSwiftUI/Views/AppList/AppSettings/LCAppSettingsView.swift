@@ -1871,7 +1871,6 @@ struct LCAppSettingsView: View {
     
 
     @StateObject private var renameFolderInput = InputHelper()
-    @StateObject private var addUrlSchemeInput = InputHelper()
     @StateObject private var moveToAppGroupAlert = YesNoHelper()
     @StateObject private var moveToPrivateDocAlert = YesNoHelper()
     @StateObject private var signUnsignedAlert = YesNoHelper()
@@ -2475,14 +2474,6 @@ struct LCAppSettingsView: View {
                 Text("lc.appSettings.fixFilePickerDesc".loc)
             }
             
-            Section {
-                Button("lc.appSettings.forceSign".loc) {
-                    Task { await forceResign() }
-                }
-                .disabled(model.isAppRunning)
-            } footer: {
-                Text("lc.appSettings.forceSignDesc".loc)
-            }
             
             Section {
                 if isStorageLoading {
@@ -2538,38 +2529,7 @@ struct LCAppSettingsView: View {
             } footer: {
                 Text("Clears app cache files and temporary folders. Auto-clean runs at launch for apps that enable it.")
             }
-            Section {
-                ForEach(model.uiCustomUrlSchemes, id: \.self) { scheme in
-                    HStack {
-                        Text(scheme + "://")
-                            .foregroundColor(.primary)
-                        Spacer()
-                        Button(role: .destructive) {
-                            model.uiCustomUrlSchemes.removeAll { $0 == scheme }
-                        } label: {
-                            Image(systemName: "minus.circle.fill")
-                                .foregroundColor(.red)
-                        }
-                    }
-                }
-                Button {
-                    Task { await addCustomUrlScheme() }
-                } label: {
-                    Label("lc.appSettings.addUrlScheme".loc, systemImage: "plus.circle")
-                }
-                
-                Button {
-                    Task { await applyAndReinstallSchemes() }
-                } label: {
-                    Label("lc.appSettings.applyAndReinstall".loc, systemImage: "arrow.triangle.2.circlepath")
-                }
-                .disabled(model.isAppRunning || model.isSigningInProgress)
-            } header: {
-                Text("lc.appSettings.customUrlSchemes".loc)
-            } footer: {
-                Text("lc.appSettings.customUrlSchemesDesc".loc)
-            }
-            
+
             Section {
                 HStack {
                     Text("lc.appList.sort.lastLaunched".loc)
@@ -2586,6 +2546,86 @@ struct LCAppSettingsView: View {
             } header: {
                 Text("lc.common.statistics")
             }
+<<<<<<< HEAD:LiveContainerSwiftUI/Views/AppList/AppSettings/LCAppSettingsView.swift
+=======
+
+        }
+        .navigationTitle(appInfo.displayName())
+        .navigationBarTitleDisplayMode(.inline)
+        .alert("lc.common.error".loc, isPresented: $errorShow) {
+            Button("lc.common.ok".loc, action: {
+            })
+        } message: {
+            Text(errorInfo)
+        }
+        
+        .textFieldAlert(
+            isPresented: $renameFolderInput.show,
+            title: "lc.common.enterNewFolderName".loc,
+            text: $renameFolderInput.initVal,
+            placeholder: "",
+            action: { newText in
+                renameFolderInput.close(result: newText!)
+            },
+            actionCancel: {_ in
+                renameFolderInput.close(result: "")
+            }
+        )
+        .alert("lc.appSettings.toSharedApp".loc, isPresented: $moveToAppGroupAlert.show) {
+            Button {
+                self.moveToAppGroupAlert.close(result: true)
+            } label: {
+                Text("lc.common.move".loc)
+            }
+            Button("lc.common.cancel".loc, role: .cancel) {
+                self.moveToAppGroupAlert.close(result: false)
+            }
+        } message: {
+            Text("lc.appSettings.toSharedAppDesc".loc)
+        }
+        .alert("lc.appSettings.toPrivateApp".loc, isPresented: $moveToPrivateDocAlert.show) {
+            Button {
+                self.moveToPrivateDocAlert.close(result: true)
+            } label: {
+                Text("lc.common.move".loc)
+            }
+            Button("lc.common.cancel".loc, role: .cancel) {
+                self.moveToPrivateDocAlert.close(result: false)
+            }
+        } message: {
+            Text("lc.appSettings.toPrivateAppDesc".loc)
+        }
+        .alert("lc.appSettings.forceSign".loc, isPresented: $signUnsignedAlert.show) {
+            Button {
+                self.signUnsignedAlert.close(result: true)
+            } label: {
+                Text("lc.common.ok".loc)
+            }
+            Button("lc.common.cancel".loc, role: .cancel) {
+                self.signUnsignedAlert.close(result: false)
+            }
+        } message: {
+            Text("lc.appSettings.signUnsignedDesc".loc)
+        }
+        .alert("lc.appSettings.addExternalNonLocalContainer".loc, isPresented: $addExternalNonLocalContainerWarningAlert.show) {
+            Button {
+                self.addExternalNonLocalContainerWarningAlert.close(result: true)
+            } label: {
+                Text("lc.common.continue".loc)
+            }
+            Button("lc.common.cancel".loc, role: .cancel) {
+                self.addExternalNonLocalContainerWarningAlert.close(result: false)
+            }
+        } message: {
+            Text("lc.appSettings.addExternalNonLocalContainerWarningAlert".loc)
+        }
+        .sheet(isPresented: $selectUnusedContainerSheetShow) {
+            LCSelectContainerView(isPresent: $selectUnusedContainerSheetShow, delegate: self)
+        }
+        .fileImporter(isPresented: $choosingStorage, allowedContentTypes: [.folder]) { result in
+            Task { await importDataStorage(result: result) }
+        }
+>>>>>>> parent of d5ca208 (Merge pull request #3 from Majhool/main):LiveContainerSwiftUI/LCAppSettingsView.swift
     }
 
 
@@ -4606,62 +4646,6 @@ extension LCAppSettingsView : LCContainerViewDelegate {
         return container.containerURL
     }
     
-    func addCustomUrlScheme() async {
-        guard let scheme = await addUrlSchemeInput.open(initVal: ""), !scheme.isEmpty else {
-            return
-        }
-        
-        let cleaned = scheme.lowercased()
-            .replacingOccurrences(of: "://", with: "")
-            .trimmingCharacters(in: .whitespacesAndNewlines)
-            
-        // prevent adding reserved schemes
-        if ["livecontainer", "livecontainer2", "livecontainer3", "sidestore", "file", "http", "https"].contains(cleaned) {
-            errorInfo = "lc.appSettings.reservedUrlSchemeError".loc
-            errorShow = true
-            return
-        }
-        
-        if !model.uiCustomUrlSchemes.contains(cleaned) {
-            model.uiCustomUrlSchemes.append(cleaned)
-        }
-    }
-    
-    func applyAndReinstallSchemes() async {
-        model.isSigningInProgress = true
-        defer { model.isSigningInProgress = false }
-        
-        // Gather all custom schemes from all apps
-        var allCustomSchemes: Set<String> = []
-        let allApps = sharedModel.apps + sharedModel.hiddenApps
-        for app in allApps {
-            if let schemes = app.appInfo.customUrlSchemes {
-                allCustomSchemes.formUnion(schemes)
-            }
-        }
-        
-        let schemesArray = Array(allCustomSchemes)
-        
-        await withCheckedContinuation { (continuation: CheckedContinuation<Void, Never>) in
-            LCUtils.repackageLC(withCustomSchemes: schemesArray) { ipaURL, error in
-                DispatchQueue.main.async {
-                    if let error = error {
-                        self.errorInfo = error.localizedDescription
-                        self.errorShow = true
-                    } else if let ipaURL = ipaURL {
-                        // Open the generated IPA with SideStore
-                        if let storeInstallURL = URL(string: String(format: LCUtils.storeInstallURLScheme(), ipaURL.absoluteString)) {
-                            UIApplication.shared.open(storeInstallURL)
-                        } else {
-                            self.errorInfo = "Could not generate Store install URL"
-                            self.errorShow = true
-                        }
-                    }
-                    continuation.resume()
-                }
-            }
-        }
-    }
 }
 
 extension LCAppSettingsView : LCSelectContainerViewDelegate {
