@@ -478,8 +478,15 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     CGFloat viewW = self.view.bounds.size.width;
     CGFloat viewH = self.view.bounds.size.height;
     if (self.presenter.presentationView) {
-        self.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-        self.contentView.frame = CGRectMake(0, 0, viewW, viewH);
+        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
+            CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
+            CGFloat offsetX = (viewW - targetW) / 2.0;
+            self.contentView.autoresizingMask = UIViewAutoresizingNone;
+            self.contentView.frame = CGRectMake(offsetX, 0, targetW, viewH);
+        } else {
+            self.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+            self.contentView.frame = CGRectMake(0, 0, viewW, viewH);
+        }
     }
     [self updateFrameWithSettingsBlock:self.nextUpdateSettingsBlock];
     self.nextUpdateSettingsBlock = nil;
@@ -497,6 +504,9 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         }
         CGFloat w = self.view.frame.size.width / self.scaleRatio;
         CGFloat h = self.view.frame.size.height / self.scaleRatio;
+        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
+            w = MIN(h * (9.0 / 16.0), w);
+        }
         CGRect frame = CGRectMake(0, 0, w, h);
 
         [self updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {

@@ -1212,12 +1212,13 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
     }
     
     // Determines whether this launch should run in forced iPhone (9:16) mode and
-    // writes the shared flag the guest-process hooks read at runtime.
+    // writes the shared flag the guest-process hooks (and multitask window layout
+    // code) read at runtime. Applies in both single-app and multitask launches --
+    // MultitaskManager.isMultitasking() can route even an ordinary tap through the
+    // multitask path whenever another app is already multitasking, so gating this
+    // on isMultitask made the toggle silently do nothing in that common case.
     func syncIPhoneMode(isMultitask: Bool) {
-        var finalForceIPhone = false
-        if !isMultitask && !isHostDeviceIPhone {
-            finalForceIPhone = uiForceIPhoneMode
-        }
+        let finalForceIPhone = !isHostDeviceIPhone && uiForceIPhoneMode
         LCUtils.appGroupUserDefault.set(finalForceIPhone, forKey: "LCRealIPhoneMode")
     }
     
