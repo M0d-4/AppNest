@@ -29,7 +29,6 @@
 
 To use multitasking, hold its banner and tap **"Multitask"**. You can also make Multitask the default launch mode in settings.
 
->[!Note]
 >1. To use multitasking, ensure you select **"Keep App Extensions"** when installing via SideStore/AltStore.  
 >2. If you want to enable JIT for multitasked apps, you’ll need a JIT enabler that supports attaching by PID. (StikDebug)
 
