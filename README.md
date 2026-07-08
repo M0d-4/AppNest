@@ -1,15 +1,11 @@
 <div align="center">
-   <img width="217" height="217" src="./screenshots/livecontainer_icon.png" alt="Logo">
+   <img width="217" height="217" src="./screenshots/appnest_icon.png" alt="Logo">
 </div>
    
 
 <div align="center">
   <h1><b>LiveContainer</b></h1>
   <p><i>An app launcher that runs iOS apps without actually installing them! </i></p>
-</div>
-<h6 align="center">
-
-Crowdin Project: [![Crowdin](https://badges.crowdin.net/livecontainer/localized.svg)](https://crowdin.com/project/livecontainer) &nbsp;| &nbsp; Documentation:[liveconainer.github.io](https://livecontainer.github.io/docs/intro)
 
 # LiveContainer
 
