@@ -4,14 +4,14 @@
    
 
 <div align="center">
-  <h1><b>LiveContainer</b></h1>
+  <h1><b>AppNest</b></h1>
   <p><i>An app launcher that runs iOS apps without actually installing them! </i></p>
 
-# LiveContainer
+# AppNest
 
-- LiveContainer is an app launcher (not emulator or hypervisor) that allows you to run iOS apps inside it.
+- AppNest is an app launcher (not emulator or hypervisor) that allows you to run iOS apps inside it.
 - Allows you to install unlimited apps (3 app/10 app id free developer account limit does not apply here) with only one app & app id. You can also have multiple versions of an app installed with multiple data containers.
-- (Below iOS 26) When JIT is available, codesign is entirely bypassed, no need to sign your apps before installing. Otherwise, your app will be signed with the same certificate used by LiveContainer.
+- (Below iOS 26) When JIT is available, codesign is entirely bypassed, no need to sign your apps before installing. Otherwise, your app will be signed with the same certificate used by AppNest.
 
 ## Requirements
 
@@ -23,7 +23,7 @@
 # Features & Guides
 
 ### Installing Apps
-- Open LiveContainer, tap the plus icon in the upper right hand corner and select IPA files to install.
+- Open AppNest, tap the plus icon in the upper right hand corner and select IPA files to install.
 - Choose the app you want to open in the next launch.
 - You can long-press the app to manage it.
 
@@ -33,20 +33,20 @@ To use multitasking, hold its banner and tap **"Multitask"**. You can also make 
 >2. If you want to enable JIT for multitasked apps, you’ll need a JIT enabler that supports attaching by PID. (StikDebug)
 
 ### Fix File Picker & Local Notification
-Some apps may experience issues with their file pickers or not be able to apply for notification permission in LiveContainer. To resolve this, enable "Fix File Picker" & "Fix Local Notifications" accordingly in the app-specific settings.
+Some apps may experience issues with their file pickers or not be able to apply for notification permission in AppNest. To resolve this, enable "Fix File Picker" & "Fix Local Notifications" accordingly in the app-specific settings.
 
 ### "Open In App" Support
-- Tap the link icon in the top-right corner of the "Apps" tab and input the URL. LiveContainer will detect the appropriate app and ask if you want to launch it.
-- What's more, you can share a web page to LiveContainer using [this shortcut](https://www.icloud.com/shortcuts/44ea82ce7ed8469ea24198c375db09a0). Be sure to add this shortcut to "Favorites" in share sheet actions.
+- Tap the link icon in the top-right corner of the "Apps" tab and input the URL. AppNest will detect the appropriate app and ask if you want to launch it.
+- What's more, you can share a web page to AppNest using [this shortcut](https://www.icloud.com/shortcuts/44ea82ce7ed8469ea24198c375db09a0). Be sure to add this shortcut to "Favorites" in share sheet actions.
 
 ## Building
 Open Xcode, edit `DEVELOPMENT_TEAM[config=Debug]` in `xcconfigs/Global.xcconfig` to your team id and compile.
 
 ## Project structure
 ### Main executable
-- Core of LiveContainer
+- Core of AppNest
 - Contains the logic of setting up guest environment and loading guest app.
-- If no app is selected, it loads LiveContainerSwiftUI.
+- If no app is selected, it loads AppNestSwiftUI.
 
 ### MultitaskSupport
 - Contains the implementation of multitasking feature.
@@ -57,13 +57,13 @@ Open Xcode, edit `DEVELOPMENT_TEAM[config=Debug]` in `xcconfigs/Global.xcconfig`
 
 ### TweakLoader
 - A simple tweak injector, which loads CydiaSubstrate and loads tweaks.
-- Injected to every app you install in LiveContainer.
+- Injected to every app you install in AppNest.
 
 ### ZSign
-- The app signer shipped with LiveContainer.
+- The app signer shipped with AppNest.
 - Originally made by [zhlynn](https://github.com/zhlynn/zsign).
-- LiveContainer uses [Feather's](https://github.com/khcrysalis/Feather) version of ZSign modified by khcrysalis.
-- Changes are made to meet LiveContainer's needs.
+- AppNest uses [Feather's](https://github.com/khcrysalis/Feather) version of ZSign modified by khcrysalis.
+- Changes are made to meet AppNest's needs.
 
 ## How does it work?
 
@@ -98,14 +98,14 @@ Open Xcode, edit `DEVELOPMENT_TEAM[config=Debug]` in `xcconfigs/Global.xcconfig`
 - The guest app's entry point calls `UIApplicationMain` and start up like any other iOS apps.
 
 ### Multi-Account support & Keychain Semi-Separation
-[128 keychain access groups](./entitlements.xml) are created and LiveContainer allocates them randomly to each container of the same app. So you can create 128 container with different keychain access groups.
+[128 keychain access groups](./entitlements.xml) are created and AppNest allocates them randomly to each container of the same app. So you can create 128 container with different keychain access groups.
 
 ## Limitations
 - Entitlements from the guest app are not applied to the host app. This isn't a big deal since sideloaded apps requires only basic entitlements.
 - App Permissions are globally applied.
 - Guest app containers are not sandboxed. This means one guest app can access other guest apps' data.
-- App extensions aren't supported. they cannot be registered because: LiveContainer is sandboxed, SpringBoard doesn't know what apps are installed in LiveContainer, and they take up App ID.
-- Multitasking can be achieved by using multiple LiveContainer and the multitasking feature. However, while we were able to fix physical keyboard input issue on iPadOS (https://github.com/LiveContainer/LiveContainer/issues/524), iPhone Mirroring uses different checks which still broke it (https://github.com/LiveContainer/LiveContainer/issues/793).
+- App extensions aren't supported. they cannot be registered because: AppNest is sandboxed, SpringBoard doesn't know what apps are installed in AppNest, and they take up App ID.
+- Multitasking can be achieved by using multiple AppNest and the multitasking feature. However, while we were able to fix physical keyboard input issue on iPadOS (https://github.com/AppNest/AppNest/issues/524), iPhone Mirroring uses different checks which still broke it (https://github.com/AppNest/AppNest/issues/793).
 - Remote push notification will not work
 - Querying custom URL schemes might not work(?)
 
