@@ -13,59 +13,6 @@
 - Allows you to install unlimited apps (3 app/10 app id free developer account limit does not apply here) with only one app & app id. You can also have multiple versions of an app installed with multiple data containers.
 - (Below iOS 26) When JIT is available, codesign is entirely bypassed, no need to sign your apps before installing. Otherwise, your app will be signed with the same certificate used by LiveContainer.
 
-> [!CAUTION]
-> **Important Notice Regarding Third-Party Builds of LiveContainer**
->
-> We have recently noticed the appearance of certain closed-source third-party builds of LiveContainer. Please be aware that all your apps are installed within LiveContainer, which means these third-party builds **have full access to your data, including sensitive information such as keychain items and login credentials**. 
-> 
-> Furthermore, please note that we do not provide any support for issues of these third-party builds.
-
-
-# Installation
-**LiveContainer comes with a standalone version and a version with built-in SideStore. [Please read the install guide here](https://livecontainer.github.io/docs/installation)**
-
-If you encounter any issue please [read our FAQ here](https://livecontainer.github.io/docs/faq)
-
-### Standalone 
-<table>
-<tr>
-<td>
-Stable
-</td>
-<td>
-<a href="https://stikstore.app/altdirect/?url=https://github.com/LiveContainer/LiveContainer/releases/download/1.0/apps.json&exclude=livecontainer" target="_blank">
-   <img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/AltSource_Blue.png" alt="Add AltSource" width="200"/>
-</a>
-</td>
-<td>
-<a href="https://github.com/LiveContainer/LiveContainer/releases/latest/download/LiveContainer.ipa" target="_blank">
-   <img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/Download_Blue.png" alt="Download .ipa" width="200"/>
-</a>
-</td>
-</tr>
-<tr>
-<td>
-Nightly
-</td>
-<td>
-<a href="https://stikstore.app/altdirect/?url=https://github.com/LiveContainer/LiveContainer/releases/download/nightly/apps_nightly.json&exclude=livecontainer" target="_blank">
-   <img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/AltSource_Blue.png" alt="Add AltSource" width="200"/>
-</a>
-</td>
-<td>
-<a href="https://github.com/LiveContainer/LiveContainer/releases/download/nightly/LiveContainer.ipa" target="_blank">
-   <img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/Download_Blue.png" alt="Download .ipa" width="200"/>
-</a>
-</td>
-</tr>
-</table>
-
-### LiveContainer+SideStore
-|Stable|Nightly|
-|:-:|:-:|
-|<a href="https://github.com/LiveContainer/LiveContainer/releases/latest/download/LiveContainer+SideStore.ipa" target="_blank"><img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/Download_Blue.png" alt="Download .ipa" width="200" /></a>|<a href="https://github.com/LiveContainer/LiveContainer/releases/download/nightly/LiveContainer+SideStore.ipa" target="_blank"><img src="https://raw.githubusercontent.com/StikStore/altdirect/refs/heads/main/assets/png/Download_Blue.png" alt="Download .ipa" width="200" /></a>|
-
-
 ## Requirements
 
 - iOS/iPadOS 15+
@@ -80,24 +27,11 @@ Nightly
 - Choose the app you want to open in the next launch.
 - You can long-press the app to manage it.
 
-### [Add Apps to Home Screen](https://livecontainer.github.io/docs/guides/add-to-home-screen)
-
-### [Multiple LiveContainers](https://livecontainer.github.io/docs/guides/multiple-livecontainers)
-Using multiple LiveContainers allows you to run multiples different apps simultaneously, with *almost* seamless data transfer between the LiveContainers.
-
-### [Multitasking](https://livecontainer.github.io/docs/guides/multitask)
-You can now launch multiple apps simultaneously in in-app virtual windows. These windows can be resized, scaled, and even displayed using the native Picture-in-Picture (PiP) feature. On iPads, apps can run in native window mode, displaying each app in a separate system window. And if you wish, you can choose to run apps in multitasking mode by default in settings.
-
 To use multitasking, hold its banner and tap **"Multitask"**. You can also make Multitask the default launch mode in settings.
 
 >[!Note]
 >1. To use multitasking, ensure you select **"Keep App Extensions"** when installing via SideStore/AltStore.  
 >2. If you want to enable JIT for multitasked apps, you’ll need a JIT enabler that supports attaching by PID. (StikDebug)
-
-### [JIT Support](https://livecontainer.github.io/docs/guides/jit-support)
-### [Installing external tweaks](https://livecontainer.github.io/docs/guides/tweaks)
-### [Multiple Containers/External Containers](https://livecontainer.github.io/docs/guides/containers-and-external-data)
-### [Hiding Apps](https://livecontainer.github.io/docs/guides/lock-app)
 
 ### Fix File Picker & Local Notification
 Some apps may experience issues with their file pickers or not be able to apply for notification permission in LiveContainer. To resolve this, enable "Fix File Picker" & "Fix Local Notifications" accordingly in the app-specific settings.
@@ -105,10 +39,6 @@ Some apps may experience issues with their file pickers or not be able to apply 
 ### "Open In App" Support
 - Tap the link icon in the top-right corner of the "Apps" tab and input the URL. LiveContainer will detect the appropriate app and ask if you want to launch it.
 - What's more, you can share a web page to LiveContainer using [this shortcut](https://www.icloud.com/shortcuts/44ea82ce7ed8469ea24198c375db09a0). Be sure to add this shortcut to "Favorites" in share sheet actions.
-
-
-## Compatibility
-Unfortunately, not all apps work in LiveContainer, so we have a [compatibility list](https://github.com/LiveContainer/LiveContainer/labels/compatibility) to tell if there is apps that have issues. If they aren't on this list, then it's likely going run. However, if it doesn't work, please make an [issue](https://github.com/LiveContainer/LiveContainer/issues/new/choose) about it.
 
 ## Building
 Open Xcode, edit `DEVELOPMENT_TEAM[config=Debug]` in `xcconfigs/Global.xcconfig` to your team id and compile.
@@ -118,10 +48,6 @@ Open Xcode, edit `DEVELOPMENT_TEAM[config=Debug]` in `xcconfigs/Global.xcconfig`
 - Core of LiveContainer
 - Contains the logic of setting up guest environment and loading guest app.
 - If no app is selected, it loads LiveContainerSwiftUI.
-
-### LiveContainerSwiftUI
-- SwiftUI rewrite of LiveContainerUI (by @hugeBlack)
-- Language file `Localizable.xcstrings` is in here for multilingual support. To help us translate LiveContainer, please visit [our crowdin project](https://crowdin.com/project/livecontainer)
 
 ### MultitaskSupport
 - Contains the implementation of multitasking feature.
@@ -158,10 +84,6 @@ Open Xcode, edit `DEVELOPMENT_TEAM[config=Debug]` in `xcconfigs/Global.xcconfig`
   - Replace the address with one we have control of
 - Put the original `dyld4::APIs::_NSGetExecutablePath` back
 
-> Old Method
->- Call `_NSGetExecutablePath` with an invalid buffer pointer input -> SIGSEGV
->- Do some [magic stuff](https://github.com/khanhduytran0/LiveContainer/blob/5ef1e6a/main.m#L74-L115) to overwrite the contents of executable_path.
-
 ### Patching `NSBundle.mainBundle`
 - This property is overwritten with the guest app's bundle.
 
@@ -190,9 +112,6 @@ Open Xcode, edit `DEVELOPMENT_TEAM[config=Debug]` in `xcconfigs/Global.xcconfig`
 
 ## TODO
 - Use ChOma instead of custom MachO parser
-
-## License
-[Apache License 2.0](https://github.com/khanhduytran0/LiveContainer/blob/main/LICENSE)
 
 ## Credits
 - [xpn's blogpost: Restoring Dyld Memory Loading](https://blog.xpnsec.com/restoring-dyld-memory-loading)
