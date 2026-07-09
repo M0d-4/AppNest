@@ -460,10 +460,15 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 // Leading: spinner / SideStore / Help
                 ToolbarItemGroup(placement: .topBarLeading) {
                     if !isMultiSelectMode {
-                        Button {
-                            isSearchPresented = true
-                        } label: {
-                            Image(systemName: "magnifyingglass")
+                        // iPad renders its own native search field for .searchable
+                        // automatically, so a manual button there just duplicates it.
+                        // iPhone hides it behind a pull/tap, so it needs the button.
+                        if SharedModel.isPhone {
+                            Button {
+                                isSearchPresented = true
+                            } label: {
+                                Image(systemName: "magnifyingglass")
+                            }
                         }
                         if installprogressVisible {
                             ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
@@ -482,16 +487,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             Button("Help", systemImage: "questionmark") {
                                 helpPresent = true
                             }
-                        }
-                        // Moved here from the trailing toolbar group, per request
-                        // to put "Select" on the opposite side of the bar.
-                        Button {
-                            withAnimation { isMultiSelectMode = true }
-                            sharedModel.isMultiSelectMode = true
-                        } label: {
-                            Image(systemName: "checkmark.circle")
-                                .foregroundColor(.green)
-                                .font(.system(size: 18, weight: .semibold))
                         }
                     }
                 }
@@ -606,6 +601,14 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             }
                         } label: {
                             Label("Sort by", systemImage: "line.3.horizontal.decrease.circle")
+                        }
+                        Button {
+                            withAnimation { isMultiSelectMode = true }
+                            sharedModel.isMultiSelectMode = true
+                        } label: {
+                            Image(systemName: "checkmark.circle")
+                                .foregroundColor(.green)
+                                .font(.system(size: 18, weight: .semibold))
                         }
                     }
                 }

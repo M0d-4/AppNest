@@ -178,6 +178,16 @@ static void Real_UIKitGuestHooksInit(void) {
     if (!isSideStore) {
         swizzle(UIWindow.class, @selector(setFrame:), @selector(hook_setFrame:));
         swizzle(UIScreen.class, @selector(bounds), @selector(hook_UIScreen_bounds));
+        // Scene-managed windows (the normal case for any modern, non-multitask
+        // app) are sized directly by the window scene and often never call the
+        // public -setFrame: setter at all, so the swizzle above alone never
+        // fires for them — this is why forced iPhone mode only ever worked in
+        // multitask mode, which sets frames explicitly through a different path.
+        // -layoutSubviews fires reliably any time a window's size is touched
+        // regardless of how it got there, so re-asserting the constrained frame
+        // there catches the scene-managed case too. Setting .frame from inside
+        // it routes back through hook_setFrame above, which is idempotent.
+        swizzle(UIWindow.class, @selector(layoutSubviews), @selector(hook_layoutSubviews));
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification
                                                           object:nil
                                                            queue:[NSOperationQueue mainQueue]
@@ -1072,6 +1082,34 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
         [self hook_setFrame:CGRectMake(offsetX, 0, targetW, realH)];
     } else {
         [self hook_setFrame:CGRectMake(0, 0, realW, realH)];
+    }
+}
+
+// Scene-managed windows are often never explicitly sent -setFrame: at all —
+// the scene sizes them directly — so hook_setFrame above never fires for them.
+// -layoutSubviews IS called reliably any time the window's size is touched
+// (initial presentation, rotation, scene geometry changes), so re-assert the
+// constrained frame here too. Setting .frame routes back through the
+// hook_setFrame swizzle above, which is idempotent, so this can't loop.
+- (void)hook_layoutSubviews {
+    [self hook_layoutSubviews];
+    NSString *lcappid = NSUserDefaults.lcGuestAppId;
+    BOOL isSideStore = [lcappid.lowercaseString containsString:@"sidestore"];
+    BOOL isMainAppWindow = (self.windowLevel == UIWindowLevelNormal);
+    if (isSideStore || !isMainAppWindow) return;
+    if (![NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) return;
+
+    UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
+    CGRect screenBounds = scene ? scene.coordinateSpace.bounds : self.frame;
+    CGFloat realH = screenBounds.size.height;
+    CGFloat realW = screenBounds.size.width;
+    if (realH == 0 || realW == 0) return;
+
+    CGFloat targetW = MIN(realW, realH * (9.0 / 16.0));
+    CGFloat offsetX = (realW - targetW) / 2.0;
+    CGRect targetFrame = CGRectMake(offsetX, 0, targetW, realH);
+    if (!CGRectEqualToRect(self.frame, targetFrame)) {
+        self.frame = targetFrame;
     }
 }
 

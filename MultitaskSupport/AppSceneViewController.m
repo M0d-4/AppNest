@@ -504,16 +504,19 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         }
         CGFloat w = self.view.frame.size.width / self.scaleRatio;
         CGFloat h = self.view.frame.size.height / self.scaleRatio;
+        CGFloat offsetX = 0;
         if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-            w = MIN(h * (9.0 / 16.0), w);
+            CGFloat targetW = MIN(h * (9.0 / 16.0), w);
+            offsetX = (w - targetW) / 2.0;
+            w = targetW;
         }
-        CGRect frame = CGRectMake(0, 0, w, h);
+        CGRect frame = CGRectMake(offsetX, 0, w, h);
 
         [self updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
             settings.deviceOrientation = UIDevice.currentDevice.orientation;
             settings.interfaceOrientation = self.view.window.windowScene.interfaceOrientation;
             if(UIInterfaceOrientationIsLandscape(settings.interfaceOrientation)) {
-                CGRect frame2 = CGRectMake(0, 0, frame.size.height, frame.size.width);
+                CGRect frame2 = CGRectMake(0, offsetX, frame.size.height, frame.size.width);
                 settings.frame = frame2;
             } else {
                 settings.frame = frame;
