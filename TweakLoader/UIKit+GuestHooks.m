@@ -176,6 +176,8 @@ static void Real_UIKitGuestHooksInit(void) {
     NSString *forceIPhoneAppId = NSUserDefaults.lcGuestAppId;
     BOOL isSideStore = [forceIPhoneAppId.lowercaseString containsString:@"sidestore"];
     if (!isSideStore) {
+        NSLog(@"[ForceIPhoneMode] init for appId=%@ LCRealIPhoneMode=%d", lcGuestAppId,
+              [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]);
         swizzle(UIWindow.class, @selector(setFrame:), @selector(hook_setFrame:));
         swizzle(UIScreen.class, @selector(bounds), @selector(hook_UIScreen_bounds));
         // Scene-managed windows (the normal case for any modern, non-multitask
@@ -1072,6 +1074,9 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
     CGRect screenBounds = scene ? scene.coordinateSpace.bounds : frame;
     CGFloat realH = screenBounds.size.height;
     CGFloat realW = screenBounds.size.width;
+    NSLog(@"[ForceIPhoneMode] hook_setFrame called requestedFrame=%@ isMainAppWindow=%d windowLevel=%f LCRealIPhoneMode=%d",
+          NSStringFromCGRect(frame), isMainAppWindow, self.windowLevel,
+          [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]);
     if (realH == 0 || realW == 0) {
         [self hook_setFrame:frame];
         return;
@@ -1091,6 +1096,13 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
 // (initial presentation, rotation, scene geometry changes), so re-assert the
 // constrained frame here too. Setting .frame routes back through the
 // hook_setFrame swizzle above, which is idempotent, so this can't loop.
+//
+// IMPORTANT: only do this when the window's frame still looks untouched
+// (matches the scene's full bounds). In multitask mode, AppSceneViewController
+// deliberately sizes/positions this same window to a smaller tile via its own
+// settings.frame updates — if we unconditionally reassert our own calculation
+// on every layout pass, we fight that and undo it, which is what broke forced
+// iPhone mode in multitask after this hook was first added.
 - (void)hook_layoutSubviews {
     [self hook_layoutSubviews];
     NSString *lcappid = NSUserDefaults.lcGuestAppId;
@@ -1104,6 +1116,13 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
     CGFloat realH = screenBounds.size.height;
     CGFloat realW = screenBounds.size.width;
     if (realH == 0 || realW == 0) return;
+
+    BOOL looksUntouched = CGRectEqualToRect(self.frame, screenBounds) ||
+        (self.frame.origin.x == 0 && self.frame.origin.y == 0 &&
+         fabs(self.frame.size.width - realW) < 1.0 && fabs(self.frame.size.height - realH) < 1.0);
+    NSLog(@"[ForceIPhoneMode] hook_layoutSubviews currentFrame=%@ screenBounds=%@ looksUntouched=%d",
+          NSStringFromCGRect(self.frame), NSStringFromCGRect(screenBounds), looksUntouched);
+    if (!looksUntouched) return;
 
     CGFloat targetW = MIN(realW, realH * (9.0 / 16.0));
     CGFloat offsetX = (realW - targetW) / 2.0;

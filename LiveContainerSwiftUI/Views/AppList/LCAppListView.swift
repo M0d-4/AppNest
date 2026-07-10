@@ -417,7 +417,13 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             appList(apps: filteredHiddenApps, hidden: !sharedModel.isHiddenAppUnlocked, gridID: "hiddenApps")
                             .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
                             .onTapGesture {
-                                if !isMultiSelectMode {
+                                // Previously this was suppressed any time isMultiSelectMode was
+                                // true, which meant if hidden apps weren't unlocked yet when you
+                                // entered multiselect, there was no way to reveal them at all —
+                                // you'd have to exit, authenticate, then re-enter. Only suppress
+                                // it once already unlocked, so it doesn't fight with tapping rows
+                                // to select them, but always allow the initial reveal.
+                                if !sharedModel.isHiddenAppUnlocked || !isMultiSelectMode {
                                     Task { await authenticateUser() }
                                 }
                             }
