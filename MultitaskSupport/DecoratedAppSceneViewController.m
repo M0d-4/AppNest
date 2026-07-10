@@ -468,23 +468,25 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     [_appSceneVC.presenter.scene updateSettings:newSettings withTransitionContext:newContext completion:nil];
     return;
     }
-    CGRect newFrame = CGRectMake(0, 0, viewW, viewH);
+    CGFloat offsetX = 0;
+    CGFloat constrainedW = viewW;
     if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-        CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
-        CGFloat offsetX = (viewW - targetW) / 2.0;
+        constrainedW = MIN(viewH * (9.0 / 16.0), viewW);
+        offsetX = (viewW - constrainedW) / 2.0;
         _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingNone;
-        _appSceneVC.contentView.frame = CGRectMake(offsetX, 0, targetW, viewH);
+        _appSceneVC.contentView.frame = CGRectMake(offsetX, 0, constrainedW, viewH);
     } else {
         _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         _appSceneVC.contentView.frame = CGRectMake(0, 0, viewW, viewH);
     }
+    CGRect newFrame = CGRectMake(offsetX, 0, constrainedW, viewH);
 
 
     
     if(UIInterfaceOrientationIsLandscape(baseSettings.interfaceOrientation)) {
-        newSettings.frame = CGRectMake(0, 0, newFrame.size.height, newFrame.size.width);
+        newSettings.frame = CGRectMake(0, offsetX, newFrame.size.height, newFrame.size.width);
     } else {
-        newSettings.frame = CGRectMake(0, 0, newFrame.size.width, newFrame.size.height);
+        newSettings.frame = CGRectMake(newFrame.origin.x, 0, newFrame.size.width, newFrame.size.height);
     }
     
     [_appSceneVC.presenter.scene updateSettings:newSettings withTransitionContext:newContext completion:nil];

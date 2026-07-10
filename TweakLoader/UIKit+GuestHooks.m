@@ -64,6 +64,32 @@ static void LCSwizzleClassIfPresentWithSourceClass(Class cls, Class sourceCls, S
     }
 }
 
+// Plain method_exchangeImplementations (what `swizzle()` uses) is only safe when
+// `cls` directly overrides `originalAction` itself. If `originalAction` is only
+// ever inherited (e.g. -layoutSubviews, which UIWindow may not concretely
+// override — it could just be UIView's implementation resolved via inheritance),
+// exchanging it swaps the implementation at whichever class actually defines
+// it, which could be the shared superclass — silently affecting every instance
+// of that superclass, not just `cls`. class_addMethod first guarantees `cls`
+// gets its own copy of the original implementation before the swap, so the
+// exchange is scoped to exactly `cls` regardless of where it was inherited from.
+static void LCSwizzleInstanceMethodSafely(Class cls, SEL originalAction, SEL swizzledAction) {
+    if (!cls) return;
+    Method originalMethod = class_getInstanceMethod(cls, originalAction);
+    Method swizzledMethod = class_getInstanceMethod(cls, swizzledAction);
+    if (!originalMethod || !swizzledMethod) return;
+
+    BOOL didAddOriginal = class_addMethod(cls, originalAction,
+                                           method_getImplementation(originalMethod),
+                                           method_getTypeEncoding(originalMethod));
+    if (didAddOriginal) {
+        // cls didn't have its own copy — class_addMethod just gave it one.
+        // Re-fetch so we exchange against that new copy, not the inherited one.
+        originalMethod = class_getInstanceMethod(cls, originalAction);
+    }
+    method_exchangeImplementations(originalMethod, swizzledMethod);
+}
+
 //⭐️⭐️⭐️⤵️
 static void Real_UIKitGuestHooksInit(void);
 static NSString *const LCExternalURLBlockBypassDepthKey = @"LCExternalURLBlockBypassDepth";
@@ -189,7 +215,12 @@ static void Real_UIKitGuestHooksInit(void) {
         // regardless of how it got there, so re-asserting the constrained frame
         // there catches the scene-managed case too. Setting .frame from inside
         // it routes back through hook_setFrame above, which is idempotent.
-        swizzle(UIWindow.class, @selector(layoutSubviews), @selector(hook_layoutSubviews));
+        // Uses the safe variant: UIWindow likely doesn't concretely override
+        // -layoutSubviews itself (it'd just resolve to UIView's), and a plain
+        // exchange in that case would swap UIView's shared implementation —
+        // affecting every view in the app, not just windows, and likely
+        // explaining why this silently never worked as intended.
+        LCSwizzleInstanceMethodSafely(UIWindow.class, @selector(layoutSubviews), @selector(hook_layoutSubviews));
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification
                                                           object:nil
                                                            queue:[NSOperationQueue mainQueue]
