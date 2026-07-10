@@ -1211,7 +1211,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
     // MultitaskManager.isMultitasking() can route even an ordinary tap through the
     // multitask path whenever another app is already multitasking, so gating this
     // on isMultitask made the toggle silently do nothing in that common case.
-    func syncIPhoneMode(isMultitask: Bool) {
+    func syncIPhoneMode(isMultitask: Bool?) {
         let finalForceIPhone = !isHostDeviceIPhone && uiForceIPhoneMode
         LCUtils.appGroupUserDefault.set(finalForceIPhone, forKey: "LCRealIPhoneMode")
     }
@@ -1237,10 +1237,20 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             uiSelectedContainer = uiContainers.first { $0.folderName == containerFolderName } ?? uiSelectedContainer
         }
         let currentDataFolder = containerFolderName ?? uiSelectedContainer?.folderName
+        var is32bit = false
+        
+        #if is32BitSupported
+        is32bit = appInfo.is32bit
+        #endif
 
-       let multitask = multitask ?? shouldLaunchInMultitaskMode;
+        var shouldMultitask = multitask ?? shouldLaunchInMultitaskMode
+        let jitEnabler = JITEnablerType(rawValue: LCUtils.appGroupUserDefault.integer(forKey: "LCJITEnablerType"))
+        let supportsPIDJIT = jitEnabler == .StikJIT || jitEnabler == .StikJITLC || jitEnabler == .StosDebug || jitEnabler == .StosDebugLC
+        if (appInfo.isJITNeeded || is32bit) && !supportsPIDJIT {
+            shouldMultitask = false
+        }
 
-        if MultitaskManager.isMultitasking() || multitask,
+        if MultitaskManager.isMultitasking() || shouldMultitask,
            let currentDataFolder {
             if await bringExistingMultitaskWindowIfNeeded(dataUUID: currentDataFolder, urlScheme: urlStr) {
                 return
@@ -1275,7 +1285,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         }
         
         // find a free lc to run non-multitasking shared app. If none, ask user if they want to terminate all multitasking apps
-        if MultitaskManager.isMultitasking() && !multitask {
+        if MultitaskManager.isMultitasking() && !shouldMultitask {
             if self.uiIsShared {
                 var freeScheme: String? = nil
                 LCUtils.forEachInstalledLC(isFree: true) { scheme, shouldBreak in
@@ -1333,17 +1343,12 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
                 UserDefaults.standard.setValue(urlStr, forKey: "launchAppUrlScheme")
             }
             UserDefaults.standard.set(uiSelectedContainer?.folderName, forKey: "selectedContainer")
-            var is32bit = false
-            
-            #if is32BitSupported
-            is32bit = appInfo.is32bit
-            #endif
             var jitNeeded = appInfo.isJITNeeded
             if let forceJIT {
                 jitNeeded = forceJIT
             }
             if jitNeeded || is32bit {
-                if multitask, #available(iOS 17.4, *) {
+                if shouldMultitask, #available(iOS 17.4, *) {
                     try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                         LCUtils.launchMultitaskGuestApp(appInfo.displayName()) { pidNumber, error in
                             if let error {
@@ -1376,7 +1381,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
                         await delegate?.jitLaunch(appName: self.appInfo.displayName())
                     }
                 }
-            } else if multitask, #available(iOS 16.0, *) {
+            } else if shouldMultitask, #available(iOS 16.0, *) {
                 try await LCUtils.launchMultitaskGuestApp(appInfo.displayName())
             } else {
                 if #available(iOS 26.0, *), FileManager.default.fileExists(atPath: "\(appInfo.bundlePath()!)/Frameworks/MetalANGLE.framework/MetalANGLE") {

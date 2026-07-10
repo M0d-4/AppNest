@@ -218,24 +218,30 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @AppStorage("LCLaunchInMultitaskMode") var launchInMultitaskMode = false
     @AppStorage("LCAppListInterfaceStyle", store: LCUtils.appGroupUserDefault) var appListInterfaceStyle: LCAppListInterfaceStyle = .list
     @AppStorage("LCAppGridShowLabels", store: LCUtils.appGroupUserDefault) var appGridShowLabels = false
+    @AppStorage("darkModeIcon", store: LCUtils.appGroupUserDefault) private var darkModeIcon = false
     
     @State private var isViewAppeared = false
     
     @ObservedObject var searchContext: SearchContext
+    @State private var isSearchPresented = false
     private var downloadHelper: DownloadHelper { sharedModel.downloadHelper }
 
     
-    // Multi-select deletion
+    // Multi-select: apps are selected once (freely, regardless of which action
+    // you intend), then Delete or Lock/Hide act directly on that selection.
+    // The one exception is the "delete data" toggle: it stays disabled until
+    // the trash button has been pressed once to arm delete intent, so it can't
+    // be flipped while e.g. only intending to lock/hide.
     @State private var isMultiSelectMode = false
     @State private var selectedAppsForDeletion: Set<LCAppModel> = []
-    @State private var deleteAppData = false
     @State private var isDeleting = false
-    @StateObject private var multiDeleteConfirmAlert = YesNoHelper()
+    @State private var isDeleteArmed = false
+    @State private var isLockArmed = false
+    @State private var deleteAppData = false
+    @State private var deleteConfirmDialogPresented = false
     @StateObject private var lockHideActionAlert = AlertHelper<String>()
     @StateObject private var unhideActionAlert = AlertHelper<String>()
     @State private var isDrainingInstallQueue = false
-    @State private var isLockHideMode = false
-    @State private var isDeleteMode = false
 
 
 
@@ -412,7 +418,13 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             appList(apps: filteredHiddenApps, hidden: !sharedModel.isHiddenAppUnlocked, gridID: "hiddenApps")
                             .animation(.easeInOut, value: sharedModel.isHiddenAppUnlocked)
                             .onTapGesture {
-                                if !isMultiSelectMode {
+                                // Previously this was suppressed any time isMultiSelectMode was
+                                // true, which meant if hidden apps weren't unlocked yet when you
+                                // entered multiselect, there was no way to reveal them at all —
+                                // you'd have to exit, authenticate, then re-enter. Only suppress
+                                // it once already unlocked, so it doesn't fight with tapping rows
+                                // to select them, but always allow the initial reveal.
+                                if !sharedModel.isHiddenAppUnlocked || !isMultiSelectMode {
                                     Task { await authenticateUser() }
                                 }
                             }
@@ -455,16 +467,23 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 // Leading: spinner / SideStore / Help
                 ToolbarItemGroup(placement: .topBarLeading) {
                     if !isMultiSelectMode {
+                        // iPad renders its own native search field for .searchable
+                        // automatically, so a manual button there just duplicates it.
+                        // iPhone hides it behind a pull/tap, so it needs the button.
+                        if SharedModel.isPhone {
+                            Button {
+                                isSearchPresented = true
+                            } label: {
+                                Image(systemName: "magnifyingglass")
+                            }
+                        }
                         if installprogressVisible {
                             ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
                         } else if UserDefaults.sideStoreExist() {
                             Button {
                                 LCUtils.openSideStore(delegate: self)
                             } label: {
-                                Image("SideStoreBadge")
-                                    .resizable()
-                                    .renderingMode(.template)
-                                    .foregroundColor(SharedModel.isLiquidGlassEnabled ? Color.primary : Color.accentColor)
+                                IconImageView(icon: BuiltInSideStoreAppInfo.shared.iconIsDarkIcon(darkModeIcon))
                                     .frame(width: UIFont.preferredFont(forTextStyle: .body).lineHeight,
                                            height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
                             }
@@ -478,57 +497,71 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 // Trailing: swaps between normal and multiselect content
                 ToolbarItemGroup(placement: .topBarTrailing) {
                     if isMultiSelectMode {
-                        // Delete-data toggle
+                        // Delete-data toggle: only meaningful once delete intent is
+                        // armed (trash pressed once), so it's disabled until then.
                         Button {
                             withAnimation { deleteAppData.toggle() }
                         } label: {
                             Image(systemName: deleteAppData ? "externaldrive.fill.badge.minus" : "externaldrive.badge.minus")
-                                .foregroundColor(deleteAppData ? .red : .primary)
+                                .foregroundColor(!isDeleteArmed ? .secondary : (deleteAppData ? .red : .primary))
                         }
-                        .disabled(isDeleting)
+                        .disabled(isDeleting || !isDeleteArmed)
 
-                        // Lock & Hide / Unlock & Unhide:
-                        // First press: enter lock-pick mode, hidden apps show unlock icon
-                        // Second press with nothing selected: exit lock mode
-                        // Second press with apps selected: lock visible, unlock hidden
+                        // Trash: first press arms delete intent (enables the data
+                        // toggle above); second press with apps selected confirms;
+                        // second press with nothing selected disarms again. Can't
+                        // be armed while Lock/Hide is armed — the two are mutually
+                        // exclusive so you can't multi-lock and multi-delete at once.
                         Button {
                             withAnimation {
-                                if !isLockHideMode {
-                                    isLockHideMode = true
-                                    isDeleteMode = false
-                                    selectedAppsForDeletion.removeAll()
+                                if !isDeleteArmed {
+                                    isDeleteArmed = true
+                                    isLockArmed = false
                                 } else if selectedAppsForDeletion.isEmpty {
-                                    isLockHideMode = false
+                                    isDeleteArmed = false
+                                    deleteAppData = false
+                                } else {
+                                    deleteConfirmDialogPresented = true
+                                }
+                            }
+                        } label: {
+                            Image(systemName: "trash")
+                                .foregroundColor(isDeleteArmed ? .red : .secondary)
+                        }
+                        .disabled(isDeleting || isLockArmed)
+                        .confirmationDialog(
+                            "lc.appList.deleteSelectedConfirm".loc,
+                            isPresented: $deleteConfirmDialogPresented,
+                            titleVisibility: .visible
+                        ) {
+                            Button("lc.common.delete".loc, role: .destructive) {
+                                Task { await deleteSelectedApps() }
+                            }
+                            Button("lc.common.cancel".loc, role: .cancel) {}
+                        } message: {
+                            Text("lc.appList.deleteSelectedMessage %lld".localizeWithFormat(selectedAppsForDeletion.count))
+                        }
+
+                        // Lock & Hide / Unlock & Unhide: same arm-then-act pattern as
+                        // Trash, so it's pressable before selecting anything too.
+                        // Can't be armed while delete is armed (mutually exclusive).
+                        Button {
+                            withAnimation {
+                                if !isLockArmed {
+                                    isLockArmed = true
+                                    isDeleteArmed = false
+                                    deleteAppData = false
+                                } else if selectedAppsForDeletion.isEmpty {
+                                    isLockArmed = false
                                 } else {
                                     Task { await toggleLockHideSelectedApps() }
                                 }
                             }
                         } label: {
                             Image(systemName: "lock.shield.fill")
-                                .foregroundColor(isLockHideMode ? .orange : .secondary)
+                                .foregroundColor(isLockArmed ? .orange : .secondary)
                         }
-                        .disabled(isDeleting)
-
-                        // Trash: first press enters delete mode (turns red),
-                        // second press with apps selected shows confirmation,
-                        // second press with nothing selected exits delete mode
-                        Button {
-                            withAnimation {
-                                if !isDeleteMode {
-                                    isDeleteMode = true
-                                    isLockHideMode = false
-                                    selectedAppsForDeletion.removeAll()
-                                } else if selectedAppsForDeletion.isEmpty {
-                                    isDeleteMode = false
-                                } else {
-                                    Task { await deleteSelectedApps() }
-                                }
-                            }
-                        } label: {
-                            Image(systemName: "trash")
-                                .foregroundColor(isDeleteMode ? .red : .secondary)
-                        }
-                        .disabled(isDeleting)
+                        .disabled(isDeleting || isDeleteArmed)
 
                         // Cancel multiselect
                         Button {
@@ -536,8 +569,8 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                                 isMultiSelectMode = false
                                 selectedAppsForDeletion.removeAll()
                                 deleteAppData = false
-                                isLockHideMode = false
-                                isDeleteMode = false
+                                isDeleteArmed = false
+                                isLockArmed = false
                             }
                             sharedModel.isMultiSelectMode = false
                         } label: {
@@ -661,12 +694,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 generatedIconStyleSelector.close(result: nil)
             }
         }
-        .alert("lc.appList.deleteSelectedConfirm".loc, isPresented: $multiDeleteConfirmAlert.show) {
-            Button(role: .destructive) { multiDeleteConfirmAlert.close(result: true) } label: { Text("lc.common.delete".loc) }
-            Button("lc.common.cancel".loc, role: .cancel) { multiDeleteConfirmAlert.close(result: false) }
-        } message: {
-            Text("lc.appList.deleteSelectedMessage %lld".localizeWithFormat(selectedAppsForDeletion.count))
-        }
         // Lock options alert — for visible apps
         .alert("Lock / Hide Apps", isPresented: $lockHideActionAlert.show) {
             Button(role: .destructive) { lockHideActionAlert.close(result: "lockAndHide") } label: {
@@ -776,8 +803,8 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             Task { await drainPendingInstallQueue() }
         }
         .apply {
-            if #available(iOS 19.0, *), SharedModel.isLiquidGlassSearchEnabled {
-                $0
+            if #available(iOS 17.0, *) {
+                $0.searchable(text: $searchContext.query, isPresented: $isSearchPresented)
             } else {
                 $0.searchable(text: $searchContext.query)
             }
@@ -1308,7 +1335,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             return
         }
         
-        guard let installUrl = URL(string: urlStr) else {
+        guard var installUrl = URL(string: urlStr) else {
             errorInfo = "lc.appList.urlInvalidError".loc
             errorShow = true
             return
@@ -1324,21 +1351,48 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
         
         if installUrl.isFileURL {
             // install from local, we directly call local install method
-            if !installUrl.lastPathComponent.hasSuffix(".ipa") && !installUrl.lastPathComponent.hasSuffix(".tipa") {
+            let fileExtension = installUrl.pathExtension.lowercased()
+            if fileExtension != "ipa" && fileExtension != "tipa" {
                 errorInfo = "lc.appList.urlFileIsNotIpaError".loc
                 errorShow = true
                 return
             }
             
             let fm = FileManager.default
-            if !fm.isReadableFile(atPath: installUrl.path) && !installUrl.startAccessingSecurityScopedResource() {
+            var didStartAccessing = false
+            if !fm.isReadableFile(atPath: installUrl.path),
+               let bookmarkData = LCUtils.appGroupUserDefault.data(forKey: "LCLaunchExtensionFileBookmark") {
+                do {
+                    var isStale = false
+                    let resolvedURL = try URL(
+                        resolvingBookmarkData: bookmarkData,
+                        options: URL.BookmarkResolutionOptions(rawValue: 1 << 10),
+                        relativeTo: nil,
+                        bookmarkDataIsStale: &isStale
+                    )
+                    installUrl = resolvedURL
+                    didStartAccessing = resolvedURL.startAccessingSecurityScopedResource()
+                } catch {
+                    errorInfo =  "Failed to resolve shared IPA bookmark: \(error.localizedDescription)"
+                    errorShow = true
+                    return
+                }
+            }
+
+            if !fm.isReadableFile(atPath: installUrl.path) && !didStartAccessing {
+                didStartAccessing = installUrl.startAccessingSecurityScopedResource()
+            }
+
+            if !fm.isReadableFile(atPath: installUrl.path) && !didStartAccessing {
                 errorInfo = "lc.appList.ipaAccessError".loc
                 errorShow = true
                 return
             }
             
             defer {
-                installUrl.stopAccessingSecurityScopedResource()
+                if didStartAccessing {
+                    installUrl.stopAccessingSecurityScopedResource()
+                }
             }
             
             do {
@@ -1353,9 +1407,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 var shouldDelete = false
                 if let documentsDirectory = fm.urls(for: .documentDirectory, in: .userDomainMask).first {
                     let inboxURL = documentsDirectory.appendingPathComponent("Inbox")
-                    let fileURL = inboxURL.appendingPathComponent(installUrl.lastPathComponent)
-                    
-                    shouldDelete = fm.fileExists(atPath: fileURL.path)
+                    shouldDelete = installUrl.deletingLastPathComponent().standardizedFileURL == inboxURL.standardizedFileURL
                 }
                 if shouldDelete {
                     try fm.removeItem(at: installUrl)
@@ -1517,6 +1569,10 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             }
         }
         
+        if appFound == nil && bundleId == "builtinSideStore" {
+            appFound = LCAppModel(appInfo: BuiltInSideStoreAppInfo.shared)
+        }
+        
         if isFoundAppLocked && !sharedModel.isHiddenAppUnlocked {
             do {
                 let result = try await LCUtils.authenticateUser()
@@ -1624,11 +1680,64 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
 
     }
     
+    private func multitaskPIDJITBundleId(for appToLaunch: LCAppModel) -> String {
+        appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier
+    }
+
+    private func targetGuestBundleIdForPIDJIT() -> String {
+        if let selectedBundlePath = UserDefaults.standard.string(forKey: "selected") {
+            let appListsToConsider: [[LCAppModel]] = [sharedModel.apps, sharedModel.hiddenApps]
+            for appList in appListsToConsider {
+                if let app = appList.first(where: { $0.appInfo.relativeBundlePath == selectedBundlePath }) {
+                    return app.bundleIdentifier
+                }
+            }
+        }
+        return Bundle.main.bundleIdentifier ?? ""
+    }
+
+    private func multitaskPIDJITRelayScheme(for appToLaunch: LCAppModel) -> String? {
+        let currentScheme = LCUtils.appUrlScheme()?.lowercased()
+        let runningScheme = LCSharedUtils.getContainerUsingLCScheme(withFolderName: appToLaunch.uiDefaultDataFolder)
+        if let runningScheme,
+           runningScheme.lowercased() != currentScheme {
+            return runningScheme
+        }
+
+        var freeScheme: String?
+        LCUtils.forEachInstalledLC(isFree: true) { scheme, shouldBreak in
+            if scheme.lowercased() != currentScheme {
+                freeScheme = scheme
+                shouldBreak = true
+            }
+        }
+        return freeScheme
+    }
+    
+    private func openJITInAnotherLC(encodedURL: String, appToLaunch: LCAppModel, errorMessage: String) async -> Bool {
+        let freeScheme = multitaskPIDJITRelayScheme(for: appToLaunch)
+        guard let freeScheme else {
+            errorInfo = errorMessage
+            errorShow = true
+            return false
+        }
+
+        guard let launchURL = URL(string: "\(freeScheme)://open-url?url=\(encodedURL)") else {
+            errorInfo = "lc.appList.urlInvalidError".loc
+            errorShow = true
+            return false
+        }
+
+        LCUtils.appGroupUserDefault.set(multitaskPIDJITBundleId(for: appToLaunch), forKey: "LCLaunchExtensionBundleID")
+        LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
+        await UIApplication.shared.open(launchURL)
+        return true
+    }
+
     func jitLaunch(withPID pid: Int, withScript script: String? = nil, appName: String) async {
         await MainActor.run {
             let encodedData = script?.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed)
-
-
+            
             if let jitEnabler = JITEnablerType(rawValue: LCUtils.appGroupUserDefault.integer(forKey: "LCJITEnablerType")) {
                 if jitEnabler == .StosDebug || jitEnabler == .StosDebugLC {
                     let encoded = encodedData.map { "&script=\($0)" } ?? ""
@@ -1637,9 +1746,9 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             app.appInfo.urlSchemes().contains("stosdebug") &&
                             (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
                         }) {
-                            if let url = URL(string: "stosdebug://enableJIT?bundleId=\(Bundle.main.bundleIdentifier!)&appName=\(appName)&pid=\(pid)&relaunchApp=false& forcePID=true\(encoded)") {
-                                Task { await openWebView(urlString: url.absoluteString) }
-                            }
+                            let urlString = "stosdebug://enableJIT?bundleId=\(multitaskPIDJITBundleId(for: app))&appName=\(appName)&pid=\(pid)&relaunchApp=false&forcePID=true\(encoded)"
+                            let encodedStr = Data(urlString.utf8).base64EncodedString().addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+                            Task { _ = await openJITInAnotherLC(encodedURL: encodedStr, appToLaunch: app, errorMessage: "No free LiveContainer is available. Please either: \n(1)close one, \n(2)install a new one, \n(3)choose another method to enable JIT.") }
                         } else {
                             errorInfo = "StosDebug is not found. Please install it first and switch it to shared app."
                             errorShow = true
@@ -1662,30 +1771,36 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                         }) {
                             Task { await openWebView(urlString: url.absoluteString) }
                         } else {
-                        if var url = URL(string: "stosdebug://enableJIT?bundleId=\(Bundle.main.bundleIdentifier!)&appName=\(appName)&pid=\(pid)&forcePID=true\(encoded)") {
+                        let targetBundleId = UserDefaults.standard.string(forKey: "selected") ?? targetGuestBundleIdForPIDJIT()
+                        let encodedAppName = appName.addingPercentEncoding(withAllowedCharacters: .urlQueryAllowed) ?? appName
+                        var urlString = "stosdebug://enableJIT?bundleId=\(targetBundleId)&appName=\(encodedAppName)&pid=\(pid)&relaunchApp=false&forcePID=true"
+                        if let encodedData, !encodedData.isEmpty {
+                            urlString += "&script=\(encodedData)"
+                        }
+                        if let url = URL(string: urlString) {
                             UIApplication.shared.open(url)
                         }
                     }
                     return
                 }
+            }
 
-                let encoded = encodedData.map { "&script-data=\($0)" } ?? ""
-                if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encoded)") {
-                    if jitEnabler == .StikJITLC {
-                        if let app = sharedModel.apps.first(where: { app in
-                            return app.appInfo.urlSchemes().contains("stikjit") &&
-                            (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
-                        }) {
-                            Task { await openWebView(urlString: url.absoluteString) }
-                        } else {
-                            errorInfo = "StikDebug is not found. Please install it first and switch it to shared app."
-                            errorShow = true
-                            return
-                        }
+            let encodedStikDirect = encodedData.map { "&script-data=\($0)" } ?? ""
+                if jitEnabler == .StikJITLC {
+                    if let app = sharedModel.apps.first(where: { app in
+                        return app.appInfo.urlSchemes().contains("stikjit") &&
+                        (sharedModel.multiLCStatus != 2 || app.appInfo.isShared)
+                    }) {
+                        let urlString = "stikjit://enable-jit?bundle-id=\(multitaskPIDJITBundleId(for: app))&pid=\(pid)\(encodedStikDirect)"
+                        let encodedStr = Data(urlString.utf8).base64EncodedString().addingPercentEncoding(withAllowedCharacters: .alphanumerics) ?? ""
+                        Task { _ = await openJITInAnotherLC(encodedURL: encodedStr, appToLaunch: app, errorMessage: "No free LiveContainer is available. Please either: \n(1)close one, \n(2)install a new one, \n(3)choose another method to enable JIT.") }
                     } else {
-                        UIApplication.shared.open(url)
+                        errorInfo = "StikDebug is not found. Please install it first and switch it to shared app."
+                        errorShow = true
+                        return
                         }
-                    }
+                    } else if let url = URL(string: "stikjit://enable-jit?bundle-id=\(Bundle.main.bundleIdentifier!)&pid=\(pid)\(encodedStikDirect)") {
+                    UIApplication.shared.open(url)
                 }
             }
         }
@@ -1881,39 +1996,21 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
 
             if isMultiSelectMode {
                 let isSelected = selectedAppsForDeletion.contains(app)
-                Group {
-                    if isLockHideMode {
-                        if isHidden {
-                            // Hidden app in lock mode: selectable to UNHIDE/UNLOCK
-                            Image(systemName: isSelected ? "lock.open.fill" : "lock.open")
-                                .foregroundColor(isSelected ? .green : .secondary)
-                        } else {
-                            // Visible app in lock mode: selectable to LOCK/HIDE
-                            Image(systemName: isSelected ? "lock.fill" : "lock.open")
-                                .foregroundColor(isSelected ? .orange : .secondary)
-                        }
-                    } else if isDeleteMode {
-                        // Delete mode: all apps selectable
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isSelected ? .red : .secondary)
-                    } else {
-                        // Default mode: circle for all
-                        Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
-                            .foregroundColor(isSelected ? .green : .secondary)
-                    }
-                }
-                .font(.title2)
-                .padding(.leading, 6)
-                .transition(.opacity.combined(with: .move(edge: .leading)))
+                // Selection is action-agnostic now — the same checkbox is used
+                // whether you'll end up tapping Delete or Lock/Hide afterward.
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .foregroundColor(isSelected ? .green : .secondary)
+                    .font(.title2)
+                    .padding(.leading, 6)
+                    .transition(.opacity.combined(with: .move(edge: .leading)))
             }
         }
             .frame(height: 88)
             .contentShape(Rectangle())
             .onTapGesture {
                 guard isMultiSelectMode, !isDeleting else { return }
-                // All apps are selectable in all modes:
-                // - lock mode: visible apps → lock/hide, hidden apps → unlock/unhide
-                // - delete mode: any app → delete
+                // Selection is free and action-agnostic: tap any app to
+                // select/deselect it, then choose Delete or Lock/Hide afterward.
                 withAnimation(.easeInOut(duration: 0.1)) {
                     if selectedAppsForDeletion.contains(app) {
                         selectedAppsForDeletion.remove(app)
@@ -1976,7 +2073,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             }
             return
         }
-        guard let confirmed = await multiDeleteConfirmAlert.open(), confirmed else { return }
         
         // Snapshot the set so UI changes mid-loop don't affect iteration
         let appsToDelete = selectedAppsForDeletion
@@ -2034,7 +2130,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 selectedAppsForDeletion.removeAll()
                 isMultiSelectMode = false
                 deleteAppData = false
-                isDeleteMode = false
+                isDeleteArmed = false
                 isDeleting = false
             }
             sharedModel.isMultiSelectMode = false
@@ -2142,7 +2238,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             withAnimation {
                 selectedAppsForDeletion.removeAll()
                 isMultiSelectMode = false
-                isLockHideMode = false
                 isDeleting = false
             }
             sharedModel.isMultiSelectMode = false

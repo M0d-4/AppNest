@@ -320,13 +320,19 @@ extension LCUtils {
                     return false
                 }
                 // check if stosdebug is already running
+                let currentScheme = LCUtils.appUrlScheme()?.lowercased()
                 var freeScheme = LCSharedUtils.getContainerUsingLCScheme(withFolderName: appToLaunch.uiDefaultDataFolder)
+                if freeScheme?.lowercased() == currentScheme {
+                    freeScheme = nil
+                }
                 
                 if(freeScheme == nil) {
                     // if not, try to find a free lc
                     forEachInstalledLC(isFree: true) { scheme, shouldBreak in
-                        freeScheme = scheme
-                        shouldBreak = true
+                        if scheme.lowercased() != currentScheme {
+                            freeScheme = scheme
+                            shouldBreak = true
+                        }
                     }
                 }
                 guard let freeScheme else {
@@ -336,7 +342,7 @@ extension LCUtils {
                 
                 let launchURL = URL(string: "\(freeScheme)://open-url?url=\(encodedStr)")!
                 LCUtils.appGroupUserDefault.set(freeScheme, forKey: "LCLaunchExtensionScheme")
-                LCUtils.appGroupUserDefault.set(appToLaunch.appInfo.relativeBundlePath, forKey: "LCLaunchExtensionBundleID")
+                LCUtils.appGroupUserDefault.set(appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier, forKey: "LCLaunchExtensionBundleID")
                 LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
                 onServerMessage?("JIT acquisition will continue in another LiveContainer.")
                 
@@ -381,13 +387,19 @@ extension LCUtils {
                     return false
                 }
                 // check if stikdebug is already running
+                let currentScheme = LCUtils.appUrlScheme()?.lowercased()
                 var freeScheme = LCSharedUtils.getContainerUsingLCScheme(withFolderName: appToLaunch.uiDefaultDataFolder)
+                if freeScheme?.lowercased() == currentScheme {
+                    freeScheme = nil
+                }
                 
                 if(freeScheme == nil) {
                     // if not, try to find a free lc
                     forEachInstalledLC(isFree: true) { scheme, shouldBreak in
-                        freeScheme = scheme
-                        shouldBreak = true
+                        if scheme.lowercased() != currentScheme {
+                            freeScheme = scheme
+                            shouldBreak = true
+                        }
                     }
                 }
                 guard let freeScheme else {
@@ -397,7 +409,7 @@ extension LCUtils {
                 
                 launchURL = URL(string: "\(freeScheme)://open-url?url=\(encodedStr)")!
                 LCUtils.appGroupUserDefault.set(freeScheme, forKey: "LCLaunchExtensionScheme")
-                LCUtils.appGroupUserDefault.set(appToLaunch.appInfo.relativeBundlePath, forKey: "LCLaunchExtensionBundleID")
+                LCUtils.appGroupUserDefault.set(appToLaunch.appInfo.relativeBundlePath ?? appToLaunch.bundleIdentifier, forKey: "LCLaunchExtensionBundleID")
                 LCUtils.appGroupUserDefault.set(Date.now, forKey: "LCLaunchExtensionLaunchDate")
                 onServerMessage?("JIT acquisition will continue in another LiveContainer.")
                 
@@ -510,7 +522,7 @@ extension LCUtils {
     }
     
     static func openSideStore(delegate: LCAppModelDelegate? = nil, urlStr: String? = nil) {
-        let sideStoreApp = LCAppModel(appInfo: BuiltInSideStoreAppInfo(), delegate: delegate)
+        let sideStoreApp = LCAppModel(appInfo: BuiltInSideStoreAppInfo.shared, delegate: delegate)
         
         Task {
             try await sideStoreApp.runApp(bundleIdOverride: "builtinSideStore", urlStr: urlStr)

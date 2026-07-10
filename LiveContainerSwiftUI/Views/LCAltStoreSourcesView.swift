@@ -158,8 +158,9 @@ final class AltStoreSourcesViewModel: ObservableObject {
     
     init() {
         loadStoredSources()
-        // Network refresh is triggered lazily when the sources or updates tab is first opened,
-        // not at app launch, to avoid slowing down startup.
+        Task {
+            await refreshAllSources()
+        }
     }
     
     func addSource(from rawValue: String) async -> String? {
@@ -191,6 +192,12 @@ final class AltStoreSourcesViewModel: ObservableObject {
         // Do not guard on sources.isEmpty — the updates tab calls this on appear
         // and sources may still be loading from UserDefaults at that point.
         // An empty loop is harmless.
+        // Guard against overlapping calls: init(), onAppear, onChange(sources.count),
+        // and the manual refresh button can all fire close together, and without
+        // this an in-flight refresh's completion could flip isRefreshingAll back
+        // to false while a second, newer refresh is still running underneath it —
+        // making the button appear to silently "not work".
+        guard !isRefreshingAll else { return }
         isRefreshingAll = true
         for url in sources.map({ $0.url }) {
             await refreshSource(url: url)
@@ -479,64 +486,109 @@ private extension Color {
     }
 }
 
+/// Compact, ksign-style Sources screen: instead of one long scrolling page where every
+/// source expands inline into a giant stack of app banners, this shows each source as a
+/// single compact row (icon + name + app count). Tapping a row pushes a dedicated
+/// `LCSourceDetailView` that lists just that source's apps, with its own search.
+/// An "All Repositories" row at the top gives a combined view across every source, mirroring
+/// how apps like ksign/Feather structure their Sources tab.
 struct LCSourcesView: View {
     @State private var errorMessage: String?
     @State private var sourcePendingRemoval: AltStoreSourcesViewModel.SourceItem?
     @ObservedObject public var searchContext: SearchContext
-    @State private var expandedSources: Set<URL> = []
     @State private var isManagingSources = false
     
     @EnvironmentObject private var sharedModel : SharedModel
+    // Use the shared instance (not a locally-owned @StateObject) so the Sources
+    // tab stays in sync with the Updates tab and App List, which both read
+    // sources/updates from sharedModel.sourcesViewModel directly.
     private var viewModel: AltStoreSourcesViewModel { sharedModel.sourcesViewModel }
     
     @State private var isViewAppeared = false
+    
+    private var trimmedQuery: String {
+        searchContext.debouncedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+    
+    private var isFiltering: Bool {
+        !trimmedQuery.isEmpty
+    }
+    
+    /// Top-level search now filters the (short) list of sources by name/URL, the way ksign's
+    /// Sources list does. Searching within a single source's apps happens on its own detail
+    /// screen, which has its own independent search field.
+    private var filteredSourceItems: [AltStoreSourcesViewModel.SourceItem] {
+        guard isFiltering else { return viewModel.sources }
+        let lower = trimmedQuery.lowercased()
+        return viewModel.sources.filter { item in
+            item.displayName.lowercased().contains(lower) || item.url.absoluteString.lowercased().contains(lower)
+        }
+    }
     
     var body: some View {
         NavigationView {
             Group {
                 if viewModel.sources.isEmpty {
-                    VStack(spacing: 12) {
-                        Image(systemName: "link.badge.plus")
-                            .font(.system(size: 48))
-                            .foregroundColor(.secondary)
-                        Text("lc.sources.empty".loc)
-                            .multilineTextAlignment(.center)
-                            .foregroundStyle(.secondary)
-                    }
-                    .padding()
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+                    emptyStateView
                 } else {
-                    ScrollView {
-                        LazyVStack(spacing: 16) {
-                            ForEach(viewModel.sources, id: \.id) { item in
-                                let apps = filteredApps(for: item)
-                                AltStoreSourceSectionView(
-                                    item: item,
-                                    filteredApps: apps,
-                                    isFiltering: isFiltering,
-                                    isExpanded: expandedSources.contains(item.id),
-                                    onRefresh: { Task { await viewModel.refreshSource(item) } },
-                                    onInstall: install(app:),
-                                    onRemove: { sourcePendingRemoval = item },
-                                    toggleExpanded: { toggleExpansion(for: item.id) }
+                    List {
+                        Section {
+                            NavigationLink {
+                                LCSourceDetailView(
+                                    items: viewModel.sources,
+                                    viewModel: viewModel,
+                                    onInstall: install(app:)
                                 )
-                                .padding(.horizontal)
-                                .animation(.easeInOut, value: apps.count)
-                            }
-                            
-                            if totalFilteredAppCount == 0 {
-                                VStack(spacing: 8) {
-                                    Text("lc.sources.section.noApps".loc)
-                                        .foregroundStyle(.gray)
-                                        .multilineTextAlignment(.center)
-                                }
-                                .frame(maxWidth: .infinity)
-                                .frame(minHeight: 160, alignment: .center)
-                                .padding(.horizontal)
+                            } label: {
+                                LCSourceCompactRow(
+                                    iconSystemImage: "square.grid.2x2.fill",
+                                    title: "lc.sources.allRepositories".loc,
+                                    subtitle: "lc.sources.allRepositories.subtitle".loc
+                                )
                             }
                         }
-                        .padding(.vertical)
+                        
+                        Section {
+                            if filteredSourceItems.isEmpty {
+                                Text("lc.sources.noMatches".loc)
+                                    .foregroundStyle(.secondary)
+                            } else {
+                                ForEach(filteredSourceItems, id: \.id) { item in
+                                    NavigationLink {
+                                        LCSourceDetailView(
+                                            items: [item],
+                                            viewModel: viewModel,
+                                            onInstall: install(app:)
+                                        )
+                                    } label: {
+                                        LCSourceCompactRow(item: item)
+                                    }
+                                    .swipeActions(edge: .trailing) {
+                                        Button(role: .destructive) {
+                                            sourcePendingRemoval = item
+                                        } label: {
+                                            Label("lc.sources.removeSource".loc, systemImage: "trash")
+                                        }
+                                    }
+                                    .contextMenu {
+                                        Button("lc.sources.refresh".loc, systemImage: "arrow.clockwise") {
+                                            Task { await viewModel.refreshSource(item) }
+                                        }
+                                        Button("lc.sources.removeSource".loc, systemImage: "trash", role: .destructive) {
+                                            sourcePendingRemoval = item
+                                        }
+                                    }
+                                }
+                            }
+                        } header: {
+                            HStack {
+                                Text("lc.sources.sectionHeader".loc)
+                                Spacer()
+                                Text("\(viewModel.sources.count)")
+                            }
+                        }
                     }
+                    .listStyle(.insetGrouped)
                 }
             }
             .navigationTitle("lc.tabView.sources".loc)
@@ -610,24 +662,16 @@ struct LCSourcesView: View {
             if #available(iOS 19.0, *), SharedModel.isLiquidGlassSearchEnabled {
                 $0
             } else {
-                $0.searchable(text: $searchContext.query)
+                $0.searchable(text: $searchContext.query, prompt: Text("lc.sources.searchPrompt".loc))
             }
         }
         .onAppear {
-            expandedSources = []
-            // Trigger network refresh lazily on first appear instead of at app launch
             if !isViewAppeared {
-                Task { await viewModel.refreshAllSources() }
-                if sharedModel.selectedTab == .sources, let link = sharedModel.deepLink {
-                    sharedModel.deepLink = nil
-                    handleURL(url: link)
-                }
+                guard sharedModel.selectedTab == .sources, let link = sharedModel.deepLink else { return }
+                sharedModel.deepLink = nil
+                handleURL(url: link)
                 isViewAppeared = true
             }
-        }
-        .onChange(of: viewModel.sources) { newSources in
-            let newSet = Set(newSources.map { $0.id })
-            expandedSources = expandedSources.intersection(newSet)
         }
         .onChange(of: sharedModel.deepLink) { link in
             guard sharedModel.selectedTab == .sources, let link else { return }
@@ -636,38 +680,22 @@ struct LCSourcesView: View {
         }
     }
     
-    private var isFiltering: Bool {
-        !searchContext.debouncedQuery.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-    }
-    
-    private var totalFilteredAppCount: Int {
-        viewModel.sources.reduce(0) { partialResult, item in
-            partialResult + filteredApps(for: item).count
+    private var emptyStateView: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "link.badge.plus")
+                .font(.system(size: 48))
+                .foregroundColor(.secondary)
+            Text("lc.sources.empty".loc)
+                .multilineTextAlignment(.center)
+                .foregroundStyle(.secondary)
+            Button("lc.sources.addSource".loc) {
+                isManagingSources = true
+            }
+            .buttonStyle(.borderedProminent)
+            .padding(.top, 4)
         }
-    }
-    
-    private func filteredApps(for item: AltStoreSourcesViewModel.SourceItem) -> [AltStoreSourceApp] {
-        guard let source = item.source else { return [] }
-        let query = searchContext.debouncedQuery.trimmingCharacters(in: .whitespacesAndNewlines)
-        guard !query.isEmpty else {
-            return source.apps
-        }
-        return source.apps.filter { app in
-            let lower = query.lowercased()
-            if app.name.lowercased().contains(lower) {
-                return true
-            }
-            if app.bundleIdentifier.lowercased().contains(lower) {
-                return true
-            }
-            if let developer = app.developerName?.lowercased(), developer.contains(lower) {
-                return true
-            }
-            if let subtitle = app.subtitle?.lowercased(), subtitle.contains(lower) {
-                return true
-            }
-            return false
-        }
+        .padding()
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
     }
     
     @MainActor
@@ -688,25 +716,11 @@ struct LCSourcesView: View {
             errorMessage = "lc.sources.error.missingDownload".loc
             return
         }
-        // Switch to apps tab immediately so user sees the download tray
-        withAnimation { DataManager.shared.model.selectedTab = .apps }
-        // Queue the install — LCAppListView will download then install
-        let entry = SharedModel.PendingInstall(
-            url: downloadURL,
-            isUpdate: false,
-            appName: app.name,
-            iconURL: app.iconURL
-        )
-        sharedModel.pendingInstallQueue.append(entry)
-    }
-    
-    private func toggleExpansion(for id: URL) {
-        withAnimation(.easeInOut) {
-            if expandedSources.contains(id) {
-                expandedSources.remove(id)
-            } else {
-                expandedSources.insert(id)
-            }
+        withAnimation {
+            DataManager.shared.model.selectedTab = .apps
+        }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+            NotificationCenter.default.post(name: NSNotification.InstallAppNotification, object: ["url": downloadURL])
         }
     }
     
@@ -723,6 +737,265 @@ struct LCSourcesView: View {
                     DataManager.shared.model.selectedTab = .sources
                     Task { await handleAddSource(sourceUrl) }
                 }
+            }
+        }
+    }
+}
+
+/// Single-line row used for every entry in the compact sources list: a rounded icon,
+/// the source's name, and a lightweight status subtitle (app count, loading, or error).
+private struct LCSourceCompactRow: View {
+    private let iconURL: URL?
+    private let iconSystemImage: String?
+    private let title: String
+    private let subtitle: String
+    private let isLoading: Bool
+    private let hasError: Bool
+    
+    init(item: AltStoreSourcesViewModel.SourceItem) {
+        self.iconURL = item.primaryIconURL
+        self.iconSystemImage = nil
+        self.title = item.displayName
+        self.isLoading = item.isLoading
+        self.hasError = item.error != nil
+        if let error = item.error {
+            self.subtitle = error
+        } else if let source = item.source {
+            self.subtitle = "lc.sources.appCount %lld".localizeWithFormat(source.apps.count)
+        } else if item.isLoading {
+            self.subtitle = "lc.sources.loading".loc
+        } else if let host = item.url.host {
+            self.subtitle = host
+        } else {
+            self.subtitle = item.url.absoluteString
+        }
+    }
+    
+    init(iconSystemImage: String, title: String, subtitle: String) {
+        self.iconURL = nil
+        self.iconSystemImage = iconSystemImage
+        self.title = title
+        self.subtitle = subtitle
+        self.isLoading = false
+        self.hasError = false
+    }
+    
+    var body: some View {
+        HStack(spacing: 12) {
+            Group {
+                if let iconSystemImage {
+                    Image(systemName: iconSystemImage)
+                        .font(.system(size: 18, weight: .semibold))
+                        .foregroundColor(.white)
+                        .frame(width: 40, height: 40)
+                        .background(
+                            LinearGradient(
+                                colors: [Color.accentColor, Color.accentColor.opacity(0.6)],
+                                startPoint: .topLeading,
+                                endPoint: .bottomTrailing
+                            )
+                        )
+                } else {
+                    SourceIconView(url: iconURL)
+                        .frame(width: 40, height: 40)
+                }
+            }
+            .clipShape(RoundedRectangle(cornerRadius: 9))
+            
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.body)
+                    .lineLimit(1)
+                HStack(spacing: 4) {
+                    if hasError {
+                        Image(systemName: "exclamationmark.triangle.fill")
+                            .font(.caption2)
+                            .foregroundColor(.orange)
+                    }
+                    Text(subtitle)
+                        .font(.caption)
+                        .foregroundStyle(hasError ? .orange : .secondary)
+                        .lineLimit(1)
+                }
+            }
+            
+            Spacer()
+            
+            if isLoading {
+                ProgressView()
+            }
+        }
+        .padding(.vertical, 4)
+    }
+}
+
+/// Pushed screen showing the apps for either a single source or, when `items` contains every
+/// source, the combined "All Repositories" view. Replaces the old inline expand-in-place list.
+private struct LCSourceDetailView: View {
+    let items: [AltStoreSourcesViewModel.SourceItem]
+    @ObservedObject var viewModel: AltStoreSourcesViewModel
+    let onInstall: (AltStoreSourceApp) -> Void
+    
+    @State private var searchText = ""
+    @State private var sourcePendingRemoval: AltStoreSourcesViewModel.SourceItem?
+    @Environment(\.dismiss) private var dismiss
+    
+    private struct ResolvedApp: Identifiable {
+        let id: UUID
+        let app: AltStoreSourceApp
+        let source: AltStoreSource
+    }
+    
+    private var isCombinedView: Bool {
+        items.count > 1
+    }
+    
+    private var navigationTitle: String {
+        if isCombinedView {
+            return "lc.sources.allRepositories".loc
+        }
+        return items.first?.displayName ?? "lc.tabView.sources".loc
+    }
+    
+    private var isAnyLoading: Bool {
+        items.contains { $0.isLoading }
+    }
+    
+    private var singleItemError: (AltStoreSourcesViewModel.SourceItem, String)? {
+        guard !isCombinedView, let item = items.first, let error = item.error else { return nil }
+        return (item, error)
+    }
+    
+    private var allApps: [ResolvedApp] {
+        items.flatMap { item -> [ResolvedApp] in
+            guard let source = item.source else { return [] }
+            return source.apps.map { ResolvedApp(id: $0.id, app: $0, source: source) }
+        }
+    }
+    
+    private var filteredApps: [ResolvedApp] {
+        let trimmed = searchText.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return allApps }
+        let lower = trimmed.lowercased()
+        return allApps.filter { resolved in
+            let app = resolved.app
+            if app.name.lowercased().contains(lower) { return true }
+            if app.bundleIdentifier.lowercased().contains(lower) { return true }
+            if let developer = app.developerName?.lowercased(), developer.contains(lower) { return true }
+            if let subtitle = app.subtitle?.lowercased(), subtitle.contains(lower) { return true }
+            return false
+        }
+    }
+    
+    var body: some View {
+        Group {
+            if let (item, error) = singleItemError {
+                VStack(spacing: 12) {
+                    Image(systemName: "exclamationmark.triangle")
+                        .font(.system(size: 40))
+                        .foregroundColor(.orange)
+                    Text("lc.sources.section.error".loc)
+                        .font(.headline)
+                    Text(error)
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button("lc.sources.refresh".loc) {
+                        Task { await viewModel.refreshSource(item) }
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .padding()
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if allApps.isEmpty && isAnyLoading {
+                ProgressView("lc.sources.loading".loc)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else if filteredApps.isEmpty {
+                Text("lc.sources.section.noApps".loc)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .padding()
+            } else {
+                ScrollView {
+                    if !isCombinedView,
+                       let source = items.first?.source,
+                       let description = source.description,
+                       !description.isEmpty {
+                        Text(description)
+                            .font(.footnote)
+                            .foregroundStyle(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding([.horizontal, .top])
+                    }
+                    LazyVStack(spacing: 12) {
+                        ForEach(filteredApps) { resolved in
+                            VStack(alignment: .leading, spacing: 4) {
+                                LCSourceAppBanner(app: resolved.app, source: resolved.source, installAction: onInstall)
+                                if isCombinedView {
+                                    Text(resolved.source.name)
+                                        .font(.caption2)
+                                        .foregroundStyle(.secondary)
+                                        .padding(.leading, 4)
+                                }
+                            }
+                        }
+                    }
+                    .padding()
+                }
+            }
+        }
+        .navigationTitle(navigationTitle)
+        .navigationBarTitleDisplayMode(.inline)
+        .searchable(text: $searchText, prompt: Text("lc.sources.searchApps".loc))
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                if isAnyLoading {
+                    ProgressView()
+                } else {
+                    Menu {
+                        Button("lc.sources.refresh".loc, systemImage: "arrow.clockwise") {
+                            Task {
+                                for item in items {
+                                    await viewModel.refreshSource(item)
+                                }
+                            }
+                        }
+                        if !isCombinedView, let item = items.first {
+                            if let website = item.source?.website {
+                                Button("lc.sources.visitWebsite".loc, systemImage: "safari") {
+                                    UIApplication.shared.open(website)
+                                }
+                            }
+                            Button("lc.sources.removeSource".loc, systemImage: "trash", role: .destructive) {
+                                sourcePendingRemoval = item
+                            }
+                        }
+                    } label: {
+                        Image(systemName: "ellipsis.circle")
+                    }
+                }
+            }
+        }
+        .alert("lc.sources.removeConfirmation.title".loc, isPresented: Binding(
+            get: { sourcePendingRemoval != nil },
+            set: { if !$0 { sourcePendingRemoval = nil } })
+        ) {
+            Button("lc.common.remove".loc, role: .destructive) {
+                if let sourcePendingRemoval {
+                    viewModel.removeSource(sourcePendingRemoval)
+                }
+                sourcePendingRemoval = nil
+                dismiss()
+            }
+            Button("lc.common.cancel".loc, role: .cancel) {
+                sourcePendingRemoval = nil
+            }
+        } message: {
+            if let name = sourcePendingRemoval?.displayName {
+                Text("lc.sources.removeConfirmation.message %@".localizeWithFormat(name))
+            } else {
+                Text("")
             }
         }
     }
@@ -859,99 +1132,6 @@ private struct ManageSourcesSheet: View {
     }
 }
 
-private struct AltStoreSourceSectionView: View {
-    let item: AltStoreSourcesViewModel.SourceItem
-    let filteredApps: [AltStoreSourceApp]
-    let isFiltering: Bool
-    let isExpanded: Bool
-    let onRefresh: () -> Void
-    let onInstall: (AltStoreSourceApp) -> Void
-    let onRemove: () -> Void
-    let toggleExpanded: () -> Void
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            HStack(alignment: .center, spacing: 12) {
-                Button(action: toggleExpanded) {
-                    HStack(spacing: 10) {
-                        Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                            .foregroundStyle(.secondary)
-                        SourceIconView(url: item.primaryIconURL)
-                            .frame(width: 36, height: 36)
-                            .clipShape(RoundedRectangle(cornerRadius: 8))
-                        Text(item.source?.name ?? item.displayName)
-                            .font(.system(.title2).bold())
-                    }
-                }
-                .buttonStyle(.plain)
-                Spacer()
-                if item.isLoading {
-                    ProgressView()
-                } else {
-                    Menu {
-                        Button("lc.sources.refresh".loc, systemImage: "arrow.clockwise", action: onRefresh)
-                        Button("lc.sources.removeSource".loc, systemImage: "trash", role: .destructive, action: onRemove)
-                    } label: {
-                        Image(systemName: "ellipsis.circle")
-                            .imageScale(.large)
-                            .foregroundColor(.secondary)
-                    }
-                }
-            }
-            
-            if let subtitle = item.source?.subtitle, !subtitle.isEmpty {
-                Text(subtitle)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            } else if item.source == nil, let host = item.url.host {
-                Text(host)
-                    .font(.footnote)
-                    .foregroundStyle(.secondary)
-            }
-            
-            if let error = item.error {
-                VStack(alignment: .leading, spacing: 6) {
-                    Text("lc.sources.section.error".loc)
-                        .font(.subheadline)
-                        .bold()
-                    Text(error)
-                        .font(.footnote)
-                        .foregroundStyle(.secondary)
-                    Button("lc.sources.refresh".loc, action: onRefresh)
-                        .font(.footnote)
-                }
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 18)
-                        .fill(Color(uiColor: UIColor.secondarySystemBackground))
-                )
-            } else if let source = item.source, isExpanded || isFiltering {
-                VStack(spacing: 12) {
-                    ForEach(filteredApps[0..<min(50, filteredApps.count)]) { app in
-                        LCSourceAppBanner(app: app, source: source, installAction: onInstall)
-                    }
-                    if filteredApps.isEmpty {
-                        if source.apps.isEmpty || isFiltering {
-                            Text("lc.sources.section.noApps".loc)
-                                .font(.footnote)
-                                .foregroundStyle(.secondary)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                    } else if filteredApps.count > 50 {
-                        Text("lc.sources.section.tooManyApps".loc)
-                            .font(.footnote)
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-            } else if item.isLoading {
-                ProgressView("lc.sources.loading".loc)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-            }
-        }
-    }
-}
-
 private struct LCSourceAppBanner: View {
     let app: AltStoreSourceApp
     let source: AltStoreSource
@@ -1057,76 +1237,31 @@ private struct LCSourceAppBanner: View {
     }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// MARK: - SourceIconView (cache-backed, lag-free)
-// The original AsyncImage implementation spawned a new URLSession data task for
-// every icon on every re-render, with no caching. With dozens of apps visible at
-// once this caused severe main-thread contention and janky scrolling.
-//
-// This replacement uses a two-level cache:
-//   1. NSCache<NSURL, UIImage>  — in-memory, fast, automatic eviction under pressure
-//   2. URLCache.shared          — on-disk HTTP cache, respects Cache-Control headers
-//
-// Images that are already cached render instantly with no async work at all.
-// ─────────────────────────────────────────────────────────────────────────────
-
-@MainActor
-private final class IconImageCache {
-    static let shared = IconImageCache()
-    private let cache = NSCache<NSURL, UIImage>()
-
-    private init() {
-        cache.countLimit = 300
-        cache.totalCostLimit = 60 * 1024 * 1024 // 60 MB
-    }
-
-    func image(for url: URL) -> UIImage? {
-        cache.object(forKey: url as NSURL)
-    }
-
-    func store(_ image: UIImage, for url: URL) {
-        let cost = Int(image.size.width * image.size.height * 4)
-        cache.setObject(image, forKey: url as NSURL, cost: cost)
-    }
-}
-
 private struct SourceIconView: View {
     let url: URL?
-    @State private var uiImage: UIImage? = nil
-
+    
     var body: some View {
-        Group {
-            if let img = uiImage {
-                Image(uiImage: img)
-                    .resizable()
-                    .scaledToFill()
-            } else {
-                placeholderImage
-                    .task(id: url) { await loadImage() }
+        if let url {
+            AsyncImage(url: url) { phase in
+                switch phase {
+                case .empty:
+                    placeholder
+                case .success(let image):
+                    image.resizable().scaledToFill()
+                case .failure:
+                    placeholder
+                @unknown default:
+                    placeholder
+                }
             }
+        } else {
+            placeholder
         }
     }
-
-    private var placeholderImage: some View {
+    
+    private var placeholder: some View {
         Image("DefaultIcon")
             .resizable()
             .scaledToFill()
-    }
-
-    private func loadImage() async {
-        guard let url else { return }
-
-        // 1. In-memory cache hit — synchronous, zero cost
-        if let cached = IconImageCache.shared.image(for: url) {
-            uiImage = cached
-            return
-        }
-
-        // 2. Network fetch — off main thread via async URLSession
-        guard let (data, _) = try? await URLSession.shared.data(from: url),
-              let img = UIImage(data: data) else { return }
-
-        IconImageCache.shared.store(img, for: url)
-        uiImage = img
     }
 }

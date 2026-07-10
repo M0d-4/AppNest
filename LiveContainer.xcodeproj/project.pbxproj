@@ -17,7 +17,8 @@
 		17554B742DA169AA004C6D90 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 17554B712DA16988004C6D90 /* OpenSSL.xcframework */; };
 		17CAE6262F230548008B1977 /* LiveContainerShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */; };
 		17CAED2C2F234814008B1977 /* LaunchAppExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 17CAE6172F230449008B1977 /* LaunchAppExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
-		17E23DE92F443A9300C55733 /* LaunchAppExtensionHelper.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 17E23DDF2F443A9300C55733 /* LaunchAppExtensionHelper.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		17E23DE92F443A9300C55733 /* ShareExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 17E23DDF2F443A9300C55733 /* ShareExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		17E23DF02F443A9300C55733 /* LiveContainerShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */; };
 		19A100012F70000000A0B001 /* SafariWebExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 19A100042F70000000A0B001 /* SafariWebExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		E11884B92EF7A164009C6FA6 /* dyld_bypass_validation.h in Headers */ = {isa = PBXBuildFile; fileRef = E11884B82EF7A15F009C6FA6 /* dyld_bypass_validation.h */; };
 		E1292AF32DCA3A660065E12D /* LiveProcess.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = E1292AE52DCA3A660065E12D /* LiveProcess.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -74,7 +75,14 @@
 			containerPortal = 17DCE9952C7067EC00731D42 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 17E23DDE2F443A9300C55733;
-			remoteInfo = LaunchAppExtensionHelper;
+			remoteInfo = ShareExtension;
+		};
+		17E23DF12F443A9300C55733 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 17DCE9952C7067EC00731D42 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E1292BD52DCA3B660065E12D;
+			remoteInfo = LiveContainerShared;
 		};
 		19A100022F70000000A0B001 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -144,7 +152,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				19A100012F70000000A0B001 /* SafariWebExtension.appex in Embed Foundation Extensions */,
-				17E23DE92F443A9300C55733 /* LaunchAppExtensionHelper.appex in Embed Foundation Extensions */,
+				17E23DE92F443A9300C55733 /* ShareExtension.appex in Embed Foundation Extensions */,
 				17CAED2C2F234814008B1977 /* LaunchAppExtension.appex in Embed Foundation Extensions */,
 				E1292AF32DCA3A660065E12D /* LiveProcess.appex in Embed Foundation Extensions */,
 			);
@@ -174,7 +182,7 @@
 		17554B712DA16988004C6D90 /* OpenSSL.xcframework */ = {isa = PBXFileReference; expectedSignature = "AppleDeveloperProgram:67RAULRX93:Marcin Krzyzanowski"; lastKnownFileType = wrapper.xcframework; name = OpenSSL.xcframework; path = OpenSSL/Frameworks/OpenSSL.xcframework; sourceTree = "<group>"; };
 		17CAE6172F230449008B1977 /* LaunchAppExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.extensionkit-extension"; includeInIndex = 0; path = LaunchAppExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		17DCE99D2C7067EC00731D42 /* LiveContainer.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = LiveContainer.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		17E23DDF2F443A9300C55733 /* LaunchAppExtensionHelper.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = LaunchAppExtensionHelper.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		17E23DDF2F443A9300C55733 /* ShareExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = ShareExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		19A100042F70000000A0B001 /* SafariWebExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = SafariWebExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		E11884B82EF7A15F009C6FA6 /* dyld_bypass_validation.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = dyld_bypass_validation.h; sourceTree = "<group>"; };
 		E12928C92DCA38380065E12D /* UniformTypeIdentifiers.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UniformTypeIdentifiers.framework; path = System/Library/Frameworks/UniformTypeIdentifiers.framework; sourceTree = SDKROOT; };
@@ -261,7 +269,7 @@
 			membershipExceptions = (
 				Info.plist,
 			);
-			target = 17E23DDE2F443A9300C55733 /* LaunchAppExtensionHelper */;
+			target = 17E23DDE2F443A9300C55733 /* ShareExtension */;
 		};
 		19A1000D2F70000000A0B001 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -377,7 +385,7 @@
 		17780D3B2E1C02420077E636 /* litehook */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (17780E512E1C039D0077E636 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = litehook; sourceTree = "<group>"; };
 		17B0F8452DE16FE4008110EA /* xcconfigs */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = xcconfigs; sourceTree = "<group>"; };
 		17CAE6182F230449008B1977 /* LaunchAppExtension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (17CAE6252F230449008B1977 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LaunchAppExtension; sourceTree = "<group>"; };
-		17E23DE02F443A9300C55733 /* LaunchAppExtensionHelper */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (17E23DED2F443A9300C55733 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LaunchAppExtensionHelper; sourceTree = "<group>"; };
+		17E23DE02F443A9300C55733 /* ShareExtension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (17E23DED2F443A9300C55733 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = ShareExtension; sourceTree = "<group>"; };
 		19A100052F70000000A0B001 /* SafariWebExtension */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (19A1000D2F70000000A0B001 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = SafariWebExtension; sourceTree = "<group>"; };
 		E1292AE72DCA3A660065E12D /* LiveProcess */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (E1292AF72DCA3A660065E12D /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = LiveProcess; sourceTree = "<group>"; };
 		E1292C1A2DCA48F00065E12D /* Tweaks */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (E1292C202DCA48F00065E12D /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Tweaks; sourceTree = "<group>"; };
@@ -389,6 +397,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				17E23DF02F443A9300C55733 /* LiveContainerShared.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -519,7 +528,7 @@
 				E1292AE72DCA3A660065E12D /* LiveProcess */,
 				173545A92E2C7913001B3B4C /* SideStore */,
 				17CAE6182F230449008B1977 /* LaunchAppExtension */,
-				17E23DE02F443A9300C55733 /* LaunchAppExtensionHelper */,
+				17E23DE02F443A9300C55733 /* ShareExtension */,
 				19A100052F70000000A0B001 /* SafariWebExtension */,
 				174140B82D9C0F9100F3F928 /* Frameworks */,
 				17DCE99E2C7067EC00731D42 /* Products */,
@@ -539,7 +548,7 @@
 				E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */,
 				173545A82E2C7913001B3B4C /* SideStore.framework */,
 				17CAE6172F230449008B1977 /* LaunchAppExtension.appex */,
-				17E23DDF2F443A9300C55733 /* LaunchAppExtensionHelper.appex */,
+				17E23DDF2F443A9300C55733 /* ShareExtension.appex */,
 				19A100042F70000000A0B001 /* SafariWebExtension.appex */,
 			);
 			name = Products;
@@ -756,9 +765,9 @@
 			productReference = 17DCE99D2C7067EC00731D42 /* LiveContainer.app */;
 			productType = "com.apple.product-type.application";
 		};
-		17E23DDE2F443A9300C55733 /* LaunchAppExtensionHelper */ = {
+		17E23DDE2F443A9300C55733 /* ShareExtension */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 17E23DEA2F443A9300C55733 /* Build configuration list for PBXNativeTarget "LaunchAppExtensionHelper" */;
+			buildConfigurationList = 17E23DEA2F443A9300C55733 /* Build configuration list for PBXNativeTarget "ShareExtension" */;
 			buildPhases = (
 				17E23DDB2F443A9300C55733 /* Sources */,
 				17E23DDC2F443A9300C55733 /* Frameworks */,
@@ -767,15 +776,16 @@
 			buildRules = (
 			);
 			dependencies = (
+				17E23DF22F443A9300C55733 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				17E23DE02F443A9300C55733 /* LaunchAppExtensionHelper */,
+				17E23DE02F443A9300C55733 /* ShareExtension */,
 			);
-			name = LaunchAppExtensionHelper;
+			name = ShareExtension;
 			packageProductDependencies = (
 			);
-			productName = LaunchAppExtensionHelper;
-			productReference = 17E23DDF2F443A9300C55733 /* LaunchAppExtensionHelper.appex */;
+			productName = ShareExtension;
+			productReference = 17E23DDF2F443A9300C55733 /* ShareExtension.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
 		19A100062F70000000A0B001 /* SafariWebExtension */ = {
@@ -952,7 +962,7 @@
 				173545A72E2C7913001B3B4C /* SideStore */,
 				17CAE6162F230449008B1977 /* LaunchAppExtension */,
 				19A100062F70000000A0B001 /* SafariWebExtension */,
-				17E23DDE2F443A9300C55733 /* LaunchAppExtensionHelper */,
+				17E23DDE2F443A9300C55733 /* ShareExtension */,
 			);
 		};
 /* End PBXProject section */
@@ -1152,8 +1162,13 @@
 		};
 		17E23DE82F443A9300C55733 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 17E23DDE2F443A9300C55733 /* LaunchAppExtensionHelper */;
+			target = 17E23DDE2F443A9300C55733 /* ShareExtension */;
 			targetProxy = 17E23DE72F443A9300C55733 /* PBXContainerItemProxy */;
+		};
+		17E23DF22F443A9300C55733 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E1292BD52DCA3B660065E12D /* LiveContainerShared */;
+			targetProxy = 17E23DF12F443A9300C55733 /* PBXContainerItemProxy */;
 		};
 		19A100032F70000000A0B001 /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
@@ -1774,18 +1789,18 @@
 		17E23DEB2F443A9300C55733 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReferenceAnchor = 17B0F8452DE16FE4008110EA /* xcconfigs */;
-			baseConfigurationReferenceRelativePath = LaunchAppExtensionHelper.xcconfig;
+			baseConfigurationReferenceRelativePath = ShareExtension.xcconfig;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = LaunchAppExtensionHelper/LaunchAppExtensionHelper.entitlements;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "$(inherited)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3.7.11;
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = LaunchAppExtensionHelper/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = LaunchAppExtensionHelper;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShareExtension;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1793,14 +1808,14 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 3.7.11;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "ShareExtension/ShareExtension-Bridging-Header.h";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
@@ -1811,18 +1826,18 @@
 		17E23DEC2F443A9300C55733 /* Release */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReferenceAnchor = 17B0F8452DE16FE4008110EA /* xcconfigs */;
-			baseConfigurationReferenceRelativePath = LaunchAppExtensionHelper.xcconfig;
+			baseConfigurationReferenceRelativePath = ShareExtension.xcconfig;
 			buildSettings = {
 				CLANG_ENABLE_MODULES = YES;
-				CODE_SIGN_ENTITLEMENTS = LaunchAppExtensionHelper/LaunchAppExtensionHelper.entitlements;
+				CODE_SIGN_ENTITLEMENTS = ShareExtension/ShareExtension.entitlements;
 				CODE_SIGN_IDENTITY = "$(inherited)";
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 3.7.11;
 				DEVELOPMENT_TEAM = "$(DEVELOPMENT_TEAM)";
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = LaunchAppExtensionHelper/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = LaunchAppExtensionHelper;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ShareExtension/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = ShareExtension;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -1830,14 +1845,14 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 3.7.11;
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_EMIT_LOC_STRINGS = YES;
-				SWIFT_OBJC_BRIDGING_HEADER = "";
+				SWIFT_OBJC_BRIDGING_HEADER = "ShareExtension/ShareExtension-Bridging-Header.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -2216,7 +2231,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		17E23DEA2F443A9300C55733 /* Build configuration list for PBXNativeTarget "LaunchAppExtensionHelper" */ = {
+		17E23DEA2F443A9300C55733 /* Build configuration list for PBXNativeTarget "ShareExtension" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				17E23DEB2F443A9300C55733 /* Debug */,

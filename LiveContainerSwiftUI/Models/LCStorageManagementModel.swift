@@ -72,7 +72,7 @@ final class LCStorageManagementModel: ObservableObject {
         }
         
         if UserDefaults.sideStoreExist() {
-            allApps.append(LCAppModel(appInfo: BuiltInSideStoreAppInfo()))
+            allApps.append(LCAppModel(appInfo: BuiltInSideStoreAppInfo.shared))
         }
 
         // Show per-app bundle usage only when every installed app has a reliable bundle path.

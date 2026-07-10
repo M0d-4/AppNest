@@ -65,11 +65,11 @@ struct LaunchAppExtension: AppIntent {
         var ext : NSExtension? = LaunchAppExtension.ext
         if ext == nil {
             do {
-                ext = try NSExtension(identifier: ((Bundle.main.bundleIdentifier! as NSString).deletingPathExtension as NSString).appendingPathExtension("LaunchAppExtensionHelper") )
+                ext = try NSExtension(identifier: ((Bundle.main.bundleIdentifier! as NSString).deletingPathExtension as NSString).appendingPathExtension("ShareExtension") )
                 LaunchAppExtension.ext = ext
             } catch {
                 NSLog("Failed to start extension \(error)")
-                throw LaunchAppExtensionError("Failed to start extension \(error). To use the Launch App shortcut, reinstall LiveContainer with LaunchAppExtension and LaunchAppExtensionHelper installed. If you use SideStore, choose \"Keep App Extensions (Use Main Profile)\". If you use Impactor, choose \"Only Register Main Bundle\". For other sideloaders, select keep all extensions, i.e. DO NOT Remove any extension.")
+                throw LaunchAppExtensionError("Failed to start extension \(error). To use the Launch App shortcut, reinstall LiveContainer with LaunchAppExtension and ShareExtension installed. If you use SideStore, choose \"Keep App Extensions (Use Main Profile)\". If you use Impactor, choose \"Only Register Main Bundle\". For other sideloaders, select keep all extensions, i.e. DO NOT Remove any extension.")
             }
             
         }

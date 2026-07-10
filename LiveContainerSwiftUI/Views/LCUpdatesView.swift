@@ -145,11 +145,6 @@ struct LCUpdatesView: View {
                         }
                     }
                 }
-                .refreshable {
-                    if !sharedModel.sourcesViewModel.isRefreshingAll {
-                        await sharedModel.sourcesViewModel.refreshAllSources()
-                    }
-                }
                 .onAppear {
                     Task { await sharedModel.sourcesViewModel.refreshAllSources() }
                 }
@@ -274,32 +269,33 @@ struct LCUpdatesView: View {
     }
 
     /// Queue all pending updates sequentially.
+    ///
+    /// Previously this pushed raw URLs into `sharedModel.pendingInstallURLs`,
+    /// a separate "legacy bulk" queue with no per-item name/icon metadata and
+    /// no reentrancy guard on its drain loop. Since that drain loop is kicked
+    /// off by `.onReceive(sharedModel.$pendingInstallURLs)` and that publisher
+    /// fires on *every* mutation of the array — including the `removeFirst()`
+    /// the drain loop itself performs — queuing several updates at once spawned
+    /// a new overlapping drain `Task` on every dequeue, all racing to consume
+    /// the same array concurrently. That's both why the tray showed no app
+    /// icons (bare URLs carry no icon/name) and why the app got laggy (many
+    /// redundant concurrent download/install tasks instead of one sequential
+    /// one). Routing through the same structured, icon-aware, single-flight
+    /// queue that `queueUpdate(entry:)` already uses fixes both.
     private func updateAll() async {
         let entries = updateEntries
         guard !entries.isEmpty else { return }
         isUpdatingAll = true
 
         for entry in entries {
-            guard let bundleId = entry.app.appInfo.bundleIdentifier() else { continue }
-            queuedBundleIds.insert(bundleId)
+            queueUpdate(entry: entry)
         }
 
-        let urls = entries.map { $0.newVersion.downloadURL }
-        enqueueInstallURLs(urls)
-        while !sharedModel.pendingInstallURLs.isEmpty {
+        while !sharedModel.pendingInstallQueue.isEmpty {
             try? await Task.sleep(nanoseconds: 300_000_000)
         }
         queuedBundleIds.removeAll()
         isUpdatingAll = false
-    }
-
-    @MainActor
-    private func enqueueInstallURLs(_ urls: [URL]) {
-        // Mark all as updates so installIpaFile auto-replaces
-        sharedModel.downloadHelper.isUpdate = true
-        sharedModel.pendingInstallURLs.append(contentsOf: urls)
-        // Do NOT switch tabs here — LCAppListView.installFromUrl switches
-        // to apps after each download finishes so the user sees progress.
     }
 
     @MainActor
