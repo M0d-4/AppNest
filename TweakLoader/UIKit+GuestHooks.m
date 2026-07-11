@@ -225,11 +225,6 @@ static void Real_UIKitGuestHooksInit(void) {
         // exchange in that case would swap UIView's shared implementation —
         // affecting every view in the app, not just windows.
         LCSwizzleInstanceMethodSafely(UIWindow.class, @selector(layoutSubviews), @selector(hook_layoutSubviews));
-        // Belt-and-suspenders: also enforce the crop the one time a window is
-        // guaranteed to be asked to show itself, in case neither -setFrame:
-        // nor a -layoutSubviews pass happens to run with the right geometry
-        // before the window is actually on screen for the first time.
-        swizzle(UIWindow.class, @selector(makeKeyAndVisible), @selector(hook_makeKeyAndVisible));
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification
                                                           object:nil
                                                            queue:[NSOperationQueue mainQueue]
@@ -1135,6 +1130,25 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && !isSideStore && isMainAppWindow) {
         self.backgroundColor = [UIColor blackColor];
     }
+    // Belt-and-suspenders: -layoutSubviews and -setFrame: both depend on
+    // something touching the window's geometry after it exists. The very
+    // first time a window is shown, especially outside multitask where
+    // there's no host-side FBSSceneSettings round-trip to piggyback on,
+    // that isn't guaranteed to happen before the window is actually on
+    // screen — so also enforce the crop right here, at the one point
+    // that's called exactly once the window is about to become visible.
+    // (This swizzle is only installed for apps whose delegate doesn't
+    // implement the modern scene APIs — see hook_setDelegate: below —
+    // so -layoutSubviews above remains the primary catch-all for the
+    // common, scene-delegate case.)
+    if (LCShouldApplyRealIPhoneModeCrop(self)) {
+        CGRect targetFrame = LCRealIPhoneModeCroppedFrame(self.frame);
+        NSLog(@"[ForceIPhoneMode] hook_makeKeyAndVisible currentFrame=%@ targetFrame=%@",
+              NSStringFromCGRect(self.frame), NSStringFromCGRect(targetFrame));
+        if (fabs(self.frame.size.width - targetFrame.size.width) >= 0.5) {
+            self.frame = targetFrame;
+        }
+    }
     [self hook_makeKeyAndVisible];
 }
 
@@ -1207,23 +1221,6 @@ static CGRect LCRealIPhoneModeCroppedFrame(CGRect frame) {
     // Guards against re-triggering ourselves via the .frame set below.
     if (fabs(currentFrame.size.width - targetFrame.size.width) < 0.5) return;
 
-    self.frame = targetFrame;
-}
-
-// -layoutSubviews and -setFrame: both depend on *something* touching the
-// window's geometry after it exists. The very first time a window is shown,
-// especially outside multitask where there's no host-side FBSSceneSettings
-// round-trip to piggyback on, that isn't guaranteed to happen before the
-// window is actually on screen — so also enforce the crop at the one point
-// that's unconditionally called exactly once the window is about to become
-// visible.
-- (void)hook_makeKeyAndVisible {
-    [self hook_makeKeyAndVisible];
-    if (!LCShouldApplyRealIPhoneModeCrop(self)) return;
-    CGRect targetFrame = LCRealIPhoneModeCroppedFrame(self.frame);
-    NSLog(@"[ForceIPhoneMode] hook_makeKeyAndVisible currentFrame=%@ targetFrame=%@",
-          NSStringFromCGRect(self.frame), NSStringFromCGRect(targetFrame));
-    if (fabs(self.frame.size.width - targetFrame.size.width) < 0.5) return;
     self.frame = targetFrame;
 }
 
