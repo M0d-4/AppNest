@@ -87,6 +87,45 @@ struct LCUpdatesView: View {
         }
     }
 
+    // ── Toolbar ───────────────────────────────────────────────────────────────
+    // Split into its own @ToolbarContentBuilder (and small subviews below)
+    // rather than an inline closure on .toolbar { } — a single big
+    // conditional toolbar closure with several nested Buttons/Text modifiers
+    // in this file was too much for the type-checker to solve in one pass
+    // ("unable to type-check this expression in reasonable time").
+    @ToolbarContentBuilder
+    private var updatesToolbarContent: some ToolbarContent {
+        ToolbarItem(placement: .topBarLeading) {
+            if isMultiSelectMode {
+                UpdatesCancelSelectButton(isMultiSelectMode: $isMultiSelectMode, selectedEntryIds: $selectedEntryIds)
+            } else {
+                UpdatesRefreshButton(sharedModel: sharedModel)
+            }
+        }
+        if isMultiSelectMode {
+            ToolbarItem(placement: .topBarTrailing) {
+                UpdatesIgnoreSelectedButton(isEmpty: selectedEntryIds.isEmpty) {
+                    multiIgnoreConfirmShown = true
+                }
+            }
+        } else if !updateEntries.isEmpty {
+            // Separate ToolbarItems (rather than one ToolbarItemGroup) so
+            // these two don't get visually merged into a single shared
+            // capsule/border by the system toolbar styling.
+            ToolbarItem(placement: .topBarTrailing) {
+                UpdatesEnterSelectButton(isMultiSelectMode: $isMultiSelectMode)
+            }
+            ToolbarItem(placement: .topBarTrailing) {
+                UpdatesUpdateAllButton(
+                    isUpdatingAll: isUpdatingAll,
+                    isDisabled: isUpdatingAll || !sharedModel.pendingInstallURLs.isEmpty
+                ) {
+                    Task { await updateAll() }
+                }
+            }
+        }
+    }
+
     // ── Body ──────────────────────────────────────────────────────────────────
 
     var body: some View {
@@ -147,66 +186,7 @@ struct LCUpdatesView: View {
                     }
                 }
                 .navigationTitle("lc.tabView.updates".loc)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        if isMultiSelectMode {
-                            Button {
-                                withAnimation {
-                                    isMultiSelectMode = false
-                                    selectedEntryIds.removeAll()
-                                }
-                            } label: {
-                                Text("lc.common.cancel".loc)
-                            }
-                        } else {
-                            Button {
-                                Task { await sharedModel.sourcesViewModel.refreshAllSources() }
-                            } label: {
-                                if sharedModel.sourcesViewModel.isRefreshingAll {
-                                    ProgressView().progressViewStyle(.circular)
-                                } else {
-                                    Image(systemName: "arrow.clockwise")
-                                }
-                            }
-                            .disabled(sharedModel.sourcesViewModel.isRefreshingAll)
-                        }
-                    }
-                    if isMultiSelectMode {
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button {
-                                multiIgnoreConfirmShown = true
-                            } label: {
-                                Image(systemName: "bell.slash")
-                            }
-                            .disabled(selectedEntryIds.isEmpty)
-                        }
-                    } else if !updateEntries.isEmpty {
-                        // Separate ToolbarItems (rather than one ToolbarItemGroup)
-                        // so these two don't get visually merged into a single
-                        // shared capsule/border by the system toolbar styling.
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button {
-                                withAnimation { isMultiSelectMode = true }
-                            } label: {
-                                Image(systemName: "checkmark.circle")
-                            }
-                        }
-                        ToolbarItem(placement: .topBarTrailing) {
-                            Button {
-                                Task { await updateAll() }
-                            } label: {
-                                if isUpdatingAll {
-                                    ProgressView().progressViewStyle(.circular)
-                                } else {
-                                    Text("lc.updates.updateAll".loc)
-                                        .bold()
-                                        .underline(false)
-                                }
-                            }
-                            .disabled(isUpdatingAll || !sharedModel.pendingInstallURLs.isEmpty)
-                        }
-                    }
-                }
+                .toolbar { updatesToolbarContent }
                 .onAppear {
                     Task { await sharedModel.sourcesViewModel.refreshAllSources() }
                 }
@@ -453,6 +433,81 @@ struct LCUpdatesView: View {
 // overlay at the bottom of the screen handles all download visibility.
 // The Update button becomes a checkmark (queued state) or a spinner while active.
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ── Toolbar button subviews ──────────────────────────────────────────────────
+// Each kept intentionally tiny/monomorphic so the type-checker has no trouble
+// with any one of them individually.
+
+private struct UpdatesCancelSelectButton: View {
+    @Binding var isMultiSelectMode: Bool
+    @Binding var selectedEntryIds: Set<ObjectIdentifier>
+    var body: some View {
+        Button {
+            withAnimation {
+                isMultiSelectMode = false
+                selectedEntryIds.removeAll()
+            }
+        } label: {
+            Text("lc.common.cancel".loc)
+        }
+    }
+}
+
+private struct UpdatesRefreshButton: View {
+    @ObservedObject var sharedModel: SharedModel
+    var body: some View {
+        Button {
+            Task { await sharedModel.sourcesViewModel.refreshAllSources() }
+        } label: {
+            if sharedModel.sourcesViewModel.isRefreshingAll {
+                ProgressView().progressViewStyle(.circular)
+            } else {
+                Image(systemName: "arrow.clockwise")
+            }
+        }
+        .disabled(sharedModel.sourcesViewModel.isRefreshingAll)
+    }
+}
+
+private struct UpdatesIgnoreSelectedButton: View {
+    let isEmpty: Bool
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: "bell.slash")
+        }
+        .disabled(isEmpty)
+    }
+}
+
+private struct UpdatesEnterSelectButton: View {
+    @Binding var isMultiSelectMode: Bool
+    var body: some View {
+        Button {
+            withAnimation { isMultiSelectMode = true }
+        } label: {
+            Image(systemName: "checkmark.circle")
+        }
+    }
+}
+
+private struct UpdatesUpdateAllButton: View {
+    let isUpdatingAll: Bool
+    let isDisabled: Bool
+    let action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            if isUpdatingAll {
+                ProgressView().progressViewStyle(.circular)
+            } else {
+                Text("lc.updates.updateAll".loc)
+                    .bold()
+                    .underline(false)
+            }
+        }
+        .disabled(isDisabled)
+    }
+}
 
 private struct UpdateBannerView: View {
     let app: LCAppModel
