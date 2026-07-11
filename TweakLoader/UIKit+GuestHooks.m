@@ -233,6 +233,18 @@ static void Real_UIKitGuestHooksInit(void) {
                 [LCRealIPhoneModeHelper repositionAllWindows];
             });
         }];
+        // WillEnterForeground only fires on background->foreground transitions,
+        // not on a cold launch — DidBecomeActive fires in both cases, so this
+        // is a second chance to apply the crop if the initial -setFrame:/
+        // -layoutSubviews pass ran before geometry had settled.
+        [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification
+                                                          object:nil
+                                                           queue:[NSOperationQueue mainQueue]
+                                                      usingBlock:^(NSNotification * _Nonnull note) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.02 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [LCRealIPhoneModeHelper repositionAllWindows];
+            });
+        }];
     }
 
     swizzle(UIApplication.class, @selector(_applicationOpenURLAction:payload:origin:), @selector(hook__applicationOpenURLAction:payload:origin:));
