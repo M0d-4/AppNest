@@ -28,6 +28,10 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 @property bool isLocked;
 @property bool isHidden;
 @property bool ignoreUpdates;
+/// The specific source version string the user chose to ignore via a long
+/// press on the update banner. Cleared automatically once a newer version
+/// than this is what's being offered, so it only silences the one release.
+@property (nonatomic, copy) NSString *ignoredUpdateVersion;
 @property bool doSymlinkInbox;
 @property bool hideLiveContainer;
 @property bool forceIPhoneMode;

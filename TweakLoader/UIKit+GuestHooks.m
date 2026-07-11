@@ -206,20 +206,19 @@ static void Real_UIKitGuestHooksInit(void) {
               [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]);
         swizzle(UIWindow.class, @selector(setFrame:), @selector(hook_setFrame:));
         swizzle(UIScreen.class, @selector(bounds), @selector(hook_UIScreen_bounds));
-        // Scene-managed windows (the normal case for any modern, non-multitask
-        // app) are sized directly by the window scene and often never call the
-        // public -setFrame: setter at all, so the swizzle above alone never
-        // fires for them — this is why forced iPhone mode only ever worked in
-        // multitask mode, which sets frames explicitly through a different path.
-        // -layoutSubviews fires reliably any time a window's size is touched
-        // regardless of how it got there, so re-asserting the constrained frame
-        // there catches the scene-managed case too. Setting .frame from inside
-        // it routes back through hook_setFrame above, which is idempotent.
+        // Scene-managed windows are sized directly by the window scene (or, in
+        // multitask, by the host sending FBSSceneSettings over XPC) and often
+        // never call the public -setFrame: setter at all, so the swizzle above
+        // alone doesn't reliably fire for them in either single-app or
+        // multitask launches. -layoutSubviews fires reliably any time a
+        // window's size is touched regardless of how it got there, so
+        // re-asserting the constrained frame there catches that case too.
+        // Setting .frame from inside it routes back through hook_setFrame
+        // above, which is idempotent.
         // Uses the safe variant: UIWindow likely doesn't concretely override
         // -layoutSubviews itself (it'd just resolve to UIView's), and a plain
         // exchange in that case would swap UIView's shared implementation —
-        // affecting every view in the app, not just windows, and likely
-        // explaining why this silently never worked as intended.
+        // affecting every view in the app, not just windows.
         LCSwizzleInstanceMethodSafely(UIWindow.class, @selector(layoutSubviews), @selector(hook_layoutSubviews));
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification
                                                           object:nil
@@ -1096,28 +1095,32 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     }
     if (!scene) return;
 
-    CGRect realBounds = scene.coordinateSpace.bounds;
-    CGFloat realH = realBounds.size.height;
-    CGFloat realW = realBounds.size.width;
-
     NSString *lcappId = NSUserDefaults.lcGuestAppId;
     BOOL isSideStore = [lcappId.lowercaseString containsString:@"sidestore"];
     BOOL isReal = [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"];
-
-    CGFloat targetW, offsetX;
-    if (isReal && !isSideStore) {
-        targetW = MIN(realH * (9.0 / 16.0), realW);
-        offsetX = (realW - targetW) / 2.0;
-    } else {
-        targetW = realW;
-        offsetX = 0;
-    }
-    CGRect targetFrame = CGRectMake(offsetX, 0, targetW, realH);
+    // Nothing to reassert here — leave every window exactly as it is. This
+    // used to unconditionally force ALL windows (including alerts, overlays,
+    // and — critically — multitask tile/chrome windows) to a computed frame
+    // even when the feature was off, which is what made this fire-on-every-
+    // foreground handler destructive to multitask tiling in particular.
+    if (!isReal || isSideStore) return;
 
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     for (UIWindow *window in scene.windows) {
-        window.layer.frame = targetFrame;
+        // Only the app's own main window should be constrained here — other
+        // windows (alerts, multitask chrome, etc.) must be left alone.
+        if (window.windowLevel != UIWindowLevelNormal) continue;
+        // Derive the target from this window's own current frame, not the
+        // whole scene's bounds, so a multitask tile gets cropped to its own
+        // size instead of being reset to full screen.
+        CGRect currentFrame = window.frame;
+        CGFloat availW = currentFrame.size.width;
+        CGFloat availH = currentFrame.size.height;
+        if (availW <= 0 || availH <= 0) continue;
+        CGFloat targetW = MIN(availW, availH * (9.0 / 16.0));
+        CGFloat offsetX = currentFrame.origin.x + (availW - targetW) / 2.0;
+        window.layer.frame = CGRectMake(offsetX, currentFrame.origin.y, targetW, availH);
     }
     [CATransaction commit];
 }
@@ -1143,39 +1146,51 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     NSString *lcappid = NSUserDefaults.lcGuestAppId;
     BOOL isSideStore = [lcappid.lowercaseString containsString:@"sidestore"];
     BOOL isMainAppWindow = (self.windowLevel == UIWindowLevelNormal);
-    UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
-    CGRect screenBounds = scene ? scene.coordinateSpace.bounds : frame;
-    CGFloat realH = screenBounds.size.height;
-    CGFloat realW = screenBounds.size.width;
+    BOOL shouldForce = [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && !isSideStore && isMainAppWindow;
     NSLog(@"[ForceIPhoneMode] hook_setFrame called requestedFrame=%@ isMainAppWindow=%d windowLevel=%f LCRealIPhoneMode=%d",
           NSStringFromCGRect(frame), isMainAppWindow, self.windowLevel,
           [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]);
-    if (realH == 0 || realW == 0) {
+
+    // Anything that doesn't need the crop — feature off, SideStore, a
+    // non-main window (overlays, alerts, multitask chrome, etc.) — must pass
+    // through untouched. Previously this branch substituted a hardcoded
+    // full-screen rect for *any* uncropped case, which stomped on every
+    // other window's real geometry (including multitask tile assignments),
+    // silently breaking layout well beyond just this feature.
+    if (!shouldForce) {
         [self hook_setFrame:frame];
         return;
     }
-    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && !isSideStore && isMainAppWindow) {
-        CGFloat targetW = MIN(realW, realH * (9.0 / 16.0));
-        CGFloat offsetX = (realW - targetW) / 2.0;
-        [self hook_setFrame:CGRectMake(offsetX, 0, targetW, realH)];
-    } else {
-        [self hook_setFrame:CGRectMake(0, 0, realW, realH)];
+
+    // Constrain to a 9:16 aspect *within whatever area was actually being
+    // requested* — the full screen for a normal launch, or a multitask
+    // tile's own bounds when running there. Using the requested frame
+    // itself (rather than the whole scene's bounds) is what lets this work
+    // in both cases instead of only ever assuming full screen.
+    CGFloat availW = frame.size.width;
+    CGFloat availH = frame.size.height;
+    if (availW <= 0 || availH <= 0) {
+        [self hook_setFrame:frame];
+        return;
     }
+    CGFloat targetW = MIN(availW, availH * (9.0 / 16.0));
+    CGFloat offsetX = frame.origin.x + (availW - targetW) / 2.0;
+    [self hook_setFrame:CGRectMake(offsetX, frame.origin.y, targetW, availH)];
 }
 
 // Scene-managed windows are often never explicitly sent -setFrame: at all —
-// the scene sizes them directly — so hook_setFrame above never fires for them.
+// the scene (or, in multitask, the host sending FBSSceneSettings over XPC)
+// sizes them directly — so hook_setFrame above never fires for them.
 // -layoutSubviews IS called reliably any time the window's size is touched
-// (initial presentation, rotation, scene geometry changes), so re-assert the
-// constrained frame here too. Setting .frame routes back through the
-// hook_setFrame swizzle above, which is idempotent, so this can't loop.
+// (initial presentation, rotation, scene geometry changes, multitask tile
+// resize), so re-assert the constrained frame here too. Setting .frame
+// routes back through the hook_setFrame swizzle above, which is idempotent,
+// so this can't loop.
 //
-// IMPORTANT: only do this when the window's frame still looks untouched
-// (matches the scene's full bounds). In multitask mode, AppSceneViewController
-// deliberately sizes/positions this same window to a smaller tile via its own
-// settings.frame updates — if we unconditionally reassert our own calculation
-// on every layout pass, we fight that and undo it, which is what broke forced
-// iPhone mode in multitask after this hook was first added.
+// The available area is taken from the window's own current frame rather
+// than a hardcoded full-screen bounds, so this adapts to whatever space the
+// window actually has — a full screen in a normal launch, or a multitask
+// tile's smaller bounds — instead of only ever working for one of the two.
 - (void)hook_layoutSubviews {
     [self hook_layoutSubviews];
     NSString *lcappid = NSUserDefaults.lcGuestAppId;
@@ -1184,25 +1199,21 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     if (isSideStore || !isMainAppWindow) return;
     if (![NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) return;
 
-    UIWindowScene *scene = (UIWindowScene *)UIApplication.sharedApplication.connectedScenes.anyObject;
-    CGRect screenBounds = scene ? scene.coordinateSpace.bounds : self.frame;
-    CGFloat realH = screenBounds.size.height;
-    CGFloat realW = screenBounds.size.width;
-    if (realH == 0 || realW == 0) return;
+    CGRect currentFrame = self.frame;
+    CGFloat availW = currentFrame.size.width;
+    CGFloat availH = currentFrame.size.height;
+    if (availW <= 0 || availH <= 0) return;
 
-    BOOL looksUntouched = CGRectEqualToRect(self.frame, screenBounds) ||
-        (self.frame.origin.x == 0 && self.frame.origin.y == 0 &&
-         fabs(self.frame.size.width - realW) < 1.0 && fabs(self.frame.size.height - realH) < 1.0);
-    NSLog(@"[ForceIPhoneMode] hook_layoutSubviews currentFrame=%@ screenBounds=%@ looksUntouched=%d",
-          NSStringFromCGRect(self.frame), NSStringFromCGRect(screenBounds), looksUntouched);
-    if (!looksUntouched) return;
+    CGFloat targetW = MIN(availW, availH * (9.0 / 16.0));
+    NSLog(@"[ForceIPhoneMode] hook_layoutSubviews currentFrame=%@ targetW=%f",
+          NSStringFromCGRect(currentFrame), targetW);
+    // Already constrained (or converged to) the target width — nothing to do.
+    // Guards against re-triggering ourselves via the .frame set below.
+    if (fabs(currentFrame.size.width - targetW) < 0.5) return;
 
-    CGFloat targetW = MIN(realW, realH * (9.0 / 16.0));
-    CGFloat offsetX = (realW - targetW) / 2.0;
-    CGRect targetFrame = CGRectMake(offsetX, 0, targetW, realH);
-    if (!CGRectEqualToRect(self.frame, targetFrame)) {
-        self.frame = targetFrame;
-    }
+    CGFloat offsetX = currentFrame.origin.x + (availW - targetW) / 2.0;
+    CGRect targetFrame = CGRectMake(offsetX, currentFrame.origin.y, targetW, availH);
+    self.frame = targetFrame;
 }
 
 - (void)hook_makeKeyWindow {

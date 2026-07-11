@@ -75,6 +75,7 @@ struct LCUpdatesView: View {
                     installedName: app.appInfo.displayName(),
                     sources: sources
                   ) else { return nil }
+            guard best.version != app.appInfo.ignoredUpdateVersion else { return nil }
             return UpdateEntry(app: app, newVersion: best)
         }
     }
@@ -203,6 +204,8 @@ struct LCUpdatesView: View {
             Text("lc.updates.notAnUpdate.message %@".localizeWithFormat(notAnUpdateAppName))
         }
         // Ignore-update confirmation, shown after a long press on a banner.
+        // This only silences the specific version currently being offered —
+        // it does not touch the app's "Ignore Updates" setting.
         .alert(
             "lc.updates.ignoreUpdate.title".loc,
             isPresented: Binding(
@@ -255,12 +258,11 @@ struct LCUpdatesView: View {
 
     // ── Actions ───────────────────────────────────────────────────────────────
 
-    /// Permanently ignore updates for this app: it will no longer appear in
-    /// this list even when a newer version is available on a source. Can be
-    /// reverted from the app's own settings (Ignore Updates toggle).
+    /// Ignore this one update: the app stays in the "up to date" state until a
+    /// version newer than `newVersion` shows up. Does not touch the app's
+    /// "Ignore Updates" setting, which silences the app entirely.
     private func ignoreUpdate(for entry: UpdateEntry) {
-        entry.app.appInfo.ignoreUpdates = true
-        entry.app.uiIgnoreUpdates = true
+        entry.app.appInfo.ignoredUpdateVersion = entry.newVersion.version
         queuedBundleIds.remove(entry.app.appInfo.bundleIdentifier() ?? "")
         ignoreRefreshTick += 1
     }

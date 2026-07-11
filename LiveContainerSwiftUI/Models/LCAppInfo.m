@@ -692,6 +692,18 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
     
 }
 
+- (NSString *)ignoredUpdateVersion {
+    return _info[@"ignoredUpdateVersion"];
+}
+- (void)setIgnoredUpdateVersion:(NSString *)ignoredUpdateVersion {
+    if (ignoredUpdateVersion.length > 0) {
+        _info[@"ignoredUpdateVersion"] = ignoredUpdateVersion;
+    } else {
+        [_info removeObjectForKey:@"ignoredUpdateVersion"];
+    }
+    [self save];
+}
+
 - (bool)doSymlinkInbox {
     if(_info[@"doSymlinkInbox"] != nil) {
         return [_info[@"doSymlinkInbox"] boolValue];
