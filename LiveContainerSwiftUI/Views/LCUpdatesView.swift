@@ -171,27 +171,36 @@ struct LCUpdatesView: View {
                             .disabled(sharedModel.sourcesViewModel.isRefreshingAll)
                         }
                     }
-                    ToolbarItemGroup(placement: .topBarTrailing) {
-                        if isMultiSelectMode {
+                    if isMultiSelectMode {
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button {
                                 multiIgnoreConfirmShown = true
                             } label: {
                                 Image(systemName: "bell.slash")
                             }
                             .disabled(selectedEntryIds.isEmpty)
-                        } else if !updateEntries.isEmpty {
+                        }
+                    } else if !updateEntries.isEmpty {
+                        // Separate ToolbarItems (rather than one ToolbarItemGroup)
+                        // so these two don't get visually merged into a single
+                        // shared capsule/border by the system toolbar styling.
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button {
                                 withAnimation { isMultiSelectMode = true }
                             } label: {
                                 Image(systemName: "checkmark.circle")
                             }
+                        }
+                        ToolbarItem(placement: .topBarTrailing) {
                             Button {
                                 Task { await updateAll() }
                             } label: {
                                 if isUpdatingAll {
                                     ProgressView().progressViewStyle(.circular)
                                 } else {
-                                    Text("lc.updates.updateAll".loc).bold()
+                                    Text("lc.updates.updateAll".loc)
+                                        .bold()
+                                        .underline(false)
                                 }
                             }
                             .disabled(isUpdatingAll || !sharedModel.pendingInstallURLs.isEmpty)
