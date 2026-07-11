@@ -5,9 +5,10 @@
 //  Created by s s on 2026/4/12.
 //
 
-class BuiltInSideStoreAppInfo : LCAppInfo {
+final class BuiltInSideStoreAppInfo : LCAppInfo {
+    static let shared = BuiltInSideStoreAppInfo()
 
-    override init() {
+    private override init() {
         super.init(bundlePath: Bundle.main.bundleURL.appendingPathComponent("Frameworks/SideStoreApp.framework").path)
     }
     
@@ -67,8 +68,9 @@ class BuiltInSideStoreAppInfo : LCAppInfo {
     }
     
     private func ensureAndGetIconCacheFolder() -> URL? {
-        guard let caches = FileManager.default.urls(for: .cachesDirectory, in: .userDomainMask).first else { return nil }
-        let directory = caches.appendingPathComponent("BuiltInSideStoreIconCache", isDirectory: true)
+        let directory = LCPath.docPath
+            .appendingPathComponent("SideStore/Library/Caches", isDirectory: true)
+            .appendingPathComponent("BuiltInSideStoreIconCache", isDirectory: true)
         if !FileManager.default.fileExists(atPath: directory.path) {
             do {
                 try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)

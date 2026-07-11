@@ -52,6 +52,13 @@ struct LCUpdatesView: View {
     @State private var notAnUpdateAppName      = ""
     @State private var notAnUpdateDownloadedId = ""   // bundle ID from the downloaded IPA
 
+    /// Confirmation shown when the user long-presses a banner and chooses to ignore
+    /// future updates for that app. Holds the entry pending confirmation.
+    @State private var ignoreConfirmEntry: UpdateEntry? = nil
+    /// Bumped after ignoring an update so the view re-evaluates `updateEntries`
+    /// (LCAppModel's ignoreUpdates flag isn't itself @Published-observed here).
+    @State private var ignoreRefreshTick = 0
+
     // ── Computed ──────────────────────────────────────────────────────────────
 
     private var allApps: [LCAppModel] { sharedModel.apps + sharedModel.hiddenApps }
@@ -59,6 +66,7 @@ struct LCUpdatesView: View {
     private var updateEntries: [UpdateEntry] {
         let sources = sharedModel.sourcesViewModel.sources
         return allApps.compactMap { app in
+            guard !app.appInfo.ignoreUpdates else { return nil }
             guard let bundleId = app.appInfo.bundleIdentifier(),
                   let installedVersion = app.appInfo.version(),
                   let best = LCAppListView.bestUpdateVersion(
@@ -105,12 +113,17 @@ struct LCUpdatesView: View {
                                 UpdateBannerView(
                                     app: entry.app,
                                     newVersion: entry.newVersion,
-                                    isQueued: isQueued
-                                ) {
-                                    queueUpdate(entry: entry)
-                                }
+                                    isQueued: isQueued,
+                                    onUpdate: {
+                                        queueUpdate(entry: entry)
+                                    },
+                                    onRequestIgnore: {
+                                        ignoreConfirmEntry = entry
+                                    }
+                                )
                             }
                         }
+                        .id(ignoreRefreshTick)
                         .padding()
                         // Extra bottom padding so the tray doesn't cover the last banner
                         .padding(.bottom, 80)
@@ -189,6 +202,26 @@ struct LCUpdatesView: View {
         } message: {
             Text("lc.updates.notAnUpdate.message %@".localizeWithFormat(notAnUpdateAppName))
         }
+        // Ignore-update confirmation, shown after a long press on a banner.
+        .alert(
+            "lc.updates.ignoreUpdate.title".loc,
+            isPresented: Binding(
+                get: { ignoreConfirmEntry != nil },
+                set: { if !$0 { ignoreConfirmEntry = nil } }
+            )
+        ) {
+            Button("lc.updates.ignoreUpdate.confirm".loc, role: .destructive) {
+                if let entry = ignoreConfirmEntry {
+                    ignoreUpdate(for: entry)
+                }
+                ignoreConfirmEntry = nil
+            }
+            Button("lc.common.cancel".loc, role: .cancel) {
+                ignoreConfirmEntry = nil
+            }
+        } message: {
+            Text("lc.updates.ignoreUpdate.message %@".localizeWithFormat(ignoreConfirmEntry?.app.appInfo.displayName() ?? ""))
+        }
         // Error alert for installs triggered from this tab
         .alert("lc.common.error".loc, isPresented: $errorShow) {
             Button("lc.common.ok".loc) { }
@@ -221,6 +254,16 @@ struct LCUpdatesView: View {
     }
 
     // ── Actions ───────────────────────────────────────────────────────────────
+
+    /// Permanently ignore updates for this app: it will no longer appear in
+    /// this list even when a newer version is available on a source. Can be
+    /// reverted from the app's own settings (Ignore Updates toggle).
+    private func ignoreUpdate(for entry: UpdateEntry) {
+        entry.app.appInfo.ignoreUpdates = true
+        entry.app.uiIgnoreUpdates = true
+        queuedBundleIds.remove(entry.app.appInfo.bundleIdentifier() ?? "")
+        ignoreRefreshTick += 1
+    }
 
     /// Queue a single update download and validate it is truly an update.
     private func queueUpdate(entry: UpdateEntry) {
@@ -338,6 +381,9 @@ private struct UpdateBannerView: View {
     /// True when this app's update has been queued (download started or pending).
     let isQueued: Bool
     let onUpdate: () -> Void
+    /// Called when the user chooses "Ignore This Update" from the long-press menu.
+    /// The caller is responsible for confirming before actually ignoring.
+    let onRequestIgnore: () -> Void
 
     @AppStorage("dynamicColors", store: LCUtils.appGroupUserDefault) var dynamicColors = true
     @AppStorage("darkModeIcon",  store: LCUtils.appGroupUserDefault) var darkModeIcon  = false
@@ -349,11 +395,13 @@ private struct UpdateBannerView: View {
     init(app: LCAppModel,
          newVersion: AltStoreSourceAppVersion,
          isQueued: Bool,
-         onUpdate: @escaping () -> Void) {
+         onUpdate: @escaping () -> Void,
+         onRequestIgnore: @escaping () -> Void) {
         self.app        = app
         self.newVersion = newVersion
         self.isQueued   = isQueued
         self.onUpdate   = onUpdate
+        self.onRequestIgnore = onRequestIgnore
         let img = app.appInfo.iconIsDarkIcon(
             LCUtils.appGroupUserDefault.bool(forKey: "darkModeIcon")
         ) ?? UIImage()
@@ -435,6 +483,13 @@ private struct UpdateBannerView: View {
             let img = app.appInfo.iconIsDarkIcon(newVal) ?? UIImage()
             icon      = img
             mainColor = UpdateBannerView.extractColor(from: img)
+        }
+        .contextMenu {
+            Button(role: .destructive) {
+                onRequestIgnore()
+            } label: {
+                Label("lc.updates.ignoreThisUpdate".loc, systemImage: "bell.slash")
+            }
         }
     }
 

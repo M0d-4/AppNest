@@ -397,7 +397,7 @@ struct LCDataManagementView : View {
 
         var allApps = sharedModel.apps + sharedModel.hiddenApps
         if UserDefaults.sideStoreExist() {
-            allApps.append(LCAppModel(appInfo: BuiltInSideStoreAppInfo()))
+            allApps.append(LCAppModel(appInfo: BuiltInSideStoreAppInfo.shared))
         }
 
         var cleanedCount = 0

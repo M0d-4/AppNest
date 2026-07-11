@@ -679,6 +679,19 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
     
 }
 
+- (bool)ignoreUpdates {
+    if(_info[@"ignoreUpdates"] != nil) {
+        return [_info[@"ignoreUpdates"] boolValue];
+    } else {
+        return NO;
+    }
+}
+- (void)setIgnoreUpdates:(bool)ignoreUpdates {
+    _info[@"ignoreUpdates"] = [NSNumber numberWithBool:ignoreUpdates];
+    [self save];
+    
+}
+
 - (bool)doSymlinkInbox {
     if(_info[@"doSymlinkInbox"] != nil) {
         return [_info[@"doSymlinkInbox"] boolValue];

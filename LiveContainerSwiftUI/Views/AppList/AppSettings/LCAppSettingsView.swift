@@ -2496,6 +2496,14 @@ struct LCAppSettingsView: View {
                 Text("lc.appSettings.fixFilePickerDesc".loc)
             }
             
+            Section {
+                Toggle(isOn: $model.uiIgnoreUpdates) {
+                    Text("lc.appSettings.ignoreUpdates".loc)
+                }
+            } footer: {
+                Text("lc.appSettings.ignoreUpdatesDesc".loc)
+            }
+            
             
             Section {
                 if isStorageLoading {

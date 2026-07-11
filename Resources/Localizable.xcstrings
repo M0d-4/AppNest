@@ -7109,6 +7109,26 @@
         }
       }
     },
+    "lc.appSettings.ignoreUpdates": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore Updates"
+          }
+        }
+      }
+    },
+    "lc.appSettings.ignoreUpdatesDesc": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "When enabled, this app will never appear in the Updates tab, even when a new version is available. Turn this off to start seeing updates for this app again."
+          }
+        }
+      }
+    },
     "lc.appSettings.jit26.script": {
       "extractionState": "stale",
       "localizations": {
@@ -30888,6 +30908,46 @@
           "stringUnit": {
             "state": "translated",
             "value": "Checking for updates..."
+          }
+        }
+      }
+    },
+    "lc.updates.ignoreThisUpdate": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore This Update"
+          }
+        }
+      }
+    },
+    "lc.updates.ignoreUpdate.confirm": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore"
+          }
+        }
+      }
+    },
+    "lc.updates.ignoreUpdate.message %@": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You won't be notified about new versions of \"%@\" until you turn updates back on for it in its settings."
+          }
+        }
+      }
+    },
+    "lc.updates.ignoreUpdate.title": {
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore Updates?"
           }
         }
       }

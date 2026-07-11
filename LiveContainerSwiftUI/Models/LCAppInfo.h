@@ -27,6 +27,7 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 @property bool isJITNeeded;
 @property bool isLocked;
 @property bool isHidden;
+@property bool ignoreUpdates;
 @property bool doSymlinkInbox;
 @property bool hideLiveContainer;
 @property bool forceIPhoneMode;

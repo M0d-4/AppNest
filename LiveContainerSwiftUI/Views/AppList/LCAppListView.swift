@@ -218,6 +218,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @AppStorage("LCLaunchInMultitaskMode") var launchInMultitaskMode = false
     @AppStorage("LCAppListInterfaceStyle", store: LCUtils.appGroupUserDefault) var appListInterfaceStyle: LCAppListInterfaceStyle = .list
     @AppStorage("LCAppGridShowLabels", store: LCUtils.appGroupUserDefault) var appGridShowLabels = false
+    @AppStorage("darkModeIcon", store: LCUtils.appGroupUserDefault) private var darkModeIcon = false
     
     @State private var isViewAppeared = false
     
@@ -482,10 +483,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             Button {
                                 LCUtils.openSideStore(delegate: self)
                             } label: {
-                                Image("SideStoreBadge")
-                                    .resizable()
-                                    .renderingMode(.template)
-                                    .foregroundColor(SharedModel.isLiquidGlassEnabled ? Color.primary : Color.accentColor)
+                                IconImageView(icon: BuiltInSideStoreAppInfo.shared.iconIsDarkIcon(darkModeIcon))
                                     .frame(width: UIFont.preferredFont(forTextStyle: .body).lineHeight,
                                            height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
                             }
@@ -1337,7 +1335,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             return
         }
         
-        guard let installUrl = URL(string: urlStr) else {
+        guard var installUrl = URL(string: urlStr) else {
             errorInfo = "lc.appList.urlInvalidError".loc
             errorShow = true
             return
@@ -1353,21 +1351,48 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
         
         if installUrl.isFileURL {
             // install from local, we directly call local install method
-            if !installUrl.lastPathComponent.hasSuffix(".ipa") && !installUrl.lastPathComponent.hasSuffix(".tipa") {
+            let fileExtension = installUrl.pathExtension.lowercased()
+            if fileExtension != "ipa" && fileExtension != "tipa" {
                 errorInfo = "lc.appList.urlFileIsNotIpaError".loc
                 errorShow = true
                 return
             }
             
             let fm = FileManager.default
-            if !fm.isReadableFile(atPath: installUrl.path) && !installUrl.startAccessingSecurityScopedResource() {
+            var didStartAccessing = false
+            if !fm.isReadableFile(atPath: installUrl.path),
+               let bookmarkData = LCUtils.appGroupUserDefault.data(forKey: "LCLaunchExtensionFileBookmark") {
+                do {
+                    var isStale = false
+                    let resolvedURL = try URL(
+                        resolvingBookmarkData: bookmarkData,
+                        options: URL.BookmarkResolutionOptions(rawValue: 1 << 10),
+                        relativeTo: nil,
+                        bookmarkDataIsStale: &isStale
+                    )
+                    installUrl = resolvedURL
+                    didStartAccessing = resolvedURL.startAccessingSecurityScopedResource()
+                } catch {
+                    errorInfo =  "Failed to resolve shared IPA bookmark: \(error.localizedDescription)"
+                    errorShow = true
+                    return
+                }
+            }
+
+            if !fm.isReadableFile(atPath: installUrl.path) && !didStartAccessing {
+                didStartAccessing = installUrl.startAccessingSecurityScopedResource()
+            }
+
+            if !fm.isReadableFile(atPath: installUrl.path) && !didStartAccessing {
                 errorInfo = "lc.appList.ipaAccessError".loc
                 errorShow = true
                 return
             }
             
             defer {
-                installUrl.stopAccessingSecurityScopedResource()
+                if didStartAccessing {
+                    installUrl.stopAccessingSecurityScopedResource()
+                }
             }
             
             do {
@@ -1382,9 +1407,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 var shouldDelete = false
                 if let documentsDirectory = fm.urls(for: .documentDirectory, in: .userDomainMask).first {
                     let inboxURL = documentsDirectory.appendingPathComponent("Inbox")
-                    let fileURL = inboxURL.appendingPathComponent(installUrl.lastPathComponent)
-                    
-                    shouldDelete = fm.fileExists(atPath: fileURL.path)
+                    shouldDelete = installUrl.deletingLastPathComponent().standardizedFileURL == inboxURL.standardizedFileURL
                 }
                 if shouldDelete {
                     try fm.removeItem(at: installUrl)
@@ -1544,6 +1567,10 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                     break
                 }
             }
+        }
+        
+        if appFound == nil && bundleId == "builtinSideStore" {
+            appFound = LCAppModel(appInfo: BuiltInSideStoreAppInfo.shared)
         }
         
         if isFoundAppLocked && !sharedModel.isHiddenAppUnlocked {

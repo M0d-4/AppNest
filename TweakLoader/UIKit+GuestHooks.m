@@ -555,39 +555,8 @@ void authenticateUser(void (^completion)(BOOL success, NSError *error)) {
     }
 }
 
-void handleLiveContainerLaunch(NSURL* url) {
-    // If it's not current app, then switch
+void handleLiveContainerLaunch(NSString* bundleName, NSString* containerFolderName, NSURL* url) {
     // check if there are other LCs is running this app
-    NSString* bundleName = nil;
-    NSString* openUrl = nil;
-    NSString* containerFolderName = nil;
-    NSURLComponents* components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
-    for (NSURLQueryItem* queryItem in components.queryItems) {
-        if ([queryItem.name isEqualToString:@"bundle-name"]) {
-            bundleName = queryItem.value;
-        } else if ([queryItem.name isEqualToString:@"open-url"]) {
-            NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:queryItem.value options:0];
-            openUrl = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
-        } else if ([queryItem.name isEqualToString:@"container-folder-name"]) {
-            containerFolderName = queryItem.value;
-        }
-    }
-    
-    // launch to LiveContainerUI
-    if([bundleName isEqualToString:@"ui"]) {
-        LCShowSwitchAppConfirmation(url, @"LiveContainer", false);
-        return;
-    }
-    
-    NSString* containerId = [NSString stringWithUTF8String:getenv("HOME")].lastPathComponent;
-    if(!containerFolderName) {
-        containerFolderName = findDefaultContainerWithBundleId(bundleName);
-    }
-    if ([bundleName isEqualToString:NSBundle.mainBundle.bundlePath.lastPathComponent] && [containerId isEqualToString:containerFolderName]) {
-        if(openUrl) {
-            openUniversalLink(openUrl);
-        }
-    } else {
         NSString* runningLC = [NSClassFromString(@"LCSharedUtils") getContainerUsingLCSchemeWithFolderName:containerFolderName];
         // the app is running in an lc, that lc is not me, also is not my avatar
         if(runningLC) {
@@ -628,7 +597,7 @@ void handleLiveContainerLaunch(NSURL* url) {
         } else {
             LCShowSwitchAppConfirmation(url, bundleName, isSharedApp);
         }
-    }
+    
 }
 
 BOOL shouldRedirectOpenURLToHost(NSURL* url) {
@@ -667,62 +636,175 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
     return [scheme isEqualToString:NSUserDefaults.lcAppUrlScheme.lowercaseString];
 }
 
-// Handler for AppDelegate
-@implementation UIApplication(LiveContainerHook)
-- (void)hook__applicationOpenURLAction:(id)action payload:(NSDictionary *)payload origin:(id)origin {
-    NSString *url = payload[UIApplicationLaunchOptionsURLKey];
-    if ([url hasPrefix:@"file:"]) {
-        [[NSURL URLWithString:url] startAccessingSecurityScopedResource];
-        [self hook__applicationOpenURLAction:action payload:payload origin:origin];
+typedef NS_ENUM(NSInteger, LCControlAppURLHandling) {
+    LCControlAppURLHandlingPassThrough,
+    LCControlAppURLHandlingReplaceURL,
+    LCControlAppURLHandlingStop,
+};
+
+static NSString* LCDecodedURLStringFromControlURL(NSURL *url) {
+    NSURLComponents* lcUrl = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+    NSString* realUrlEncoded = nil;
+    for(NSURLQueryItem *queryItem in lcUrl.queryItems) {
+        if([queryItem.name isEqualToString:@"url"]) {
+            realUrlEncoded = queryItem.value;
+            break;
+        }
+    }
+    if(!realUrlEncoded) {
+        realUrlEncoded = lcUrl.queryItems.firstObject.value;
+    }
+    if(!realUrlEncoded) {
+        return nil;
+    }
+    NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
+    if(!decodedData) {
+        return nil;
+    }
+    return [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
+}
+
+static void resolveLaunchExtensionFileBookmark(void) {
+    NSData* bookmarkData = [NSUserDefaults.lcSharedDefaults dataForKey:@"LCLaunchExtensionFileBookmark"];
+    if(!bookmarkData) {
         return;
     }
+    BOOL isStale = NO;
+    NSError* error = nil;
+    NSURL* resolvedURL = [NSURL URLByResolvingBookmarkData:bookmarkData
+                                                   options:(1UL << 10)
+                                             relativeToURL:nil
+                                       bookmarkDataIsStale:&isStale
+                                                     error:&error];
+    if(!resolvedURL) {
+        NSLog(@"[LC] Failed to resolve shared file bookmark: %@", error.localizedDescription);
+    }
+    [NSUserDefaults.lcSharedDefaults removeObjectForKey:@"LCLaunchExtensionFileBookmark"];
     
-    if([url hasPrefix:@"sidestore:"]) {
-        LCOpenSideStoreURL([NSURL URLWithString:url]);
-        return;
+}
+
+static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modifiedURLStr) {
+    if(!url || url.isFileURL) {
+        return LCControlAppURLHandlingPassThrough;
+    }
+
+    // pass through sidestore urls
+    if(NSUserDefaults.isSideStore && ![url.scheme isEqualToString:@"livecontainer"]) {
+        return LCControlAppURLHandlingPassThrough;
+    }
+
+    if([url.scheme isEqualToString:@"sidestore"]) {
+        LCOpenSideStoreURL(url);
+        return LCControlAppURLHandlingStop;
+    }
+
+    NSString *lcScheme = NSUserDefaults.lcAppUrlScheme;
+    // pass through any url that should not be handled by current lc
+    if(![url.scheme isEqualToString:lcScheme]) {
+        return LCControlAppURLHandlingPassThrough;
+    }
+    NSString* urlHost = url.host;
+    
+    if([urlHost isEqualToString:@"livecontainer-relaunch"]) {
+        return LCControlAppURLHandlingStop;
     }
     
-    if ([url hasPrefix:[NSString stringWithFormat: @"%@://livecontainer-relaunch", NSUserDefaults.lcAppUrlScheme]]) {
-        // Ignore
-        return;
-    } else if ([url hasPrefix:[NSString stringWithFormat: @"%@://open-web-page?", NSUserDefaults.lcAppUrlScheme]]) {
-        // launch to UI and open web page
-        NSURLComponents* lcUrl = [NSURLComponents componentsWithString:url];
-        NSString* realUrlEncoded = lcUrl.queryItems[0].value;
-        if(!realUrlEncoded) return;
-        // Convert the base64 encoded url into String
-        NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
-        NSString *decodedUrl = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
-        LCOpenWebPage(decodedUrl, url);
-        return;
-    } else if ([url hasPrefix:[NSString stringWithFormat: @"%@://open-url", NSUserDefaults.lcAppUrlScheme]]) {
-        // pass url to guest app
-        NSURLComponents* lcUrl = [NSURLComponents componentsWithString:url];
-        NSString* realUrlEncoded = lcUrl.queryItems[0].value;
-        if(!realUrlEncoded) return;
-        // Convert the base64 encoded url into String
-        NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
-        NSString *decodedUrl = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
+    if([urlHost isEqualToString:@"livecontainer-launch"]) {
+        // If it's not current app, then switch, otherwise check if we need to open the url
+        NSString* bundleName = nil;
+        NSString* openUrl = nil;
+        NSString* containerFolderName = nil;
+        NSURLComponents* components = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
+        for (NSURLQueryItem* queryItem in components.queryItems) {
+            if ([queryItem.name isEqualToString:@"bundle-name"]) {
+                bundleName = queryItem.value;
+            } else if ([queryItem.name isEqualToString:@"open-url"]) {
+                NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:queryItem.value options:0];
+                openUrl = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
+            } else if ([queryItem.name isEqualToString:@"container-folder-name"]) {
+                containerFolderName = queryItem.value;
+            }
+        }
+        
+        // launch to LiveContainerUI
+        if([bundleName isEqualToString:@"ui"]) {
+            LCShowSwitchAppConfirmation(url, @"LiveContainer", false);
+            return LCControlAppURLHandlingStop;
+        }
+        
+        NSString* containerId = [NSString stringWithUTF8String:getenv("HOME")].lastPathComponent;
+        if(!containerFolderName) {
+            containerFolderName = findDefaultContainerWithBundleId(bundleName);
+        }
+        // current bundlename and container folder name matches OR sidestore is running and we are launching builtinSideStore
+        if (([bundleName isEqualToString:NSBundle.mainBundle.bundlePath.lastPathComponent] && [containerId isEqualToString:containerFolderName]) ||
+            (NSUserDefaults.isSideStore && [bundleName isEqualToString:@"builtinSideStore"])) {
+            if(openUrl) {
+                if([openUrl hasPrefix:@"file:"]) {
+                    resolveLaunchExtensionFileBookmark();
+                    *modifiedURLStr = openUrl;
+                    return LCControlAppURLHandlingReplaceURL;
+                } else {
+                    openUniversalLink(openUrl);
+                }
+            }
+        } else {
+            if([bundleName isEqualToString:@"builtinSideStore"]) {
+                LCShowSwitchAppConfirmation(url, @"SideStore", NO);
+                return LCControlAppURLHandlingStop;
+            }
+            handleLiveContainerLaunch(bundleName, containerFolderName, url);
+        }
+        
+        return LCControlAppURLHandlingStop;
+    }
+
+    if([urlHost isEqualToString:@"open-web-page"]) {
+        NSString *decodedUrl = LCDecodedURLStringFromControlURL(url);
+        if(decodedUrl) {
+            LCOpenWebPage(decodedUrl, url.absoluteString);
+        }
+        return LCControlAppURLHandlingStop;
+    }
+
+    if([urlHost isEqualToString:@"open-url"]) {
+        NSString *decodedUrl = LCDecodedURLStringFromControlURL(url);
+        if(!decodedUrl) {
+            return LCControlAppURLHandlingStop;
+        }
         // it's a Universal link, let's call -[UIActivityContinuationManager handleActivityContinuation:isSuspended:]
         if([decodedUrl hasPrefix:@"https"]) {
             openUniversalLink(decodedUrl);
-        } else {
-            NSMutableDictionary* newPayload = [payload mutableCopy];
-            newPayload[UIApplicationLaunchOptionsURLKey] = decodedUrl;
-            [self hook__applicationOpenURLAction:action payload:newPayload origin:origin];
+            return LCControlAppURLHandlingStop;
         }
-        
-        return;
-    } else if ([url hasPrefix:[NSString stringWithFormat: @"%@://livecontainer-launch?bundle-name=", NSUserDefaults.lcAppUrlScheme]]) {
-        handleLiveContainerLaunch([NSURL URLWithString:url]);
-        // Not what we're looking for, pass it
-        
-    } else if ([url hasPrefix:[NSString stringWithFormat: @"%@://install", NSUserDefaults.lcAppUrlScheme]]) {
+        *modifiedURLStr = decodedUrl;
+        return LCControlAppURLHandlingReplaceURL;
+    }
+
+    if([urlHost isEqualToString:@"install"]) {
         LCShowAlert(@"lc.guestTweak.restartToInstall".loc);
+        return LCControlAppURLHandlingStop;
+    }
+
+    return LCControlAppURLHandlingStop;
+}
+
+// Handler for AppDelegate
+@implementation UIApplication(LiveContainerHook)
+- (void)hook__applicationOpenURLAction:(id)action payload:(NSDictionary *)payload origin:(id)origin {
+    NSURL *url = [NSURL URLWithString:payload[UIApplicationLaunchOptionsURLKey]];
+    NSString* replacementURLString = nil;
+    LCControlAppURLHandling decision = LCHandleControlAppURL(url, &replacementURLString);
+    if(decision == LCControlAppURLHandlingStop) {
+        return;
+    }
+    if(decision == LCControlAppURLHandlingReplaceURL) {
+        NSMutableDictionary* newPayload = [payload mutableCopy];
+        newPayload[UIApplicationLaunchOptionsURLKey] = replacementURLString;
+        [self hook__applicationOpenURLAction:action payload:newPayload origin:origin];
         return;
     }
     [self hook__applicationOpenURLAction:action payload:payload origin:origin];
-    return;
 }
 
 - (void)hook__connectUISceneFromFBSScene:(id)scene transitionContext:(UIApplicationSceneTransitionContext*)context {
@@ -750,6 +832,9 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
     do {
         if(!decodedUrlStr) break;
         NSURL* decodedUrl = [NSURL URLWithString:decodedUrlStr];
+        if(decodedUrl.isFileURL) {
+            resolveLaunchExtensionFileBookmark();
+        }
         
         NSMutableDictionary* newDict = [context.payload mutableCopy];
         if(!newDict) newDict = [NSMutableDictionary new];
@@ -893,69 +978,26 @@ BOOL strictModeAllowsOpenURL(NSURL *url) {
         }
     }
 
-    // Don't have UIOpenURLAction or is passing a file to app? pass it
-    if (!urlAction || urlAction.url.isFileURL || (NSUserDefaults.isSideStore && ![urlAction.url.scheme isEqualToString:@"livecontainer"])) {
+    if(!urlAction) {
         [self hook_scene:scene didReceiveActions:actions fromTransitionContext:context];
         return;
     }
-    
-    if (urlAction.url.isFileURL) {
-        [urlAction.url startAccessingSecurityScopedResource];
-        [self hook_scene:scene didReceiveActions:actions fromTransitionContext:context];
+    NSString* replacementURLString = nil;
+    LCControlAppURLHandling decision = LCHandleControlAppURL(urlAction.url, &replacementURLString);
+    if(decision == LCControlAppURLHandlingStop) {
         return;
     }
-    
-    if([urlAction.url.scheme isEqualToString:@"sidestore"]) {
-        LCOpenSideStoreURL(urlAction.url);
-        return;
-    }
-
-    NSString *url = urlAction.url.absoluteString;
-    if ([url hasPrefix:[NSString stringWithFormat: @"%@://livecontainer-relaunch", NSUserDefaults.lcAppUrlScheme]]) {
-        // Ignore
-    } else if ([url hasPrefix:[NSString stringWithFormat: @"%@://open-web-page?", NSUserDefaults.lcAppUrlScheme]]) {
-        NSURLComponents* lcUrl = [NSURLComponents componentsWithString:url];
-        NSString* realUrlEncoded = lcUrl.queryItems[0].value;
-        if(!realUrlEncoded) return;
-        // launch to UI and open web page
-        NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
-        NSString *decodedUrl = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
-        LCOpenWebPage(decodedUrl, url);
-    } else if ([url hasPrefix:[NSString stringWithFormat: @"%@://open-url", NSUserDefaults.lcAppUrlScheme]]) {
-        // Open guest app's URL scheme
-        NSURLComponents* lcUrl = [NSURLComponents componentsWithString:url];
-        NSString* realUrlEncoded = lcUrl.queryItems[0].value;
-        if(!realUrlEncoded) return;
-        // Convert the base64 encoded url into String
-        NSData *decodedData = [[NSData alloc] initWithBase64EncodedString:realUrlEncoded options:0];
-        NSString *decodedUrl = [[NSString alloc] initWithData:decodedData encoding:NSUTF8StringEncoding];
-        
-        // it's a Universal link, let's call -[UIActivityContinuationManager handleActivityContinuation:isSuspended:]
-        if([decodedUrl hasPrefix:@"https"]) {
-            openUniversalLink(decodedUrl);
-        } else {
-            NSMutableSet *newActions = actions.mutableCopy;
-            [newActions removeObject:urlAction];
-            NSURL* finalURL = [NSURL URLWithString:decodedUrl];
-            if(finalURL) {
-                UIOpenURLAction *newUrlAction = [[UIOpenURLAction alloc] initWithURL:finalURL];
-                [newActions addObject:newUrlAction];
-                [self hook_scene:scene didReceiveActions:newActions fromTransitionContext:context];
-            }
+    if(decision == LCControlAppURLHandlingReplaceURL) {
+        NSURL* finalURL = [NSURL URLWithString:replacementURLString];
+        if(!finalURL) {
+            return;
         }
-
-    } else if ([url hasPrefix:[NSString stringWithFormat: @"%@://livecontainer-launch?bundle-name=", NSUserDefaults.lcAppUrlScheme]]){
-        handleLiveContainerLaunch(urlAction.url);
-        
-    } else if ([url hasPrefix:[NSString stringWithFormat: @"%@://install", NSUserDefaults.lcAppUrlScheme]]) {
-        LCShowAlert(@"lc.guestTweak.restartToInstall".loc);
-        return;
-    }
-    
-    if ([urlAction.url.scheme isEqualToString:NSUserDefaults.lcAppUrlScheme]) {
         NSMutableSet *newActions = actions.mutableCopy;
         [newActions removeObject:urlAction];
-        actions = newActions;
+        UIOpenURLAction *newUrlAction = [[UIOpenURLAction alloc] initWithURL:finalURL];
+        [newActions addObject:newUrlAction];
+        [self hook_scene:scene didReceiveActions:newActions fromTransitionContext:context];
+        return;
     }
     [self hook_scene:scene didReceiveActions:actions fromTransitionContext:context];
 }

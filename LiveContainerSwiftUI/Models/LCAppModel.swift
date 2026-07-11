@@ -50,6 +50,11 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             appInfo.doSymlinkInbox = uiDoSymlinkInbox
         }
     }
+    @Published var uiIgnoreUpdates : Bool {
+        didSet {
+            appInfo.ignoreUpdates = uiIgnoreUpdates
+        }
+    }
     @Published var uiUseLCBundleId : Bool {
         didSet {
             appInfo.doUseLCBundleId = uiUseLCBundleId
@@ -733,6 +738,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         self.uiAddonSettingsContainerFolderName = appInfo.dataUUID ?? appInfo.containers.first?.folderName ?? ""
         self.uiTweakFolder = appInfo.tweakFolder
         self.uiDoSymlinkInbox = appInfo.doSymlinkInbox
+        self.uiIgnoreUpdates = appInfo.ignoreUpdates
         self.uiOrientationLock = appInfo.orientationLock
         self.uiIsMultitaskModeSpecificed = appInfo.multitaskSpecified
         self.uiUseLCBundleId = appInfo.doUseLCBundleId
