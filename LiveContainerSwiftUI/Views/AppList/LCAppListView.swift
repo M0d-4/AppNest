@@ -563,6 +563,28 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                         }
                         .disabled(isDeleting || isDeleteArmed)
 
+                        // Bulk ignore/unignore updates: unlike delete/lock,
+                        // there's no destructive confirmation needed and the
+                        // two directions are mutually obvious, so this is a
+                        // plain menu rather than the arm-then-act pattern
+                        // used above.
+                        Menu {
+                            Button {
+                                ignoreUpdatesForSelectedApps()
+                            } label: {
+                                Label("lc.appList.ignoreUpdatesSelected".loc, systemImage: "bell.slash")
+                            }
+                            Button {
+                                unignoreUpdatesForSelectedApps()
+                            } label: {
+                                Label("lc.appList.unignoreUpdatesSelected".loc, systemImage: "bell")
+                            }
+                        } label: {
+                            Image(systemName: "bell.slash")
+                                .foregroundColor(selectedAppsForDeletion.isEmpty ? .secondary : .primary)
+                        }
+                        .disabled(isDeleting || selectedAppsForDeletion.isEmpty)
+
                         // Cancel multiselect
                         Button {
                             withAnimation {
@@ -2242,6 +2264,38 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             }
             sharedModel.isMultiSelectMode = false
         }
+    }
+
+    /// Sets the "Ignore Updates" setting for every selected app — they'll stop
+    /// appearing in the Updates tab entirely, for any version, until this is
+    /// turned back off (per-app, from LCAppSettingsView, or via the inverse
+    /// bulk action below).
+    func ignoreUpdatesForSelectedApps() {
+        guard !selectedAppsForDeletion.isEmpty else { return }
+        for app in selectedAppsForDeletion {
+            app.appInfo.ignoreUpdates = true
+            app.uiIgnoreUpdates = true
+        }
+        withAnimation {
+            selectedAppsForDeletion.removeAll()
+            isMultiSelectMode = false
+        }
+        sharedModel.isMultiSelectMode = false
+    }
+
+    /// Inverse of the above — clears "Ignore Updates" for every selected app
+    /// so they can appear in the Updates tab again.
+    func unignoreUpdatesForSelectedApps() {
+        guard !selectedAppsForDeletion.isEmpty else { return }
+        for app in selectedAppsForDeletion {
+            app.appInfo.ignoreUpdates = false
+            app.uiIgnoreUpdates = false
+        }
+        withAnimation {
+            selectedAppsForDeletion.removeAll()
+            isMultiSelectMode = false
+        }
+        sharedModel.isMultiSelectMode = false
     }
     
 }

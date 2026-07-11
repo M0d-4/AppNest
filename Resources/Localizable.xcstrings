@@ -3077,6 +3077,17 @@
         }
       }
     },
+    "lc.appList.ignoreUpdatesSelected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Ignore Updates for Selected"
+          }
+        }
+      }
+    },
     "lc.appList.infoPlistCannotReadError": {
       "extractionState": "manual",
       "localizations": {
@@ -5292,6 +5303,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "名字 (Z-A)"
+          }
+        }
+      }
+    },
+    "lc.appList.unignoreUpdatesSelected": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Un-ignore Updates for Selected"
           }
         }
       }
@@ -30908,6 +30930,17 @@
           "stringUnit": {
             "state": "translated",
             "value": "Checking for updates..."
+          }
+        }
+      }
+    },
+    "lc.updates.ignoreSelected.message %lld": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You won't be notified about these %lld update(s) again. You'll still see future updates for these apps unless you also enable Ignore Updates in their settings."
           }
         }
       }

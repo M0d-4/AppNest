@@ -1212,14 +1212,26 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
     }
     
     // Determines whether this launch should run in forced iPhone (9:16) mode and
-    // writes the shared flag the guest-process hooks (and multitask window layout
+    // writes the shared flags the guest-process hooks (and multitask window layout
     // code) read at runtime. Applies in both single-app and multitask launches --
     // MultitaskManager.isMultitasking() can route even an ordinary tap through the
     // multitask path whenever another app is already multitasking, so gating this
     // on isMultitask made the toggle silently do nothing in that common case.
+    //
+    // Also records whether *this* launch is itself going through the multitask
+    // host (AppSceneViewController). That controller does its own Real iPhone
+    // Mode centering (it knows the actual tile bounds; the guest process
+    // doesn't), so the guest-side hooks use this flag to stay out of its way
+    // instead of re-cropping an already-correctly-cropped frame.
     func syncIPhoneMode(isMultitask: Bool?) {
         let finalForceIPhone = !isHostDeviceIPhone && uiForceIPhoneMode
         LCUtils.appGroupUserDefault.set(finalForceIPhone, forKey: "LCRealIPhoneMode")
+        LCUtils.appGroupUserDefault.set(isMultitask ?? false, forKey: "LCIsMultitaskLaunch")
+        // These are read by the guest process almost immediately after it spawns;
+        // make sure the write has actually propagated through the app-group
+        // suite before we hand off, rather than relying on the OS to flush it
+        // in time on its own.
+        LCUtils.appGroupUserDefault.synchronize()
     }
     
     // You should let LCAppModel.runApp to decide whether to run in multitask mode, but you may override the multitask parameter if necessary
@@ -1337,7 +1349,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             isAppRunning = true
         }
         do {
-            syncIPhoneMode(isMultitask: multitask)
+            syncIPhoneMode(isMultitask: shouldMultitask)
             try await signApp(force: false)
             
             if let bundleIdOverride {

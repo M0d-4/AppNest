@@ -59,6 +59,13 @@ struct LCUpdatesView: View {
     /// (LCAppModel's ignoreUpdates flag isn't itself @Published-observed here).
     @State private var ignoreRefreshTick = 0
 
+    /// Multiselect: pick several updates at once and ignore just those specific
+    /// versions in one action (mirrors the app list's bulk ignore/unignore, but
+    /// scoped to only the version currently on offer for each selected app).
+    @State private var isMultiSelectMode = false
+    @State private var selectedEntryIds: Set<ObjectIdentifier> = []
+    @State private var multiIgnoreConfirmShown = false
+
     // ── Computed ──────────────────────────────────────────────────────────────
 
     private var allApps: [LCAppModel] { sharedModel.apps + sharedModel.hiddenApps }
@@ -115,11 +122,20 @@ struct LCUpdatesView: View {
                                     app: entry.app,
                                     newVersion: entry.newVersion,
                                     isQueued: isQueued,
+                                    isMultiSelectMode: isMultiSelectMode,
+                                    isSelected: selectedEntryIds.contains(entry.id),
                                     onUpdate: {
                                         queueUpdate(entry: entry)
                                     },
                                     onRequestIgnore: {
                                         ignoreConfirmEntry = entry
+                                    },
+                                    onToggleSelect: {
+                                        if selectedEntryIds.contains(entry.id) {
+                                            selectedEntryIds.remove(entry.id)
+                                        } else {
+                                            selectedEntryIds.insert(entry.id)
+                                        }
                                     }
                                 )
                             }
@@ -133,19 +149,42 @@ struct LCUpdatesView: View {
                 .navigationTitle("lc.tabView.updates".loc)
                 .toolbar {
                     ToolbarItem(placement: .topBarLeading) {
-                        Button {
-                            Task { await sharedModel.sourcesViewModel.refreshAllSources() }
-                        } label: {
-                            if sharedModel.sourcesViewModel.isRefreshingAll {
-                                ProgressView().progressViewStyle(.circular)
-                            } else {
-                                Image(systemName: "arrow.clockwise")
+                        if isMultiSelectMode {
+                            Button {
+                                withAnimation {
+                                    isMultiSelectMode = false
+                                    selectedEntryIds.removeAll()
+                                }
+                            } label: {
+                                Text("lc.common.cancel".loc)
                             }
+                        } else {
+                            Button {
+                                Task { await sharedModel.sourcesViewModel.refreshAllSources() }
+                            } label: {
+                                if sharedModel.sourcesViewModel.isRefreshingAll {
+                                    ProgressView().progressViewStyle(.circular)
+                                } else {
+                                    Image(systemName: "arrow.clockwise")
+                                }
+                            }
+                            .disabled(sharedModel.sourcesViewModel.isRefreshingAll)
                         }
-                        .disabled(sharedModel.sourcesViewModel.isRefreshingAll)
                     }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        if !updateEntries.isEmpty {
+                    ToolbarItemGroup(placement: .topBarTrailing) {
+                        if isMultiSelectMode {
+                            Button {
+                                multiIgnoreConfirmShown = true
+                            } label: {
+                                Image(systemName: "bell.slash")
+                            }
+                            .disabled(selectedEntryIds.isEmpty)
+                        } else if !updateEntries.isEmpty {
+                            Button {
+                                withAnimation { isMultiSelectMode = true }
+                            } label: {
+                                Image(systemName: "checkmark.circle")
+                            }
                             Button {
                                 Task { await updateAll() }
                             } label: {
@@ -225,6 +264,20 @@ struct LCUpdatesView: View {
         } message: {
             Text("lc.updates.ignoreUpdate.message %@".localizeWithFormat(ignoreConfirmEntry?.app.appInfo.displayName() ?? ""))
         }
+        // Bulk ignore confirmation for multiselect. Same scope as the single
+        // long-press action: only the specific version currently on offer for
+        // each selected app is silenced, not the app's "Ignore Updates" setting.
+        .alert(
+            "lc.updates.ignoreUpdate.title".loc,
+            isPresented: $multiIgnoreConfirmShown
+        ) {
+            Button("lc.updates.ignoreUpdate.confirm".loc, role: .destructive) {
+                ignoreSelectedUpdates()
+            }
+            Button("lc.common.cancel".loc, role: .cancel) { }
+        } message: {
+            Text("lc.updates.ignoreSelected.message %lld".localizeWithFormat(selectedEntryIds.count))
+        }
         // Error alert for installs triggered from this tab
         .alert("lc.common.error".loc, isPresented: $errorShow) {
             Button("lc.common.ok".loc) { }
@@ -264,6 +317,21 @@ struct LCUpdatesView: View {
     private func ignoreUpdate(for entry: UpdateEntry) {
         entry.app.appInfo.ignoredUpdateVersion = entry.newVersion.version
         queuedBundleIds.remove(entry.app.appInfo.bundleIdentifier() ?? "")
+        ignoreRefreshTick += 1
+    }
+
+    /// Bulk version of the above for multiselect: ignores just the specific
+    /// version currently offered for each selected app, one at a time.
+    private func ignoreSelectedUpdates() {
+        guard !selectedEntryIds.isEmpty else { return }
+        for entry in updateEntries where selectedEntryIds.contains(entry.id) {
+            entry.app.appInfo.ignoredUpdateVersion = entry.newVersion.version
+            queuedBundleIds.remove(entry.app.appInfo.bundleIdentifier() ?? "")
+        }
+        withAnimation {
+            selectedEntryIds.removeAll()
+            isMultiSelectMode = false
+        }
         ignoreRefreshTick += 1
     }
 
@@ -382,10 +450,17 @@ private struct UpdateBannerView: View {
     let newVersion: AltStoreSourceAppVersion
     /// True when this app's update has been queued (download started or pending).
     let isQueued: Bool
+    /// True while the Updates tab is in multiselect mode — swaps the trailing
+    /// Update button for a selection circle and routes taps to selection
+    /// instead of starting a download.
+    let isMultiSelectMode: Bool
+    let isSelected: Bool
     let onUpdate: () -> Void
     /// Called when the user chooses "Ignore This Update" from the long-press menu.
     /// The caller is responsible for confirming before actually ignoring.
     let onRequestIgnore: () -> Void
+    /// Called when this banner is tapped while in multiselect mode.
+    let onToggleSelect: () -> Void
 
     @AppStorage("dynamicColors", store: LCUtils.appGroupUserDefault) var dynamicColors = true
     @AppStorage("darkModeIcon",  store: LCUtils.appGroupUserDefault) var darkModeIcon  = false
@@ -397,13 +472,19 @@ private struct UpdateBannerView: View {
     init(app: LCAppModel,
          newVersion: AltStoreSourceAppVersion,
          isQueued: Bool,
+         isMultiSelectMode: Bool = false,
+         isSelected: Bool = false,
          onUpdate: @escaping () -> Void,
-         onRequestIgnore: @escaping () -> Void) {
+         onRequestIgnore: @escaping () -> Void,
+         onToggleSelect: @escaping () -> Void = {}) {
         self.app        = app
         self.newVersion = newVersion
         self.isQueued   = isQueued
+        self.isMultiSelectMode = isMultiSelectMode
+        self.isSelected = isSelected
         self.onUpdate   = onUpdate
         self.onRequestIgnore = onRequestIgnore
+        self.onToggleSelect = onToggleSelect
         let img = app.appInfo.iconIsDarkIcon(
             LCUtils.appGroupUserDefault.bool(forKey: "darkModeIcon")
         ) ?? UIImage()
@@ -451,8 +532,13 @@ private struct UpdateBannerView: View {
 
             Spacer()
 
-            // Right: Update button or queued indicator
-            if isQueued {
+            // Right: selection circle (multiselect), queued indicator, or Update button
+            if isMultiSelectMode {
+                Image(systemName: isSelected ? "checkmark.circle.fill" : "circle")
+                    .font(.system(size: 24))
+                    .foregroundColor(isSelected ? tintColor : .secondary)
+                    .transition(.opacity)
+            } else if isQueued {
                 // Show a small checkmark to indicate it's been queued/downloading
                 Image(systemName: "checkmark.circle.fill")
                     .font(.system(size: 26))
@@ -477,9 +563,22 @@ private struct UpdateBannerView: View {
         .padding()
         .frame(minHeight: 88)
         .animation(.easeInOut(duration: 0.2), value: isQueued)
+        .animation(.easeInOut(duration: 0.2), value: isMultiSelectMode)
         .background {
             RoundedRectangle(cornerSize: CGSize(width: 22, height: 22))
                 .fill(bgColor)
+        }
+        .overlay {
+            if isMultiSelectMode && isSelected {
+                RoundedRectangle(cornerSize: CGSize(width: 22, height: 22))
+                    .stroke(tintColor, lineWidth: 2)
+            }
+        }
+        .contentShape(RoundedRectangle(cornerSize: CGSize(width: 22, height: 22)))
+        .onTapGesture {
+            if isMultiSelectMode {
+                onToggleSelect()
+            }
         }
         .onChange(of: darkModeIcon) { newVal in
             let img = app.appInfo.iconIsDarkIcon(newVal) ?? UIImage()
@@ -487,10 +586,12 @@ private struct UpdateBannerView: View {
             mainColor = UpdateBannerView.extractColor(from: img)
         }
         .contextMenu {
-            Button(role: .destructive) {
-                onRequestIgnore()
-            } label: {
-                Label("lc.updates.ignoreThisUpdate".loc, systemImage: "bell.slash")
+            if !isMultiSelectMode {
+                Button(role: .destructive) {
+                    onRequestIgnore()
+                } label: {
+                    Label("lc.updates.ignoreThisUpdate".loc, systemImage: "bell.slash")
+                }
             }
         }
     }

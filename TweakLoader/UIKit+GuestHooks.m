@@ -11,6 +11,11 @@ extern void _objc_msgForward(void);
 @interface LCRealIPhoneModeHelper : NSObject
 + (void)repositionAllWindows;
 @end
+// Shared Real iPhone Mode crop helpers (defined alongside the UIWindow hooks
+// further down this file) — forward-declared here so LCRealIPhoneModeHelper,
+// which appears earlier in the file, can use them too.
+static BOOL LCShouldApplyRealIPhoneModeCrop(UIWindow *window);
+static CGRect LCRealIPhoneModeCroppedFrame(CGRect frame);
 UIInterfaceOrientation LCOrientationLock = UIInterfaceOrientationUnknown;
 NSMutableArray<NSString*>* LCSupportedUrlSchemes = nil;
 BOOL strictTestMode = NO;
@@ -220,6 +225,11 @@ static void Real_UIKitGuestHooksInit(void) {
         // exchange in that case would swap UIView's shared implementation —
         // affecting every view in the app, not just windows.
         LCSwizzleInstanceMethodSafely(UIWindow.class, @selector(layoutSubviews), @selector(hook_layoutSubviews));
+        // Belt-and-suspenders: also enforce the crop the one time a window is
+        // guaranteed to be asked to show itself, in case neither -setFrame:
+        // nor a -layoutSubviews pass happens to run with the right geometry
+        // before the window is actually on screen for the first time.
+        swizzle(UIWindow.class, @selector(makeKeyAndVisible), @selector(hook_makeKeyAndVisible));
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification
                                                           object:nil
                                                            queue:[NSOperationQueue mainQueue]
@@ -1095,32 +1105,18 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     }
     if (!scene) return;
 
-    NSString *lcappId = NSUserDefaults.lcGuestAppId;
-    BOOL isSideStore = [lcappId.lowercaseString containsString:@"sidestore"];
-    BOOL isReal = [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"];
-    // Nothing to reassert here — leave every window exactly as it is. This
-    // used to unconditionally force ALL windows (including alerts, overlays,
-    // and — critically — multitask tile/chrome windows) to a computed frame
-    // even when the feature was off, which is what made this fire-on-every-
-    // foreground handler destructive to multitask tiling in particular.
-    if (!isReal || isSideStore) return;
-
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
     for (UIWindow *window in scene.windows) {
-        // Only the app's own main window should be constrained here — other
-        // windows (alerts, multitask chrome, etc.) must be left alone.
-        if (window.windowLevel != UIWindowLevelNormal) continue;
-        // Derive the target from this window's own current frame, not the
-        // whole scene's bounds, so a multitask tile gets cropped to its own
-        // size instead of being reset to full screen.
-        CGRect currentFrame = window.frame;
-        CGFloat availW = currentFrame.size.width;
-        CGFloat availH = currentFrame.size.height;
-        if (availW <= 0 || availH <= 0) continue;
-        CGFloat targetW = MIN(availW, availH * (9.0 / 16.0));
-        CGFloat offsetX = currentFrame.origin.x + (availW - targetW) / 2.0;
-        window.layer.frame = CGRectMake(offsetX, currentFrame.origin.y, targetW, availH);
+        // Reuses the exact same eligibility check (feature on, not
+        // SideStore, main window only, and — importantly — skipped
+        // entirely under multitask, where the host does its own
+        // centering) as the -setFrame:/-layoutSubviews hooks, so
+        // foregrounding can't apply different logic than everyday
+        // resizes do.
+        if (!LCShouldApplyRealIPhoneModeCrop(window)) continue;
+        CGRect targetFrame = LCRealIPhoneModeCroppedFrame(window.frame);
+        window.layer.frame = targetFrame;
     }
     [CATransaction commit];
 }
@@ -1142,17 +1138,41 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     [self hook_makeKeyAndVisible];
 }
 
-- (void)hook_setFrame:(CGRect)frame {
+// Shared decision: does this window need the Real iPhone Mode crop applied
+// by *this* (guest) process at all? False for SideStore, non-main windows,
+// and — critically — for any window running under the multitask host. The
+// multitask host (AppSceneViewController) does its own centering using the
+// tile's actual bounds, which the guest process has no way to know; letting
+// the guest also crop on top of that double-applies the offset and is what
+// made the multitask crop appear off-center.
+static BOOL LCShouldApplyRealIPhoneModeCrop(UIWindow *window) {
+    if (![NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) return NO;
+    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCIsMultitaskLaunch"]) return NO;
     NSString *lcappid = NSUserDefaults.lcGuestAppId;
-    BOOL isSideStore = [lcappid.lowercaseString containsString:@"sidestore"];
-    BOOL isMainAppWindow = (self.windowLevel == UIWindowLevelNormal);
-    BOOL shouldForce = [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && !isSideStore && isMainAppWindow;
-    NSLog(@"[ForceIPhoneMode] hook_setFrame called requestedFrame=%@ isMainAppWindow=%d windowLevel=%f LCRealIPhoneMode=%d",
-          NSStringFromCGRect(frame), isMainAppWindow, self.windowLevel,
-          [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]);
+    if ([lcappid.lowercaseString containsString:@"sidestore"]) return NO;
+    if (window.windowLevel != UIWindowLevelNormal) return NO;
+    return YES;
+}
+
+// Computes the centered 9:16 crop of `frame`. Idempotent: feeding an
+// already-cropped rect back in returns the same rect unchanged.
+static CGRect LCRealIPhoneModeCroppedFrame(CGRect frame) {
+    CGFloat availW = frame.size.width;
+    CGFloat availH = frame.size.height;
+    if (availW <= 0 || availH <= 0) return frame;
+    CGFloat targetW = MIN(availW, availH * (9.0 / 16.0));
+    CGFloat offsetX = frame.origin.x + (availW - targetW) / 2.0;
+    return CGRectMake(offsetX, frame.origin.y, targetW, availH);
+}
+
+- (void)hook_setFrame:(CGRect)frame {
+    BOOL shouldForce = LCShouldApplyRealIPhoneModeCrop(self);
+    NSLog(@"[ForceIPhoneMode] hook_setFrame called requestedFrame=%@ windowLevel=%f shouldForce=%d",
+          NSStringFromCGRect(frame), self.windowLevel, shouldForce);
 
     // Anything that doesn't need the crop — feature off, SideStore, a
-    // non-main window (overlays, alerts, multitask chrome, etc.) — must pass
+    // non-main window (overlays, alerts, multitask chrome, etc.), or a
+    // window the multitask host is already cropping itself — must pass
     // through untouched. Previously this branch substituted a hardcoded
     // full-screen rect for *any* uncropped case, which stomped on every
     // other window's real geometry (including multitask tile assignments),
@@ -1162,57 +1182,48 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
         return;
     }
 
-    // Constrain to a 9:16 aspect *within whatever area was actually being
-    // requested* — the full screen for a normal launch, or a multitask
-    // tile's own bounds when running there. Using the requested frame
-    // itself (rather than the whole scene's bounds) is what lets this work
-    // in both cases instead of only ever assuming full screen.
-    CGFloat availW = frame.size.width;
-    CGFloat availH = frame.size.height;
-    if (availW <= 0 || availH <= 0) {
-        [self hook_setFrame:frame];
-        return;
-    }
-    CGFloat targetW = MIN(availW, availH * (9.0 / 16.0));
-    CGFloat offsetX = frame.origin.x + (availW - targetW) / 2.0;
-    [self hook_setFrame:CGRectMake(offsetX, frame.origin.y, targetW, availH)];
+    // Constrain to a 9:16 aspect within whatever area was actually being
+    // requested (the full screen for a normal launch — multitask windows
+    // are excluded above, since the host handles those itself).
+    [self hook_setFrame:LCRealIPhoneModeCroppedFrame(frame)];
 }
 
 // Scene-managed windows are often never explicitly sent -setFrame: at all —
-// the scene (or, in multitask, the host sending FBSSceneSettings over XPC)
-// sizes them directly — so hook_setFrame above never fires for them.
-// -layoutSubviews IS called reliably any time the window's size is touched
-// (initial presentation, rotation, scene geometry changes, multitask tile
-// resize), so re-assert the constrained frame here too. Setting .frame
-// routes back through the hook_setFrame swizzle above, which is idempotent,
-// so this can't loop.
-//
-// The available area is taken from the window's own current frame rather
-// than a hardcoded full-screen bounds, so this adapts to whatever space the
-// window actually has — a full screen in a normal launch, or a multitask
-// tile's smaller bounds — instead of only ever working for one of the two.
+// the scene sizes them directly — so hook_setFrame above never fires for
+// them. -layoutSubviews IS called reliably any time the window's size is
+// touched (initial presentation, rotation, scene geometry changes), so
+// re-assert the constrained frame here too. Setting .frame routes back
+// through the hook_setFrame swizzle above, which is idempotent, so this
+// can't loop.
 - (void)hook_layoutSubviews {
     [self hook_layoutSubviews];
-    NSString *lcappid = NSUserDefaults.lcGuestAppId;
-    BOOL isSideStore = [lcappid.lowercaseString containsString:@"sidestore"];
-    BOOL isMainAppWindow = (self.windowLevel == UIWindowLevelNormal);
-    if (isSideStore || !isMainAppWindow) return;
-    if (![NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) return;
+    if (!LCShouldApplyRealIPhoneModeCrop(self)) return;
 
     CGRect currentFrame = self.frame;
-    CGFloat availW = currentFrame.size.width;
-    CGFloat availH = currentFrame.size.height;
-    if (availW <= 0 || availH <= 0) return;
-
-    CGFloat targetW = MIN(availW, availH * (9.0 / 16.0));
-    NSLog(@"[ForceIPhoneMode] hook_layoutSubviews currentFrame=%@ targetW=%f",
-          NSStringFromCGRect(currentFrame), targetW);
-    // Already constrained (or converged to) the target width — nothing to do.
+    CGRect targetFrame = LCRealIPhoneModeCroppedFrame(currentFrame);
+    NSLog(@"[ForceIPhoneMode] hook_layoutSubviews currentFrame=%@ targetFrame=%@",
+          NSStringFromCGRect(currentFrame), NSStringFromCGRect(targetFrame));
+    // Already constrained (or converged to) the target — nothing to do.
     // Guards against re-triggering ourselves via the .frame set below.
-    if (fabs(currentFrame.size.width - targetW) < 0.5) return;
+    if (fabs(currentFrame.size.width - targetFrame.size.width) < 0.5) return;
 
-    CGFloat offsetX = currentFrame.origin.x + (availW - targetW) / 2.0;
-    CGRect targetFrame = CGRectMake(offsetX, currentFrame.origin.y, targetW, availH);
+    self.frame = targetFrame;
+}
+
+// -layoutSubviews and -setFrame: both depend on *something* touching the
+// window's geometry after it exists. The very first time a window is shown,
+// especially outside multitask where there's no host-side FBSSceneSettings
+// round-trip to piggyback on, that isn't guaranteed to happen before the
+// window is actually on screen — so also enforce the crop at the one point
+// that's unconditionally called exactly once the window is about to become
+// visible.
+- (void)hook_makeKeyAndVisible {
+    [self hook_makeKeyAndVisible];
+    if (!LCShouldApplyRealIPhoneModeCrop(self)) return;
+    CGRect targetFrame = LCRealIPhoneModeCroppedFrame(self.frame);
+    NSLog(@"[ForceIPhoneMode] hook_makeKeyAndVisible currentFrame=%@ targetFrame=%@",
+          NSStringFromCGRect(self.frame), NSStringFromCGRect(targetFrame));
+    if (fabs(self.frame.size.width - targetFrame.size.width) < 0.5) return;
     self.frame = targetFrame;
 }
 
