@@ -88,20 +88,29 @@ struct LCUpdatesView: View {
     }
 
     // ── Toolbar ───────────────────────────────────────────────────────────────
-    // Split into its own @ToolbarContentBuilder (and small subviews below)
-    // rather than an inline closure on .toolbar { } — a single big
-    // conditional toolbar closure with several nested Buttons/Text modifiers
-    // in this file was too much for the type-checker to solve in one pass
-    // ("unable to type-check this expression in reasonable time").
+    // Split into separate leading/trailing @ToolbarContentBuilder properties
+    // (and small subviews below) rather than one inline closure on
+    // .toolbar { } — a single big conditional toolbar closure with several
+    // nested Buttons/Text modifiers in this file was too much for the
+    // type-checker to solve in one pass ("unable to type-check this
+    // expression in reasonable time"). Branching strictly between whole
+    // ToolbarItems at the top level of each property (never inside a
+    // ToolbarItem's own content closure) keeps each piece cheap to infer.
     @ToolbarContentBuilder
-    private var updatesToolbarContent: some ToolbarContent {
-        ToolbarItem(placement: .topBarLeading) {
-            if isMultiSelectMode {
+    private var updatesLeadingToolbarContent: some ToolbarContent {
+        if isMultiSelectMode {
+            ToolbarItem(placement: .topBarLeading) {
                 UpdatesCancelSelectButton(isMultiSelectMode: $isMultiSelectMode, selectedEntryIds: $selectedEntryIds)
-            } else {
+            }
+        } else {
+            ToolbarItem(placement: .topBarLeading) {
                 UpdatesRefreshButton(sharedModel: sharedModel)
             }
         }
+    }
+
+    @ToolbarContentBuilder
+    private var updatesTrailingToolbarContent: some ToolbarContent {
         if isMultiSelectMode {
             ToolbarItem(placement: .topBarTrailing) {
                 UpdatesIgnoreSelectedButton(isEmpty: selectedEntryIds.isEmpty) {
@@ -118,12 +127,15 @@ struct LCUpdatesView: View {
             ToolbarItem(placement: .topBarTrailing) {
                 UpdatesUpdateAllButton(
                     isUpdatingAll: isUpdatingAll,
-                    isDisabled: isUpdatingAll || !sharedModel.pendingInstallURLs.isEmpty
-                ) {
-                    Task { await updateAll() }
-                }
+                    isDisabled: isUpdatingAll || !sharedModel.pendingInstallURLs.isEmpty,
+                    action: startUpdateAll
+                )
             }
         }
+    }
+
+    private func startUpdateAll() {
+        Task { await updateAll() }
     }
 
     // ── Body ──────────────────────────────────────────────────────────────────
@@ -186,7 +198,10 @@ struct LCUpdatesView: View {
                     }
                 }
                 .navigationTitle("lc.tabView.updates".loc)
-                .toolbar { updatesToolbarContent }
+                .toolbar {
+                    updatesLeadingToolbarContent
+                    updatesTrailingToolbarContent
+                }
                 .onAppear {
                     Task { await sharedModel.sourcesViewModel.refreshAllSources() }
                 }
