@@ -464,9 +464,28 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             
             .navigationTitle("lc.appList.myApps".loc)
             .toolbar {
-                // Leading: spinner / SideStore / Help
+                // Leading: spinner / SideStore / Help — swaps to bulk ignore/unignore
+                // updates during multiselect, in the same slot the search button
+                // normally occupies (search is hidden during multiselect anyway).
                 ToolbarItemGroup(placement: .topBarLeading) {
-                    if !isMultiSelectMode {
+                    if isMultiSelectMode {
+                        Menu {
+                            Button {
+                                ignoreUpdatesForSelectedApps()
+                            } label: {
+                                Label("lc.appList.ignoreUpdatesSelected".loc, systemImage: "bell.slash")
+                            }
+                            Button {
+                                unignoreUpdatesForSelectedApps()
+                            } label: {
+                                Label("lc.appList.unignoreUpdatesSelected".loc, systemImage: "bell")
+                            }
+                        } label: {
+                            Image(systemName: "bell.slash")
+                                .foregroundColor(selectedAppsForDeletion.isEmpty ? .secondary : .primary)
+                        }
+                        .disabled(isDeleting || selectedAppsForDeletion.isEmpty)
+                    } else {
                         // iPad renders its own native search field for .searchable
                         // automatically, so a manual button there just duplicates it.
                         // iPhone hides it behind a pull/tap, so it needs the button.
@@ -562,28 +581,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                                 .foregroundColor(isLockArmed ? .orange : .secondary)
                         }
                         .disabled(isDeleting || isDeleteArmed)
-
-                        // Bulk ignore/unignore updates: unlike delete/lock,
-                        // there's no destructive confirmation needed and the
-                        // two directions are mutually obvious, so this is a
-                        // plain menu rather than the arm-then-act pattern
-                        // used above.
-                        Menu {
-                            Button {
-                                ignoreUpdatesForSelectedApps()
-                            } label: {
-                                Label("lc.appList.ignoreUpdatesSelected".loc, systemImage: "bell.slash")
-                            }
-                            Button {
-                                unignoreUpdatesForSelectedApps()
-                            } label: {
-                                Label("lc.appList.unignoreUpdatesSelected".loc, systemImage: "bell")
-                            }
-                        } label: {
-                            Image(systemName: "bell.slash")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty ? .secondary : .primary)
-                        }
-                        .disabled(isDeleting || selectedAppsForDeletion.isEmpty)
 
                         // Cancel multiselect
                         Button {
