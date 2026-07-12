@@ -88,52 +88,15 @@ struct LCUpdatesView: View {
     }
 
     // ── Toolbar ───────────────────────────────────────────────────────────────
-    // Split into separate leading/trailing @ToolbarContentBuilder properties
-    // (and small subviews below) rather than one inline closure on
-    // .toolbar { } — a single big conditional toolbar closure with several
-    // nested Buttons/Text modifiers in this file was too much for the
-    // type-checker to solve in one pass ("unable to type-check this
-    // expression in reasonable time"). Branching strictly between whole
-    // ToolbarItems at the top level of each property (never inside a
-    // ToolbarItem's own content closure) keeps each piece cheap to infer.
-    @ToolbarContentBuilder
-    private var updatesLeadingToolbarContent: some ToolbarContent {
-        if isMultiSelectMode {
-            ToolbarItem(placement: .topBarLeading) {
-                UpdatesCancelSelectButton(isMultiSelectMode: $isMultiSelectMode, selectedEntryIds: $selectedEntryIds)
-            }
-        } else {
-            ToolbarItem(placement: .topBarLeading) {
-                UpdatesRefreshButton(sharedModel: sharedModel)
-            }
-        }
-    }
-
-    @ToolbarContentBuilder
-    private var updatesTrailingToolbarContent: some ToolbarContent {
-        if isMultiSelectMode {
-            ToolbarItem(placement: .topBarTrailing) {
-                UpdatesIgnoreSelectedButton(isEmpty: selectedEntryIds.isEmpty) {
-                    multiIgnoreConfirmShown = true
-                }
-            }
-        } else if !updateEntries.isEmpty {
-            // Separate ToolbarItems (rather than one ToolbarItemGroup) so
-            // these two don't get visually merged into a single shared
-            // capsule/border by the system toolbar styling.
-            ToolbarItem(placement: .topBarTrailing) {
-                UpdatesEnterSelectButton(isMultiSelectMode: $isMultiSelectMode)
-            }
-            ToolbarItem(placement: .topBarTrailing) {
-                UpdatesUpdateAllButton(
-                    isUpdatingAll: isUpdatingAll,
-                    isDisabled: isUpdatingAll || !sharedModel.pendingInstallURLs.isEmpty,
-                    action: startUpdateAll
-                )
-            }
-        }
-    }
-
+    // Each ToolbarItem below is always present (never conditionally included
+    // via if/else at the @ToolbarContentBuilder level) — that requires
+    // ToolbarContent's buildEither, which needs iOS 16+, but this project's
+    // deployment target is iOS 15. Instead, each item's *content* is one
+    // small helper view (below) that does its own if/else internally, using
+    // the ordinary @ViewBuilder every View's body already gets (iOS 13+),
+    // rendering EmptyView() when that slot has nothing to show. Keeping each
+    // ToolbarItem's own closure down to a single view-init call is also what
+    // keeps the type-checker from timing out on this expression.
     private func startUpdateAll() {
         Task { await updateAll() }
     }
@@ -199,8 +162,38 @@ struct LCUpdatesView: View {
                 }
                 .navigationTitle("lc.tabView.updates".loc)
                 .toolbar {
-                    updatesLeadingToolbarContent
-                    updatesTrailingToolbarContent
+                    ToolbarItem(placement: .topBarLeading) {
+                        UpdatesLeadingToolbarButton(
+                            isMultiSelectMode: $isMultiSelectMode,
+                            selectedEntryIds: $selectedEntryIds,
+                            sharedModel: sharedModel
+                        )
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        UpdatesIgnoreSelectedButton(
+                            show: isMultiSelectMode,
+                            isEmpty: selectedEntryIds.isEmpty
+                        ) {
+                            multiIgnoreConfirmShown = true
+                        }
+                    }
+                    // Separate ToolbarItems (rather than one ToolbarItemGroup)
+                    // so these two don't get visually merged into a single
+                    // shared capsule/border by the system toolbar styling.
+                    ToolbarItem(placement: .topBarTrailing) {
+                        UpdatesEnterSelectButton(
+                            show: !isMultiSelectMode && !updateEntries.isEmpty,
+                            isMultiSelectMode: $isMultiSelectMode
+                        )
+                    }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        UpdatesUpdateAllButton(
+                            show: !isMultiSelectMode && !updateEntries.isEmpty,
+                            isUpdatingAll: isUpdatingAll,
+                            isDisabled: isUpdatingAll || !sharedModel.pendingInstallURLs.isEmpty,
+                            action: startUpdateAll
+                        )
+                    }
                 }
                 .onAppear {
                     Task { await sharedModel.sourcesViewModel.refreshAllSources() }
@@ -451,7 +444,24 @@ struct LCUpdatesView: View {
 
 // ── Toolbar button subviews ──────────────────────────────────────────────────
 // Each kept intentionally tiny/monomorphic so the type-checker has no trouble
-// with any one of them individually.
+// with any one of them individually. Every ToolbarItem in the toolbar above
+// is always present; these decide what (if anything) to render for their
+// slot using an ordinary @ViewBuilder if/else in their own `body` — that's
+// available since iOS 13, unlike @ToolbarContentBuilder's conditional
+// support (buildEither), which needs iOS 16 and this project targets iOS 15.
+
+private struct UpdatesLeadingToolbarButton: View {
+    @Binding var isMultiSelectMode: Bool
+    @Binding var selectedEntryIds: Set<ObjectIdentifier>
+    @ObservedObject var sharedModel: SharedModel
+    var body: some View {
+        if isMultiSelectMode {
+            UpdatesCancelSelectButton(isMultiSelectMode: $isMultiSelectMode, selectedEntryIds: $selectedEntryIds)
+        } else {
+            UpdatesRefreshButton(sharedModel: sharedModel)
+        }
+    }
+}
 
 private struct UpdatesCancelSelectButton: View {
     @Binding var isMultiSelectMode: Bool
@@ -485,42 +495,57 @@ private struct UpdatesRefreshButton: View {
 }
 
 private struct UpdatesIgnoreSelectedButton: View {
+    let show: Bool
     let isEmpty: Bool
     let action: () -> Void
     var body: some View {
-        Button(action: action) {
-            Image(systemName: "bell.slash")
+        if show {
+            Button(action: action) {
+                Image(systemName: "bell.slash")
+            }
+            .disabled(isEmpty)
+        } else {
+            EmptyView()
         }
-        .disabled(isEmpty)
     }
 }
 
 private struct UpdatesEnterSelectButton: View {
+    let show: Bool
     @Binding var isMultiSelectMode: Bool
     var body: some View {
-        Button {
-            withAnimation { isMultiSelectMode = true }
-        } label: {
-            Image(systemName: "checkmark.circle")
+        if show {
+            Button {
+                withAnimation { isMultiSelectMode = true }
+            } label: {
+                Image(systemName: "checkmark.circle")
+            }
+        } else {
+            EmptyView()
         }
     }
 }
 
 private struct UpdatesUpdateAllButton: View {
+    let show: Bool
     let isUpdatingAll: Bool
     let isDisabled: Bool
     let action: () -> Void
     var body: some View {
-        Button(action: action) {
-            if isUpdatingAll {
-                ProgressView().progressViewStyle(.circular)
-            } else {
-                Text("lc.updates.updateAll".loc)
-                    .bold()
-                    .underline(false)
+        if show {
+            Button(action: action) {
+                if isUpdatingAll {
+                    ProgressView().progressViewStyle(.circular)
+                } else {
+                    Text("lc.updates.updateAll".loc)
+                        .bold()
+                        .underline(false)
+                }
             }
+            .disabled(isDisabled)
+        } else {
+            EmptyView()
         }
-        .disabled(isDisabled)
     }
 }
 
