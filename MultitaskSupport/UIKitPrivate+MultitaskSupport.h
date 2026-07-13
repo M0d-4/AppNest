@@ -47,7 +47,7 @@ extern const UIApplication *UIApp;
 
 // FrontBoard
 
-@class RBSProcessIdentity, FBProcessExecutableSlice, UIMutableApplicationSceneClientSettings, UIMutableScenePresentationContext, UIScenePresentationManager, _UIScenePresenter, _UIScenePresenterOwner, _UISceneEventDeferringHostComponent, _UISceneRelationshipManagementHostComponent;
+@class RBSProcessIdentity, FBProcessExecutableSlice, UIMutableApplicationSceneClientSettings, UIMutableScenePresentationContext, UIScenePresentationManager, _UIScenePresenter, _UIScenePresenterOwner, _UISceneEventDeferringHostComponent, _UISceneRelationshipManagementHostComponent, FBSSceneTransitionContext;
 
 @interface FBApplicationProcessLaunchTransaction : BSTransaction
 - (instancetype) initWithProcessIdentity:(RBSProcessIdentity *)identity executionContextProvider:(id)providerBlock;
@@ -89,15 +89,18 @@ extern const UIApplication *UIApp;
 
 @interface FBScene : NSObject
 @property(nonatomic, assign, readonly) _UISceneRelationshipManagementHostComponent *_relationshipManagementHostComponent API_AVAILABLE(ios(17.4));
+@property(nonatomic, readonly) id delegate;
 - (NSString *)identifier;
 - (FBSSceneIdentityToken *)identityToken;
 - (FBProcess *)clientProcess;
 - (UIScenePresentationManager *)uiPresentationManager;
 - (void)updateSettings:(UIMutableApplicationSceneSettings *)settings withTransitionContext:(id)context completion:(id)completion;
 - (void)updateSettingsWithBlock:(void(^)(UIMutableApplicationSceneSettings *settings))arg1;
+- (void)_performUpdateWithoutActivation:(void (^)(UIMutableApplicationSceneSettings *settings, FBSSceneTransitionContext *context))updateBlock;
 - (void)updateSettingsWithTransitionBlock:(UIApplicationSceneTransitionContext *(^)(/* FBSMutableSceneSettings * */ id settings))transitionBlock;
 - (void)addExtension:(Class)extension;
 - (void)configureParameters:(void(^)(FBSMutableSceneParameters *parameters))parametersBlock;
+- (id)ui_viewServiceComponent;// API_AVAILABLE(ios(26.0));
 @end
 
 @interface FBDisplayManager : NSObject

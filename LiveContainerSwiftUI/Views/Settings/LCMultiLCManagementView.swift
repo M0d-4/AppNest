@@ -211,6 +211,12 @@ struct LCMultiLCManagementView : View, InstallAnotherLCButtonDelegate {
             
             if(result == 2) {
                 let launchURLStr = packedIpaUrl.absoluteString
+                let bookmark = try packedIpaUrl.bookmarkData(
+                    options: URL.BookmarkCreationOptions(rawValue: 1 << 11),
+                    includingResourceValuesForKeys: nil,
+                    relativeTo: nil
+                )
+                LCUtils.appGroupUserDefault.set(bookmark, forKey: "LCLaunchExtensionFileBookmark")
                 LCUtils.openSideStore(urlStr: launchURLStr)
                 return
             }

@@ -1,5 +1,5 @@
 # copy lc
-wget https://github.com/LiveContainer/SideStore/releases/download/dylibify/dylibify
+wget https://github.com/LiveContainer/dylibify/releases/download/1.0/dylibify
 chmod +x dylibify
 brew install ldid
 

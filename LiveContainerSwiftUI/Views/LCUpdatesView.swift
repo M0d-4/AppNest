@@ -186,6 +186,16 @@ struct LCUpdatesView: View {
                             isMultiSelectMode: $isMultiSelectMode
                         )
                     }
+                    // iOS 26's Liquid Glass toolbar visually groups adjacent
+                    // same-placement items into one shared capsule regardless
+                    // of them being separate ToolbarItems — a plain spacer
+                    // between them is what actually breaks that grouping.
+                    // Single-sided `if` (no else) only needs ToolbarContent's
+                    // buildOptional, available since iOS 15, so this is safe
+                    // at this project's deployment target.
+                    if #available(iOS 26.0, *) {
+                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                    }
                     ToolbarItem(placement: .topBarTrailing) {
                         UpdatesUpdateAllButton(
                             show: !isMultiSelectMode && !updateEntries.isEmpty,

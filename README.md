@@ -36,9 +36,8 @@ To use multitasking, hold its banner and tap **"Multitask"**. You can also make 
 Some apps may experience issues with their file pickers or not be able to apply for notification permission in AppNest. To resolve this, enable "Fix File Picker" & "Fix Local Notifications" accordingly in the app-specific settings.
 
 ### "Open In App" Support
-- Tap the link icon in the top-right corner of the "Apps" tab and input the URL. AppNest will detect the appropriate app and ask if you want to launch it.
-- What's more, you can share a web page to AppNest using [this shortcut](https://www.icloud.com/shortcuts/44ea82ce7ed8469ea24198c375db09a0). Be sure to add this shortcut to "Favorites" in share sheet actions.
-
+- You can simply share a URL or a file to app simply by using iOS's native share sheet. In share sheet, select AppNest, and AppNest will ask you which app you'd like to open that URL/file in.
+- What's more, you also can tap the link icon in the top-right corner of the "Apps" tab and input the URL. AppNest will detect the appropriate app and ask if you want to launch it.
 ## Building
 Open Xcode, edit `DEVELOPMENT_TEAM[config=Debug]` in `xcconfigs/Global.xcconfig` to your team id and compile.
 

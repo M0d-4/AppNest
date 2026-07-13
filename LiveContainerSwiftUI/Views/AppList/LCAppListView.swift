@@ -469,6 +469,11 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 // normally occupies (search is hidden during multiselect anyway).
                 ToolbarItemGroup(placement: .topBarLeading) {
                     if isMultiSelectMode {
+                        // Pressable before selecting anything, same as Trash/Lock —
+                        // but unlike those, this doesn't arm/change any selection
+                        // mode first. It just applies to whatever's currently
+                        // selected, silently doing nothing if that's empty (the
+                        // functions below already guard on an empty selection).
                         Menu {
                             Button {
                                 ignoreUpdatesForSelectedApps()
@@ -484,7 +489,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                             Image(systemName: "bell.slash")
                                 .foregroundColor(selectedAppsForDeletion.isEmpty ? .secondary : .primary)
                         }
-                        .disabled(isDeleting || selectedAppsForDeletion.isEmpty)
+                        .disabled(isDeleting)
                     } else {
                         // iPad renders its own native search field for .searchable
                         // automatically, so a manual button there just duplicates it.
