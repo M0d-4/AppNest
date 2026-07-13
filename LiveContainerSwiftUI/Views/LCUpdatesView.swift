@@ -161,50 +161,15 @@ struct LCUpdatesView: View {
                     }
                 }
                 .navigationTitle("lc.tabView.updates".loc)
-                .toolbar {
-                    ToolbarItem(placement: .topBarLeading) {
-                        UpdatesLeadingToolbarButton(
-                            isMultiSelectMode: $isMultiSelectMode,
-                            selectedEntryIds: $selectedEntryIds,
-                            sharedModel: sharedModel
-                        )
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        UpdatesIgnoreSelectedButton(
-                            show: isMultiSelectMode,
-                            isEmpty: selectedEntryIds.isEmpty
-                        ) {
-                            multiIgnoreConfirmShown = true
-                        }
-                    }
-                    // Separate ToolbarItems (rather than one ToolbarItemGroup)
-                    // so these two don't get visually merged into a single
-                    // shared capsule/border by the system toolbar styling.
-                    ToolbarItem(placement: .topBarTrailing) {
-                        UpdatesEnterSelectButton(
-                            show: !isMultiSelectMode && !updateEntries.isEmpty,
-                            isMultiSelectMode: $isMultiSelectMode
-                        )
-                    }
-                    // iOS 26's Liquid Glass toolbar visually groups adjacent
-                    // same-placement items into one shared capsule regardless
-                    // of them being separate ToolbarItems — a plain spacer
-                    // between them is what actually breaks that grouping.
-                    // Single-sided `if` (no else) only needs ToolbarContent's
-                    // buildOptional, available since iOS 15, so this is safe
-                    // at this project's deployment target.
-                    if #available(iOS 26.0, *) {
-                        ToolbarSpacer(.fixed, placement: .topBarTrailing)
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        UpdatesUpdateAllButton(
-                            show: !isMultiSelectMode && !updateEntries.isEmpty,
-                            isUpdatingAll: isUpdatingAll,
-                            isDisabled: isUpdatingAll || !sharedModel.pendingInstallURLs.isEmpty,
-                            action: startUpdateAll
-                        )
-                    }
-                }
+                .modifier(UpdatesToolbarModifier(
+                    isMultiSelectMode: $isMultiSelectMode,
+                    selectedEntryIds: $selectedEntryIds,
+                    sharedModel: sharedModel,
+                    updateEntriesIsEmpty: updateEntries.isEmpty,
+                    isUpdatingAll: isUpdatingAll,
+                    onIgnoreSelected: { multiIgnoreConfirmShown = true },
+                    onUpdateAll: startUpdateAll
+                ))
                 .onAppear {
                     Task { await sharedModel.sourcesViewModel.refreshAllSources() }
                 }
@@ -459,6 +424,71 @@ struct LCUpdatesView: View {
 // slot using an ordinary @ViewBuilder if/else in their own `body` — that's
 // available since iOS 13, unlike @ToolbarContentBuilder's conditional
 // support (buildEither), which needs iOS 16 and this project targets iOS 15.
+
+// Applies the Updates tab's toolbar. This is a ViewModifier (not an inline
+// .toolbar { } closure) specifically so the iOS-26-only ToolbarSpacer can be
+// included conditionally: any conditional at all inside a
+// @ToolbarContentBuilder closure — even a single-sided `if` with no `else`,
+// via buildIf — requires iOS 16, but this project's deployment target is
+// iOS 15. Branching here instead, in an ordinary ViewModifier.body(content:),
+// uses View's own @ViewBuilder (if/else since iOS 13), so each branch below
+// gets its own complete, statically-determined .toolbar { } with no
+// conditional content inside the builder itself.
+private struct UpdatesToolbarModifier: ViewModifier {
+    @Binding var isMultiSelectMode: Bool
+    @Binding var selectedEntryIds: Set<ObjectIdentifier>
+    @ObservedObject var sharedModel: SharedModel
+    let updateEntriesIsEmpty: Bool
+    let isUpdatingAll: Bool
+    let onIgnoreSelected: () -> Void
+    let onUpdateAll: () -> Void
+
+    private var showSelectRow: Bool { !isMultiSelectMode && !updateEntriesIsEmpty }
+    private var isUpdateAllDisabled: Bool { isUpdatingAll || !sharedModel.pendingInstallURLs.isEmpty }
+
+    func body(content: Content) -> some View {
+        if #available(iOS 26.0, *) {
+            content.toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    UpdatesLeadingToolbarButton(isMultiSelectMode: $isMultiSelectMode, selectedEntryIds: $selectedEntryIds, sharedModel: sharedModel)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    UpdatesIgnoreSelectedButton(show: isMultiSelectMode, isEmpty: selectedEntryIds.isEmpty, action: onIgnoreSelected)
+                }
+                // Separate ToolbarItems (rather than one ToolbarItemGroup) so
+                // these two don't get visually merged into a single shared
+                // capsule/border by the system toolbar styling.
+                ToolbarItem(placement: .topBarTrailing) {
+                    UpdatesEnterSelectButton(show: showSelectRow, isMultiSelectMode: $isMultiSelectMode)
+                }
+                // iOS 26's Liquid Glass toolbar visually groups adjacent
+                // same-placement items into one shared capsule regardless of
+                // them being separate ToolbarItems — a plain spacer between
+                // them is what actually breaks that grouping. Only available
+                // here, hence this whole branch being iOS-26-gated.
+                ToolbarSpacer(.fixed, placement: .topBarTrailing)
+                ToolbarItem(placement: .topBarTrailing) {
+                    UpdatesUpdateAllButton(show: showSelectRow, isUpdatingAll: isUpdatingAll, isDisabled: isUpdateAllDisabled, action: onUpdateAll)
+                }
+            }
+        } else {
+            content.toolbar {
+                ToolbarItem(placement: .topBarLeading) {
+                    UpdatesLeadingToolbarButton(isMultiSelectMode: $isMultiSelectMode, selectedEntryIds: $selectedEntryIds, sharedModel: sharedModel)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    UpdatesIgnoreSelectedButton(show: isMultiSelectMode, isEmpty: selectedEntryIds.isEmpty, action: onIgnoreSelected)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    UpdatesEnterSelectButton(show: showSelectRow, isMultiSelectMode: $isMultiSelectMode)
+                }
+                ToolbarItem(placement: .topBarTrailing) {
+                    UpdatesUpdateAllButton(show: showSelectRow, isUpdatingAll: isUpdatingAll, isDisabled: isUpdateAllDisabled, action: onUpdateAll)
+                }
+            }
+        }
+    }
+}
 
 private struct UpdatesLeadingToolbarButton: View {
     @Binding var isMultiSelectMode: Bool
