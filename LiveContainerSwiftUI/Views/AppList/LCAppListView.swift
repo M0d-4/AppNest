@@ -465,8 +465,10 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             .navigationTitle("lc.appList.myApps".loc)
             .toolbar {
                 // Leading: spinner / SideStore / Help — swaps to bulk ignore/unignore
-                // updates during multiselect, in the same slot the search button
-                // normally occupies (search is hidden during multiselect anyway).
+                // updates during multiselect, in the same slot the SideStore button
+                // (or spinner/Help, whichever would show) normally occupies. Search
+                // is also hidden there during multiselect, so nothing from this
+                // slot's normal content is left showing.
                 ToolbarItemGroup(placement: .topBarLeading) {
                     if isMultiSelectMode {
                         // Pressable before selecting anything, same as Trash/Lock —
