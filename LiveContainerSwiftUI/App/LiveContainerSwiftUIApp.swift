@@ -77,7 +77,8 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
                 if !tweakDirUrl.hasDirectoryPath {
                     continue
                 }
-                tempTweakFolderNames.append(tweakDir)
+                let folderName = tweakDir.hasSuffix(".disabled") ? String(tweakDir.dropLast(".disabled".count)) : tweakDir
+                tempTweakFolderNames.append(folderName)
             }
         } catch {
             NSLog("[LC] error:\(error)")

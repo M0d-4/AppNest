@@ -40,7 +40,10 @@ struct LCTweakItem : Hashable {
     let isTweak: Bool
 
     var supportsDisableToggle: Bool {
-        isFramework || isTweak
+        // TweakLoader.dylib is the injector itself — disabling it would be
+        // nonsensical (it's what makes tweak loading, including reading this
+        // very disabled-list, work at all), so it never gets the toggle.
+        (isFramework || isTweak) && fileUrl.lastPathComponent != "TweakLoader.dylib"
     }
 }
 
@@ -462,6 +465,9 @@ struct LCTweakFolderView : View {
             return
         }
         tweakItems.remove(at: indexToRemove)
+        if disabledTweakNames.remove(tweakItem.fileUrl.lastPathComponent) != nil {
+            saveDisabledNames()
+        }
         if isRoot {
             tweakFolders.removeAll(where: { s in
                 return s == tweakItem.fileUrl.lastPathComponent
@@ -504,6 +510,11 @@ struct LCTweakFolderView : View {
         tweakItems.remove(at: indexToRename)
         let newTweakItem = LCTweakItem(fileUrl: newUrl, isFolder: tweakItem.isFolder, isFramework: tweakItem.isFramework, isTweak: tweakItem.isTweak)
         tweakItems.insert(newTweakItem, at: indexToRename)
+
+        if disabledTweakNames.remove(tweakItem.fileUrl.lastPathComponent) != nil {
+            disabledTweakNames.insert(newName)
+            saveDisabledNames()
+        }
         
         if isRoot {
             let indexToRename2 = tweakFolders.firstIndex(of: tweakItem.fileUrl.lastPathComponent)

@@ -15,6 +15,13 @@ extension LCUtils {
             return
         }
         let fm = FileManager.default
+        // a disabled folder is renamed to .disabled; skip it, it gets signed again once re-enabled
+        if !fm.fileExists(atPath: tweakFolderUrl.path) {
+            let disabledUrl = tweakFolderUrl.deletingLastPathComponent().appendingPathComponent(tweakFolderUrl.lastPathComponent + ".disabled")
+            if fm.fileExists(atPath: disabledUrl.path) {
+                return
+            }
+        }
         var isFolder :ObjCBool = false
         if(fm.fileExists(atPath: tweakFolderUrl.path, isDirectory: &isFolder) && !isFolder.boolValue) {
             return
@@ -33,15 +40,17 @@ extension LCUtils {
             if(fileType != FileAttributeType.typeDirectory && fileType != FileAttributeType.typeRegular) {
                 continue
             }
+            let name = fileURL.lastPathComponent
+            let baseName = name.hasSuffix(".disabled") ? String(name.dropLast(".disabled".count)) : name
             if(fileType == FileAttributeType.typeDirectory) {
-                if(!fileURL.lastPathComponent.hasSuffix(".framework")) {
+                if(!baseName.hasSuffix(".framework")) {
                     continue
                 }
                 guard let frameworkBundle = Bundle(url: fileURL), let executableURL = frameworkBundle.executableURL else {
                     continue
                 }
                 fileURL = executableURL
-            } else if (fileType == FileAttributeType.typeRegular && !fileURL.lastPathComponent.hasSuffix(".dylib")) {
+            } else if (fileType == FileAttributeType.typeRegular && !baseName.hasSuffix(".dylib")) {
                 continue
             }
 
