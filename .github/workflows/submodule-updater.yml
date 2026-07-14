@@ -1,0 +1,23 @@
+name: Update submodules
+
+on:
+  schedule:
+    - cron: '0 0 * * *'   # daily at midnight UTC
+  workflow_dispatch:       # allow manual trigger
+
+jobs:
+  update-submodules:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: update-submodules
+        uses: runsascoded/update-submodules@gha0.0.2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          refs: AppNest=main
