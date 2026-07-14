@@ -465,9 +465,6 @@ struct LCTweakFolderView : View {
             return
         }
         tweakItems.remove(at: indexToRemove)
-        if disabledTweakNames.remove(tweakItem.fileUrl.lastPathComponent) != nil {
-            saveDisabledNames()
-        }
         if isRoot {
             tweakFolders.removeAll(where: { s in
                 return s == tweakItem.fileUrl.lastPathComponent
@@ -511,11 +508,6 @@ struct LCTweakFolderView : View {
         let newTweakItem = LCTweakItem(fileUrl: newUrl, isFolder: tweakItem.isFolder, isFramework: tweakItem.isFramework, isTweak: tweakItem.isTweak)
         tweakItems.insert(newTweakItem, at: indexToRename)
 
-        if disabledTweakNames.remove(tweakItem.fileUrl.lastPathComponent) != nil {
-            disabledTweakNames.insert(newName)
-            saveDisabledNames()
-        }
-        
         if isRoot {
             let indexToRename2 = tweakFolders.firstIndex(of: tweakItem.fileUrl.lastPathComponent)
             guard let indexToRename2 = indexToRename2 else {
