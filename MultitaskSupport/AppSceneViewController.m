@@ -461,8 +461,22 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     if (self.contentView) {
         BOOL isiOS26 = NO;
         if(@available(iOS 19.0, *)) { if(@available(iOS 27.0, *)) {} else isiOS26 = YES; }
-        // Discard position
-        frame.origin = CGPointZero;
+        // Keep contentView's horizontal position consistent with Real iPhone
+        // Mode's centered crop (same formula as viewWillLayoutSubviews),
+        // instead of always discarding position to (0,0). This method is
+        // called from many places for unrelated setting changes — always
+        // zeroing origin here meant ANY of those (not just our own resize
+        // handler) could silently overwrite the correctly-centered content
+        // view back to flush-left, which is what made it drift left instead
+        // of staying centered in multitask.
+        CGFloat originX = 0;
+        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && self.presenter.presentationView) {
+            CGFloat viewW = self.view.bounds.size.width;
+            CGFloat viewH = self.view.bounds.size.height;
+            CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
+            originX = (viewW - targetW) / 2.0;
+        }
+        frame.origin = CGPointMake(originX, 0);
         self.contentView.frame = frame;
     } else {
         // This method can be called while contentView is nil to set up initial frame
