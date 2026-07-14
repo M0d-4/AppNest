@@ -245,6 +245,23 @@ static void Real_UIKitGuestHooksInit(void) {
                 [LCRealIPhoneModeHelper repositionAllWindows];
             });
         }];
+        // Without device console access to confirm exactly which event-based
+        // hook does or doesn't fire with correct timing on a given iOS
+        // version/app, don't rely on any single one of them outside
+        // multitask, where there's no host-driven FBSSceneSettings
+        // round-trip to piggyback on. Instead, brute-force re-assert the
+        // crop on a short burst of delays after launch — this can't fail to
+        // eventually catch the window once its real geometry has settled,
+        // regardless of which (if any) of the hooks above actually fired.
+        // repositionAllWindows already no-ops cheaply when the feature is
+        // off, running under multitask, or already correctly cropped, so
+        // this is safe to fire speculatively.
+        NSArray<NSNumber *> *enforcementDelays = @[@0.1, @0.3, @0.6, @1.0, @2.0, @3.0];
+        for (NSNumber *delay in enforcementDelays) {
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay.doubleValue * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [LCRealIPhoneModeHelper repositionAllWindows];
+            });
+        }
     }
 
     swizzle(UIApplication.class, @selector(_applicationOpenURLAction:payload:origin:), @selector(hook__applicationOpenURLAction:payload:origin:));
