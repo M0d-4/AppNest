@@ -165,6 +165,72 @@ struct AppSigningProgressBar: View {
     }
 }
 
+// Extracted so the app list's leading toolbar slot always presents one
+// stable view identity to SwiftUI's toolbar diffing, regardless of which
+// internal branch (multiselect menu vs search/spinner/SideStore/Help) is
+// active — see the call site for why that matters.
+private struct AppListLeadingToolbarContent: View {
+    let isMultiSelectMode: Bool
+    let isDeleting: Bool
+    let selectedAppsForDeletion: Set<LCAppModel>
+    @Binding var isSearchPresented: Bool
+    let installprogressVisible: Bool
+    let sideStoreExists: Bool
+    let darkModeIcon: Bool
+    let onIgnoreSelected: () -> Void
+    let onUnignoreSelected: () -> Void
+    let onOpenSideStore: () -> Void
+    let onHelp: () -> Void
+
+    var body: some View {
+        if isMultiSelectMode {
+            // Pressable before selecting anything, same as Trash/Lock — but
+            // unlike those, this doesn't arm/change any selection mode
+            // first. It just applies to whatever's currently selected,
+            // silently doing nothing if that's empty (the functions below
+            // already guard on an empty selection).
+            Menu {
+                Button {
+                    onIgnoreSelected()
+                } label: {
+                    Label("lc.appList.ignoreUpdatesSelected".loc, systemImage: "bell.slash")
+                }
+                Button {
+                    onUnignoreSelected()
+                } label: {
+                    Label("lc.appList.unignoreUpdatesSelected".loc, systemImage: "bell")
+                }
+            } label: {
+                Image(systemName: "bell.slash")
+                    .foregroundColor(selectedAppsForDeletion.isEmpty ? .secondary : .primary)
+            }
+            .disabled(isDeleting)
+        } else {
+            // iPad renders its own native search field for .searchable
+            // automatically, so a manual button there just duplicates it.
+            // iPhone hides it behind a pull/tap, so it needs the button.
+            if SharedModel.isPhone {
+                Button {
+                    isSearchPresented = true
+                } label: {
+                    Image(systemName: "magnifyingglass")
+                }
+            }
+            if installprogressVisible {
+                ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
+            } else if sideStoreExists {
+                Button(action: onOpenSideStore) {
+                    IconImageView(icon: BuiltInSideStoreAppInfo.shared.iconIsDarkIcon(darkModeIcon))
+                        .frame(width: UIFont.preferredFont(forTextStyle: .body).lineHeight,
+                               height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
+                }
+            } else {
+                Button("Help", systemImage: "questionmark", action: onHelp)
+            }
+        }
+    }
+}
+
 struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @Binding var appDataFolderNames: [String]
     @Binding var tweakFolderNames: [String]
@@ -469,56 +535,30 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                 // (or spinner/Help, whichever would show) normally occupies. Search
                 // is also hidden there during multiselect, so nothing from this
                 // slot's normal content is left showing.
+                //
+                // This is one single extracted view (not inline if/else content
+                // directly in the ToolbarItemGroup) so SwiftUI always diffs the
+                // exact same view identity here regardless of which branch is
+                // active — swapping between entirely different concrete view
+                // trees (Menu vs Button vs ProgressView) directly as toolbar
+                // content is what was making this slot intermittently vanish
+                // on iPad, where the search button's own branch is already
+                // absent and the toolbar has fewer, differently-shaped items
+                // to reconcile against.
                 ToolbarItemGroup(placement: .topBarLeading) {
-                    if isMultiSelectMode {
-                        // Pressable before selecting anything, same as Trash/Lock —
-                        // but unlike those, this doesn't arm/change any selection
-                        // mode first. It just applies to whatever's currently
-                        // selected, silently doing nothing if that's empty (the
-                        // functions below already guard on an empty selection).
-                        Menu {
-                            Button {
-                                ignoreUpdatesForSelectedApps()
-                            } label: {
-                                Label("lc.appList.ignoreUpdatesSelected".loc, systemImage: "bell.slash")
-                            }
-                            Button {
-                                unignoreUpdatesForSelectedApps()
-                            } label: {
-                                Label("lc.appList.unignoreUpdatesSelected".loc, systemImage: "bell")
-                            }
-                        } label: {
-                            Image(systemName: "bell.slash")
-                                .foregroundColor(selectedAppsForDeletion.isEmpty ? .secondary : .primary)
-                        }
-                        .disabled(isDeleting)
-                    } else {
-                        // iPad renders its own native search field for .searchable
-                        // automatically, so a manual button there just duplicates it.
-                        // iPhone hides it behind a pull/tap, so it needs the button.
-                        if SharedModel.isPhone {
-                            Button {
-                                isSearchPresented = true
-                            } label: {
-                                Image(systemName: "magnifyingglass")
-                            }
-                        }
-                        if installprogressVisible {
-                            ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
-                        } else if UserDefaults.sideStoreExist() {
-                            Button {
-                                LCUtils.openSideStore(delegate: self)
-                            } label: {
-                                IconImageView(icon: BuiltInSideStoreAppInfo.shared.iconIsDarkIcon(darkModeIcon))
-                                    .frame(width: UIFont.preferredFont(forTextStyle: .body).lineHeight,
-                                           height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
-                            }
-                        } else {
-                            Button("Help", systemImage: "questionmark") {
-                                helpPresent = true
-                            }
-                        }
-                    }
+                    AppListLeadingToolbarContent(
+                        isMultiSelectMode: isMultiSelectMode,
+                        isDeleting: isDeleting,
+                        selectedAppsForDeletion: selectedAppsForDeletion,
+                        isSearchPresented: $isSearchPresented,
+                        installprogressVisible: installprogressVisible,
+                        sideStoreExists: UserDefaults.sideStoreExist(),
+                        darkModeIcon: darkModeIcon,
+                        onIgnoreSelected: ignoreUpdatesForSelectedApps,
+                        onUnignoreSelected: unignoreUpdatesForSelectedApps,
+                        onOpenSideStore: { LCUtils.openSideStore(delegate: self) },
+                        onHelp: { helpPresent = true }
+                    )
                 }
                 // Trailing: swaps between normal and multiselect content
                 ToolbarItemGroup(placement: .topBarTrailing) {
