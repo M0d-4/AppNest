@@ -1379,6 +1379,7 @@
 					"-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace",
 					"-Wl,-U,_OBJC_CLASS_$_DOCConfiguration",
 					"-Wl,-U,_OBJC_CLASS_$_RBSHereditaryGrant",
+					"-Wl,-U,_OBJC_CLASS_$_FBScene",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -1404,6 +1405,7 @@
 					"-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace",
 					"-Wl,-U,_OBJC_CLASS_$_DOCConfiguration",
 					"-Wl,-U,_OBJC_CLASS_$_RBSHereditaryGrant",
+					"-Wl,-U,_OBJC_CLASS_$_FBScene",
 				);
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
