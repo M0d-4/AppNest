@@ -202,6 +202,11 @@ private struct AppListSecondaryToolbarButton: View {
     let onOpenSideStore: () -> Void
     let onHelp: () -> Void
 
+    // Self-contained rather than plumbed up as a parent-owned Binding —
+    // this button never needs to be told to show its own dialog from
+    // outside, so there's no reason to make the parent view own this state.
+    @State private var showOptions = false
+
     var body: some View {
         if isMultiSelectMode {
             // Pressable before selecting anything, same as Trash/Lock — but
@@ -209,22 +214,33 @@ private struct AppListSecondaryToolbarButton: View {
             // first. It just applies to whatever's currently selected,
             // silently doing nothing if that's empty (the functions below
             // already guard on an empty selection).
-            Menu {
-                Button {
-                    onIgnoreSelected()
-                } label: {
-                    Label("lc.appList.ignoreUpdatesSelected".loc, systemImage: "bell.slash")
-                }
-                Button {
-                    onUnignoreSelected()
-                } label: {
-                    Label("lc.appList.unignoreUpdatesSelected".loc, systemImage: "bell")
-                }
+            //
+            // A plain Button + .confirmationDialog here (not a Menu) —
+            // mirrors the same pattern the Trash button above already uses
+            // successfully for its own delete confirmation. A Menu embedded
+            // directly as toolbar content was what made this slot vanish
+            // after being dismissed, even just from opening it and tapping
+            // outside without picking either option.
+            Button {
+                showOptions = true
             } label: {
                 Image(systemName: "bell.slash")
                     .foregroundColor(selectedAppsForDeletion.isEmpty ? .secondary : .primary)
             }
             .disabled(isDeleting)
+            .confirmationDialog(
+                "lc.tabView.updates".loc,
+                isPresented: $showOptions,
+                titleVisibility: .visible
+            ) {
+                Button("lc.appList.ignoreUpdatesSelected".loc) {
+                    onIgnoreSelected()
+                }
+                Button("lc.appList.unignoreUpdatesSelected".loc) {
+                    onUnignoreSelected()
+                }
+                Button("lc.common.cancel".loc, role: .cancel) {}
+            }
         } else if installprogressVisible {
             ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
         } else if sideStoreExists {
