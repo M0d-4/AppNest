@@ -194,25 +194,17 @@ struct LCTweakFolderView : View {
                         deleteTweakItem(indexSet: indexSet)
                     }
                 }
-            }
-            Section {
-                VStack{
-                    if isRoot {
-                        Text("lc.tweakView.globalFolderDesc".loc)
-                            .foregroundStyle(.gray)
-                            .font(.system(size: 12))
-                    } else {
-                        Text("lc.tweakView.appFolderDesc".loc)
-                            .foregroundStyle(.gray)
-                            .font(.system(size: 12))
-                    }
-
+            } footer: {
+                if isRoot {
+                    Text("lc.tweakView.globalFolderDesc".loc)
+                        .foregroundStyle(.gray)
+                        .font(.system(size: 12))
+                } else {
+                    Text("lc.tweakView.appFolderDesc".loc)
+                        .foregroundStyle(.gray)
+                        .font(.system(size: 12))
                 }
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
-                    .background(Color(UIColor.systemGroupedBackground))
-                    .listRowInsets(EdgeInsets())
             }
-
         }
         .onAppear {
             reloadTweakItems()
