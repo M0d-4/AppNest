@@ -2328,11 +2328,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             app.appInfo.ignoreUpdates = true
             app.uiIgnoreUpdates = true
         }
-        withAnimation {
-            selectedAppsForDeletion.removeAll()
-            isMultiSelectMode = false
-        }
-        sharedModel.isMultiSelectMode = false
+        exitMultiSelectAfterMenuAction()
     }
 
     /// Inverse of the above — clears "Ignore Updates" for every selected app
@@ -2343,11 +2339,24 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             app.appInfo.ignoreUpdates = false
             app.uiIgnoreUpdates = false
         }
-        withAnimation {
-            selectedAppsForDeletion.removeAll()
-            isMultiSelectMode = false
+        exitMultiSelectAfterMenuAction()
+    }
+
+    /// Exiting multiselect flips this toolbar slot's content from a Menu to
+    /// a different view (spinner/SideStore/Help). Both ignore/unignore
+    /// actions above are triggered from inside that same Menu's own popover
+    /// — flipping the toolbar's branch synchronously, on the same run loop
+    /// turn as the tap, races the popover's own dismissal animation on iPad
+    /// and is what was making the button vanish after being pressed. Giving
+    /// the popover a moment to fully close first avoids that race.
+    private func exitMultiSelectAfterMenuAction() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            withAnimation {
+                self.selectedAppsForDeletion.removeAll()
+                self.isMultiSelectMode = false
+            }
+            self.sharedModel.isMultiSelectMode = false
         }
-        sharedModel.isMultiSelectMode = false
     }
     
 }
