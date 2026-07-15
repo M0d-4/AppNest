@@ -10,6 +10,7 @@
 extern void _objc_msgForward(void);
 @interface LCRealIPhoneModeHelper : NSObject
 + (void)repositionAllWindows;
++ (void)startBriefPollingBurst;
 @end
 // Shared Real iPhone Mode crop helpers (defined alongside the UIWindow hooks
 // further down this file) — forward-declared here so LCRealIPhoneModeHelper,
@@ -244,6 +245,21 @@ static void Real_UIKitGuestHooksInit(void) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.02 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 [LCRealIPhoneModeHelper repositionAllWindows];
             });
+            // On iPadOS 27, outside multitask, none of the specific hook
+            // points above have been confirmed to catch every case that
+            // changes a standalone window's geometry — and without SDK
+            // access to iPadOS 27 to find whatever new private mechanism
+            // might be responsible, guessing at another exact hook point
+            // risks the same "fixes nothing, or breaks multitask" outcome
+            // as previous attempts. Polling directly for a few seconds
+            // sidesteps needing to know which API is responsible at all:
+            // it can't miss a geometry change regardless of how it happened.
+            // Starting only here — after the app is confirmed fully active,
+            // not speculatively early from the constructor like the last
+            // attempt that broke multitask — means LCIsMultitaskLaunch has
+            // had every chance to have already synced, so this is properly
+            // gated by the same eligibility check as everything else.
+            [LCRealIPhoneModeHelper startBriefPollingBurst];
         }];
         // Extra enforcement point for newer iOS/iPadOS versions that may
         // route a standalone app's own scene geometry through FBScene's
@@ -1139,6 +1155,34 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
         window.layer.frame = targetFrame;
     }
     [CATransaction commit];
+}
+
+// Polls and re-asserts the crop every 0.1s for 3 seconds, then stops itself.
+// Each tick is just a call to the already-cheap, already-correctly-gated
+// repositionAllWindows above, so this costs nothing once eligibility (real
+// iPhone mode on, not multitask, not SideStore) is false, which is true for
+// the overwhelming majority of launches. A second call while a burst is
+// already running (e.g. rapid foreground/background cycling) cancels the
+// previous timer and starts fresh rather than stacking multiple timers.
++ (void)startBriefPollingBurst {
+    static dispatch_source_t currentTimer;
+    if (currentTimer) {
+        dispatch_source_cancel(currentTimer);
+        currentTimer = nil;
+    }
+    dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
+    dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, 0), 0.1 * NSEC_PER_SEC, 0.02 * NSEC_PER_SEC);
+    __block int ticksRemaining = 30; // 30 * 0.1s = 3s
+    dispatch_source_set_event_handler(timer, ^{
+        [self repositionAllWindows];
+        ticksRemaining -= 1;
+        if (ticksRemaining <= 0) {
+            dispatch_source_cancel(timer);
+            if (currentTimer == timer) currentTimer = nil;
+        }
+    });
+    currentTimer = timer;
+    dispatch_resume(timer);
 }
 @end
 
