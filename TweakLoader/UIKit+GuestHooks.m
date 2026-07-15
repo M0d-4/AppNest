@@ -245,22 +245,18 @@ static void Real_UIKitGuestHooksInit(void) {
                 [LCRealIPhoneModeHelper repositionAllWindows];
             });
         }];
-        // Without device console access to confirm exactly which event-based
-        // hook does or doesn't fire with correct timing on a given iOS
-        // version/app, don't rely on any single one of them outside
-        // multitask, where there's no host-driven FBSSceneSettings
-        // round-trip to piggyback on. Instead, brute-force re-assert the
-        // crop on a short burst of delays after launch — this can't fail to
-        // eventually catch the window once its real geometry has settled,
-        // regardless of which (if any) of the hooks above actually fired.
-        // repositionAllWindows already no-ops cheaply when the feature is
-        // off, running under multitask, or already correctly cropped, so
-        // this is safe to fire speculatively.
-        NSArray<NSNumber *> *enforcementDelays = @[@0.1, @0.3, @0.6, @1.0, @2.0, @3.0];
-        for (NSNumber *delay in enforcementDelays) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay.doubleValue * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [LCRealIPhoneModeHelper repositionAllWindows];
-            });
+        // Extra enforcement point for newer iOS/iPadOS versions that may
+        // route a standalone app's own scene geometry through FBScene's
+        // private settings-update mechanism (mirroring the merged host-side
+        // fix for the same private method, used there for safe area insets
+        // on iOS 27). Guarded defensively: only installed if the class and
+        // selector actually exist at runtime, so this is a no-op rather than
+        // a crash risk on versions where they don't.
+        if (@available(iOS 17.0, *)) {
+            Class fbSceneClass = PrivClass(FBScene);
+            if (fbSceneClass && [fbSceneClass instancesRespondToSelector:@selector(_performUpdateWithoutActivation:)]) {
+                swizzle(fbSceneClass, @selector(_performUpdateWithoutActivation:), @selector(hook__performUpdateWithoutActivation:));
+            }
         }
     }
 
@@ -1272,6 +1268,34 @@ static CGRect LCRealIPhoneModeCroppedFrame(CGRect frame) {
             break;
         }
     }
+}
+@end
+
+// Newer iOS/iPadOS versions have been progressively moving window geometry
+// updates through FBScene's private settings-update mechanism instead of the
+// public -setFrame:/-layoutSubviews path (the merged upstream fix for safe
+// area insets on iOS 27 hooks the exact same method, host-side, for the
+// same reason). If a standalone app's own primary scene is *also* now
+// funneled through here on some iPadOS versions — rather than only
+// multitask-hosted ones — hooking it here too re-asserts the crop at a
+// point that isn't dependent on -setFrame:/-layoutSubviews firing at all.
+// Purely additive and defensively guarded: does nothing if the selector
+// isn't present, and LCShouldApplyRealIPhoneModeCrop already excludes
+// multitask launches (the host handles those), SideStore, and non-main
+// windows, same as every other enforcement point above.
+@implementation FBScene(LCForceIPhoneMode)
+- (void)hook__performUpdateWithoutActivation:(void (^)(UIMutableApplicationSceneSettings *, FBSSceneTransitionContext *))updateBlock API_AVAILABLE(ios(17.0)) {
+    id wrappedBlock = ^(UIMutableApplicationSceneSettings *settings, FBSSceneTransitionContext *context) {
+        updateBlock(settings, context);
+        UIWindow *mainWindow = LCKeyWindowForScene(LCForegroundWindowScene());
+        if (mainWindow && LCShouldApplyRealIPhoneModeCrop(mainWindow)) {
+            CGRect cropped = LCRealIPhoneModeCroppedFrame(settings.frame);
+            NSLog(@"[ForceIPhoneMode] hook__performUpdateWithoutActivation currentFrame=%@ croppedFrame=%@",
+                  NSStringFromCGRect(settings.frame), NSStringFromCGRect(cropped));
+            settings.frame = cropped;
+        }
+    };
+    [self hook__performUpdateWithoutActivation:wrappedBlock];
 }
 @end
 
