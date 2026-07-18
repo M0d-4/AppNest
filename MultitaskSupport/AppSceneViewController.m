@@ -147,6 +147,11 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     self.isAppTerminationCleanUpCalled = false;
     self.isNativeWindow = [NSUserDefaults.lcSharedDefaults integerForKey:@"LCMultitaskMode" ] == 1;
     
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        UIKitFixesInit();
+    });
+    
     // init extension
     NSError* error = nil;
     _extension = [NSExtension extensionWithIdentifier:LCUtils.liveProcessBundleIdentifier error:&error];
