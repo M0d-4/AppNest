@@ -165,15 +165,35 @@ struct AppSigningProgressBar: View {
     }
 }
 
-// Extracted so the app list's leading toolbar slot always presents one
-// stable view identity to SwiftUI's toolbar diffing, regardless of which
-// internal branch (multiselect menu vs search/spinner/SideStore/Help) is
-// active — see the call site for why that matters.
-private struct AppListLeadingToolbarContent: View {
+// Split into two views, each always present as its own ToolbarItem (see call
+// site), rather than one view whose *number* of children varies (1 in
+// multiselect, 1 or 2 otherwise depending on platform/state). Keeping the
+// item count constant and branching only on each item's own internal content
+// is the same pattern that fixed analogous toolbar flakiness in the Updates
+// tab — varying how many children a single ToolbarItemGroup's content
+// produces from one render to the next is apparently still enough to make
+// SwiftUI's toolbar reconciliation drop content on iPad, even when each
+// individual branch's view type is otherwise stable.
+private struct AppListSearchToolbarButton: View {
+    let show: Bool
+    @Binding var isSearchPresented: Bool
+    var body: some View {
+        if show {
+            Button {
+                isSearchPresented = true
+            } label: {
+                Image(systemName: "magnifyingglass")
+            }
+        } else {
+            EmptyView()
+        }
+    }
+}
+
+private struct AppListSecondaryToolbarButton: View {
     let isMultiSelectMode: Bool
     let isDeleting: Bool
     let selectedAppsForDeletion: Set<LCAppModel>
-    @Binding var isSearchPresented: Bool
     let installprogressVisible: Bool
     let sideStoreExists: Bool
     let darkModeIcon: Bool
@@ -182,6 +202,11 @@ private struct AppListLeadingToolbarContent: View {
     let onOpenSideStore: () -> Void
     let onHelp: () -> Void
 
+    // Self-contained rather than plumbed up as a parent-owned Binding —
+    // this button never needs to be told to show its own dialog from
+    // outside, so there's no reason to make the parent view own this state.
+    @State private var showOptions = false
+
     var body: some View {
         if isMultiSelectMode {
             // Pressable before selecting anything, same as Trash/Lock — but
@@ -189,44 +214,43 @@ private struct AppListLeadingToolbarContent: View {
             // first. It just applies to whatever's currently selected,
             // silently doing nothing if that's empty (the functions below
             // already guard on an empty selection).
-            Menu {
-                Button {
-                    onIgnoreSelected()
-                } label: {
-                    Label("lc.appList.ignoreUpdatesSelected".loc, systemImage: "bell.slash")
-                }
-                Button {
-                    onUnignoreSelected()
-                } label: {
-                    Label("lc.appList.unignoreUpdatesSelected".loc, systemImage: "bell")
-                }
+            //
+            // A plain Button + .confirmationDialog here (not a Menu) —
+            // mirrors the same pattern the Trash button above already uses
+            // successfully for its own delete confirmation. A Menu embedded
+            // directly as toolbar content was what made this slot vanish
+            // after being dismissed, even just from opening it and tapping
+            // outside without picking either option.
+            Button {
+                showOptions = true
             } label: {
                 Image(systemName: "bell.slash")
                     .foregroundColor(selectedAppsForDeletion.isEmpty ? .secondary : .primary)
             }
             .disabled(isDeleting)
+            .confirmationDialog(
+                "lc.tabView.updates".loc,
+                isPresented: $showOptions,
+                titleVisibility: .visible
+            ) {
+                Button("lc.appList.ignoreUpdatesSelected".loc) {
+                    onIgnoreSelected()
+                }
+                Button("lc.appList.unignoreUpdatesSelected".loc) {
+                    onUnignoreSelected()
+                }
+                Button("lc.common.cancel".loc, role: .cancel) {}
+            }
+        } else if installprogressVisible {
+            ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
+        } else if sideStoreExists {
+            Button(action: onOpenSideStore) {
+                IconImageView(icon: BuiltInSideStoreAppInfo.shared.iconIsDarkIcon(darkModeIcon))
+                    .frame(width: UIFont.preferredFont(forTextStyle: .body).lineHeight,
+                           height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
+            }
         } else {
-            // iPad renders its own native search field for .searchable
-            // automatically, so a manual button there just duplicates it.
-            // iPhone hides it behind a pull/tap, so it needs the button.
-            if SharedModel.isPhone {
-                Button {
-                    isSearchPresented = true
-                } label: {
-                    Image(systemName: "magnifyingglass")
-                }
-            }
-            if installprogressVisible {
-                ProgressView().progressViewStyle(.circular).padding(.horizontal, 8)
-            } else if sideStoreExists {
-                Button(action: onOpenSideStore) {
-                    IconImageView(icon: BuiltInSideStoreAppInfo.shared.iconIsDarkIcon(darkModeIcon))
-                        .frame(width: UIFont.preferredFont(forTextStyle: .body).lineHeight,
-                               height: UIFont.preferredFont(forTextStyle: .body).lineHeight)
-                }
-            } else {
-                Button("Help", systemImage: "questionmark", action: onHelp)
-            }
+            Button("Help", systemImage: "questionmark", action: onHelp)
         }
     }
 }
@@ -530,27 +554,27 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             
             .navigationTitle("lc.appList.myApps".loc)
             .toolbar {
-                // Leading: spinner / SideStore / Help — swaps to bulk ignore/unignore
-                // updates during multiselect, in the same slot the SideStore button
-                // (or spinner/Help, whichever would show) normally occupies. Search
-                // is also hidden there during multiselect, so nothing from this
-                // slot's normal content is left showing.
+                // Leading: search / spinner / SideStore / Help — the second
+                // slot swaps to bulk ignore/unignore updates during
+                // multiselect, in the same place the SideStore button (or
+                // spinner/Help, whichever would show) normally occupies.
                 //
-                // This is one single extracted view (not inline if/else content
-                // directly in the ToolbarItemGroup) so SwiftUI always diffs the
-                // exact same view identity here regardless of which branch is
-                // active — swapping between entirely different concrete view
-                // trees (Menu vs Button vs ProgressView) directly as toolbar
-                // content is what was making this slot intermittently vanish
-                // on iPad, where the search button's own branch is already
-                // absent and the toolbar has fewer, differently-shaped items
-                // to reconcile against.
-                ToolbarItemGroup(placement: .topBarLeading) {
-                    AppListLeadingToolbarContent(
+                // Two separate, always-present ToolbarItems (never a single
+                // item whose branch produces a varying number of children)
+                // — see AppListSearchToolbarButton/AppListSecondaryToolbarButton
+                // above for why that's what actually fixed this slot
+                // intermittently vanishing on iPad.
+                ToolbarItem(placement: .topBarLeading) {
+                    AppListSearchToolbarButton(
+                        show: !isMultiSelectMode && SharedModel.isPhone,
+                        isSearchPresented: $isSearchPresented
+                    )
+                }
+                ToolbarItem(placement: .topBarLeading) {
+                    AppListSecondaryToolbarButton(
                         isMultiSelectMode: isMultiSelectMode,
                         isDeleting: isDeleting,
                         selectedAppsForDeletion: selectedAppsForDeletion,
-                        isSearchPresented: $isSearchPresented,
                         installprogressVisible: installprogressVisible,
                         sideStoreExists: UserDefaults.sideStoreExist(),
                         darkModeIcon: darkModeIcon,
@@ -2320,11 +2344,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             app.appInfo.ignoreUpdates = true
             app.uiIgnoreUpdates = true
         }
-        withAnimation {
-            selectedAppsForDeletion.removeAll()
-            isMultiSelectMode = false
-        }
-        sharedModel.isMultiSelectMode = false
+        exitMultiSelectAfterMenuAction()
     }
 
     /// Inverse of the above — clears "Ignore Updates" for every selected app
@@ -2335,11 +2355,24 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
             app.appInfo.ignoreUpdates = false
             app.uiIgnoreUpdates = false
         }
-        withAnimation {
-            selectedAppsForDeletion.removeAll()
-            isMultiSelectMode = false
+        exitMultiSelectAfterMenuAction()
+    }
+
+    /// Exiting multiselect flips this toolbar slot's content from a Menu to
+    /// a different view (spinner/SideStore/Help). Both ignore/unignore
+    /// actions above are triggered from inside that same Menu's own popover
+    /// — flipping the toolbar's branch synchronously, on the same run loop
+    /// turn as the tap, races the popover's own dismissal animation on iPad
+    /// and is what was making the button vanish after being pressed. Giving
+    /// the popover a moment to fully close first avoids that race.
+    private func exitMultiSelectAfterMenuAction() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) {
+            withAnimation {
+                self.selectedAppsForDeletion.removeAll()
+                self.isMultiSelectMode = false
+            }
+            self.sharedModel.isMultiSelectMode = false
         }
-        sharedModel.isMultiSelectMode = false
     }
     
 }

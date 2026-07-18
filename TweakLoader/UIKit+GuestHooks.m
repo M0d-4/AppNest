@@ -10,6 +10,7 @@
 extern void _objc_msgForward(void);
 @interface LCRealIPhoneModeHelper : NSObject
 + (void)repositionAllWindows;
++ (void)startBriefPollingBurst;
 @end
 // Shared Real iPhone Mode crop helpers (defined alongside the UIWindow hooks
 // further down this file) — forward-declared here so LCRealIPhoneModeHelper,
@@ -244,24 +245,22 @@ static void Real_UIKitGuestHooksInit(void) {
             dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.02 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
                 [LCRealIPhoneModeHelper repositionAllWindows];
             });
+            // On iPadOS 27, outside multitask, none of the specific hook
+            // points above have been confirmed to catch every case that
+            // changes a standalone window's geometry — and without SDK
+            // access to iPadOS 27 to find whatever new private mechanism
+            // might be responsible, guessing at another exact hook point
+            // risks the same "fixes nothing, or breaks multitask" outcome
+            // as previous attempts. Polling directly for a few seconds
+            // sidesteps needing to know which API is responsible at all:
+            // it can't miss a geometry change regardless of how it happened.
+            // Starting only here — after the app is confirmed fully active,
+            // not speculatively early from the constructor like the last
+            // attempt that broke multitask — means LCIsMultitaskLaunch has
+            // had every chance to have already synced, so this is properly
+            // gated by the same eligibility check as everything else.
+            [LCRealIPhoneModeHelper startBriefPollingBurst];
         }];
-        // Without device console access to confirm exactly which event-based
-        // hook does or doesn't fire with correct timing on a given iOS
-        // version/app, don't rely on any single one of them outside
-        // multitask, where there's no host-driven FBSSceneSettings
-        // round-trip to piggyback on. Instead, brute-force re-assert the
-        // crop on a short burst of delays after launch — this can't fail to
-        // eventually catch the window once its real geometry has settled,
-        // regardless of which (if any) of the hooks above actually fired.
-        // repositionAllWindows already no-ops cheaply when the feature is
-        // off, running under multitask, or already correctly cropped, so
-        // this is safe to fire speculatively.
-        NSArray<NSNumber *> *enforcementDelays = @[@0.1, @0.3, @0.6, @1.0, @2.0, @3.0];
-        for (NSNumber *delay in enforcementDelays) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(delay.doubleValue * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [LCRealIPhoneModeHelper repositionAllWindows];
-            });
-        }
     }
 
     swizzle(UIApplication.class, @selector(_applicationOpenURLAction:payload:origin:), @selector(hook__applicationOpenURLAction:payload:origin:));
@@ -1144,6 +1143,34 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     }
     [CATransaction commit];
 }
+
+// Polls and re-asserts the crop every 0.1s for 3 seconds, then stops itself.
+// Each tick is just a call to the already-cheap, already-correctly-gated
+// repositionAllWindows above, so this costs nothing once eligibility (real
+// iPhone mode on, not multitask, not SideStore) is false, which is true for
+// the overwhelming majority of launches. A second call while a burst is
+// already running (e.g. rapid foreground/background cycling) cancels the
+// previous timer and starts fresh rather than stacking multiple timers.
++ (void)startBriefPollingBurst {
+    static dispatch_source_t currentTimer;
+    if (currentTimer) {
+        dispatch_source_cancel(currentTimer);
+        currentTimer = nil;
+    }
+    dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
+    dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, 0), 0.1 * NSEC_PER_SEC, 0.02 * NSEC_PER_SEC);
+    __block int ticksRemaining = 30; // 30 * 0.1s = 3s
+    dispatch_source_set_event_handler(timer, ^{
+        [self repositionAllWindows];
+        ticksRemaining -= 1;
+        if (ticksRemaining <= 0) {
+            dispatch_source_cancel(timer);
+            if (currentTimer == timer) currentTimer = nil;
+        }
+    });
+    currentTimer = timer;
+    dispatch_resume(timer);
+}
 @end
 
 @implementation UIWindow(hook)
@@ -1282,15 +1309,29 @@ static id<LCMultitaskXPCServiceProtocol> server;
     // Fix #524: destroy LiveProcessHandler monitor such that it will pass focus check
     // See https://gist.github.com/khanhduytran0/504b16d86a2091e676c412bd0a517306 for more info
     /// Visibility graph search found root scene (null) and ultimate host <none>
-    [server destroyEndpointInjector];
-
-    void(*orig)(id, SEL, int, id, BOOL, void (^)(BOOL)) = (void *)_objc_msgForward;
-    orig(self, _cmd, pid, context, steal, ^(BOOL success){
-        completion(success);
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
-            // Fix #844, #870: re-init "com.apple.frontboard.visibility" monitor back otherwise things will break because runningboardd falsely see us as background process
-            NSString *selfEnv = [@"UIScene:" stringByAppendingString:context.sceneIdentity.stringRepresentation];
-            [server createEndpointInjectorWithSelfToken:selfEnv sourceToken:NSUserDefaults.lcAppIdentityToken];
+    //
+    // `server` is a *synchronous* XPC proxy (see LiveProcess/main.m's
+    // synchronousRemoteObjectProxyWithErrorHandler:), so this call blocks
+    // the calling thread for a full XPC round-trip. This method is invoked
+    // on the main thread on every keyboard focus request, so if that
+    // round-trip is ever slow, the whole app freezes for however long it
+    // takes before the keyboard can even start appearing — not just a
+    // keyboard-specific delay. Doing the blocking part on a background
+    // queue and hopping back to main before continuing keeps the exact
+    // same destroy-before-focus ordering this fix depends on, without
+    // blocking the main thread while waiting on it.
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        [server destroyEndpointInjector];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            void(*orig)(id, SEL, int, id, BOOL, void (^)(BOOL)) = (void *)_objc_msgForward;
+            orig(self, _cmd, pid, context, steal, ^(BOOL success){
+                completion(success);
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+                    // Fix #844, #870: re-init "com.apple.frontboard.visibility" monitor back otherwise things will break because runningboardd falsely see us as background process
+                    NSString *selfEnv = [@"UIScene:" stringByAppendingString:context.sceneIdentity.stringRepresentation];
+                    [server createEndpointInjectorWithSelfToken:selfEnv sourceToken:NSUserDefaults.lcAppIdentityToken];
+                });
+            });
         });
     });
 }
