@@ -1309,15 +1309,29 @@ static id<LCMultitaskXPCServiceProtocol> server;
     // Fix #524: destroy LiveProcessHandler monitor such that it will pass focus check
     // See https://gist.github.com/khanhduytran0/504b16d86a2091e676c412bd0a517306 for more info
     /// Visibility graph search found root scene (null) and ultimate host <none>
-    [server destroyEndpointInjector];
-
-    void(*orig)(id, SEL, int, id, BOOL, void (^)(BOOL)) = (void *)_objc_msgForward;
-    orig(self, _cmd, pid, context, steal, ^(BOOL success){
-        completion(success);
-        dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
-            // Fix #844, #870: re-init "com.apple.frontboard.visibility" monitor back otherwise things will break because runningboardd falsely see us as background process
-            NSString *selfEnv = [@"UIScene:" stringByAppendingString:context.sceneIdentity.stringRepresentation];
-            [server createEndpointInjectorWithSelfToken:selfEnv sourceToken:NSUserDefaults.lcAppIdentityToken];
+    //
+    // `server` is a *synchronous* XPC proxy (see LiveProcess/main.m's
+    // synchronousRemoteObjectProxyWithErrorHandler:), so this call blocks
+    // the calling thread for a full XPC round-trip. This method is invoked
+    // on the main thread on every keyboard focus request, so if that
+    // round-trip is ever slow, the whole app freezes for however long it
+    // takes before the keyboard can even start appearing — not just a
+    // keyboard-specific delay. Doing the blocking part on a background
+    // queue and hopping back to main before continuing keeps the exact
+    // same destroy-before-focus ordering this fix depends on, without
+    // blocking the main thread while waiting on it.
+    dispatch_async(dispatch_get_global_queue(QOS_CLASS_USER_INITIATED, 0), ^{
+        [server destroyEndpointInjector];
+        dispatch_async(dispatch_get_main_queue(), ^{
+            void(*orig)(id, SEL, int, id, BOOL, void (^)(BOOL)) = (void *)_objc_msgForward;
+            orig(self, _cmd, pid, context, steal, ^(BOOL success){
+                completion(success);
+                dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
+                    // Fix #844, #870: re-init "com.apple.frontboard.visibility" monitor back otherwise things will break because runningboardd falsely see us as background process
+                    NSString *selfEnv = [@"UIScene:" stringByAppendingString:context.sceneIdentity.stringRepresentation];
+                    [server createEndpointInjectorWithSelfToken:selfEnv sourceToken:NSUserDefaults.lcAppIdentityToken];
+                });
+            });
         });
     });
 }
