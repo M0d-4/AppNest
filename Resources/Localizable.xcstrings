@@ -509,12 +509,6 @@
             "value": "Copy Launch URL"
           }
         },
-<<<<<<< HEAD
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Copier l'URL de lancement"
-=======
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -525,7 +519,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Voulez-vous également supprimer le dossier de données de %@ ? Vous pouvez le conserver pour un usage ultérieur."
->>>>>>> upstream/main
           }
         },
         "it": {
@@ -2211,12 +2204,6 @@
             "value": "初始化AppInfo失败!"
           }
         },
-<<<<<<< HEAD
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "初始化AppInfo失敗！"
-=======
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
@@ -19507,7 +19494,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "默認以多任務模式啟動"
->>>>>>> upstream/main
           }
         }
       }
@@ -19747,12 +19733,6 @@
             "value": "AppNest2에서 앱을 사용하려면, AppNest에서 앱을 공유 앱으로 변환해주세요."
           }
         },
-<<<<<<< HEAD
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Zamień Aplikacje w Aplikacje Dzielone aby używać ich w AppNest2"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -19780,7 +19760,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "هل تريد حذف ذاكرة التخزين المؤقت؟"
->>>>>>> upstream/main
           }
         },
         "pt-BR": {
@@ -19819,12 +19798,6 @@
             "value": "将App转换为共享App以在AppNest2中使用"
           }
         },
-<<<<<<< HEAD
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "將應用程式轉換為共享應用程式，以便在AppNest2中使用"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -19841,20 +19814,10 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "确认清除缓存？"
->>>>>>> upstream/main
           }
         }
       }
     },
-<<<<<<< HEAD
-    "lc.appList.deleteSelected": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Delete Selected"
-=======
     "lc.settings.cleanCaches" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -19916,7 +19879,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "清理缓存"
->>>>>>> upstream/main
           }
         }
       }
@@ -20061,15 +20023,6 @@
         }
       }
     },
-<<<<<<< HEAD
-    "lc.appList.exitAppConfirmMessage": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Any unsaved data in the running app may be lost."
-=======
     "lc.settings.cleanTmp" : {
       "comment" : "lc.settings.cleanTmp",
       "extractionState" : "stale",
@@ -20132,20 +20085,10 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "清理 tmp 内容"
->>>>>>> upstream/main
           }
         }
       }
     },
-<<<<<<< HEAD
-    "lc.appList.exitAppConfirmTitle": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Return to AppNest?"
-=======
     "lc.settings.cleanTmpComplete" : {
       "comment" : "lc.settings.cleanTmpComplete",
       "extractionState" : "stale",
@@ -20208,7 +20151,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已清理 tmp 内容。"
->>>>>>> upstream/main
           }
         }
       }
@@ -20258,12 +20200,6 @@
             "value": "深色"
           }
         },
-<<<<<<< HEAD
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "深色"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20280,7 +20216,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "要删除 tmp 内容吗？"
->>>>>>> upstream/main
           }
         }
       }
@@ -20383,12 +20318,6 @@
             "value": "原版"
           }
         },
-<<<<<<< HEAD
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "原版"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -20405,7 +20334,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "清除通知"
->>>>>>> upstream/main
           }
         }
       }
@@ -21290,54 +21218,6 @@
             "value": "URL을 입력해주세요."
           }
         },
-<<<<<<< HEAD
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Proszę wpisać URL do instalacji"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Insira a URL de Instalação"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Пожалуйста, введите URL установки"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vänligen lägg in installations-URL"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Lütfen Yükleme URL'sini Girin"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Vui lòng nhập URL cài đặt"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "请输入安装链接"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "請輸入安裝網址"
-=======
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
@@ -21348,7 +21228,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "隐藏折叠 Dock"
->>>>>>> upstream/main
           }
         }
       }
@@ -21659,12 +21538,6 @@
             "value": "My Apps"
           }
         },
-<<<<<<< HEAD
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Mes applications"
-=======
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -21675,7 +21548,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Certificat d'importation"
->>>>>>> upstream/main
           }
         },
         "it": {
@@ -41047,12 +40919,6 @@
             "value": "Allow Game Mode"
           }
         },
-<<<<<<< HEAD
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Autoriser le mode Jeu"
-=======
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -41063,7 +40929,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Autoriser le mode Jeu"
->>>>>>> upstream/main
           }
         },
         "it": {
@@ -41571,12 +41436,6 @@
             "value": "別のAppNestを再インストール"
           }
         },
-<<<<<<< HEAD
-        "ko": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "두번째 AppNest 재설치"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -41593,7 +41452,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "启动优先级"
->>>>>>> upstream/main
           }
         },
         "pl": {
@@ -41638,12 +41496,6 @@
             "value": "重新安装第二个AppNest"
           }
         },
-<<<<<<< HEAD
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "重新下載另一個AppNest"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -41660,7 +41512,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "拖动 LiveContainer 来设置启动共享 App 时的尝试顺序。"
->>>>>>> upstream/main
           }
         }
       }
@@ -42214,12 +42065,6 @@
             "value": "AppNest를 사용할 수 없습니다. 개발용 인증서로 설치해주세요."
           }
         },
-<<<<<<< HEAD
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "AppNest nie jest podpisany certyfikatem deweloperskim, więc w ogóle nie będzie działać. Proszę podpisać certyfikatem deweloperskim."
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -42236,7 +42081,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "没有可清理的缓存。"
->>>>>>> upstream/main
           }
         },
         "pt-BR": {
@@ -42494,12 +42338,6 @@
             "value": "刷新来自%@的证书"
           }
         },
-<<<<<<< HEAD
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "從%@重新整理證書"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -42516,7 +42354,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "没有可清理的 tmp 内容。"
->>>>>>> upstream/main
           }
         }
       }
@@ -43698,12 +43535,6 @@
             "value": "安装方式不受支持。请使用SideStore或AltStore安装来使用此功能。"
           }
         },
-<<<<<<< HEAD
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "安裝方式不受支援。請使用SideStore或AltStore安裝來使用此功能。"
-=======
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
@@ -43726,7 +43557,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "存储管理"
->>>>>>> upstream/main
           }
         }
       }
@@ -44188,15 +44018,6 @@
         }
       }
     },
-<<<<<<< HEAD
-    "lc.sources.allRepositories": {
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "All Repositories"
-=======
     "lc.shareExtension.error.noContainer" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -44246,7 +44067,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "此App没有可用的容器。"
->>>>>>> upstream/main
           }
         }
       }
@@ -46468,54 +46288,6 @@
             "value": "이 폴더는 개별 폴더입니다. 이곳에 트윅을 추가하고, 앱 설정에서 생성한 폴더를 선택하면, 해당 앱에만 트윅이 적용됩니다."
           }
         },
-<<<<<<< HEAD
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tutaj jest katalog z wybranymi aplikacjami. Skonfiguruj katalog z modyfikacjami, wtedy aplikacja gościnna rekurencyjnie je odbierze."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Esta é a pasta específica do aplicativo. Configure a página de ajustes e o aplicativo do usuário vai selecioná-los recursivamente."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Это папка твиков для отдельного приложения. Выберите его в настройках приложения, и оно применит их рекурсивно."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Detta är den app-specifik mapp. Ange tweak mapp och gäst-appen kommer att plocka upp dem rekursivt."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bu, uygulamaya özgü klasördür. Tweak klasörünü ayarlayın, konuk uygulama bunları yinelemeli olarak alacaktır."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đây là thư mục riêng cho một app. Đặt thư mục tweak và app sẽ tải từ ngoài vào trong."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "这是App专用文件夹。将App的模块文件夹设置为本文件夹，则App在启动时会递归地加载。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "這是特定於應用程式的資料夾。 設定補丁資料夾，來賓應用程式將遞迴地拾取它們。"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -46532,7 +46304,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "应用本体"
->>>>>>> upstream/main
           }
         }
       }
@@ -46582,54 +46353,6 @@
             "value": "비활성화"
           }
         },
-<<<<<<< HEAD
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Wyłącz"
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desativar"
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Отключить"
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Inaktivera"
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Devre Dışı Bırak"
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tắt"
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "禁用"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "停用"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -46646,7 +46369,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "App Group 数据"
->>>>>>> upstream/main
           }
         }
       }
@@ -46738,12 +46460,6 @@
             "value": "启用"
           }
         },
-<<<<<<< HEAD
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "啟用"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -46760,7 +46476,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "计算中…"
->>>>>>> upstream/main
           }
         }
       }
@@ -46840,24 +46555,6 @@
             "value": "Bir klasör kendi içine taşınamaz."
           }
         },
-<<<<<<< HEAD
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Không thể di chuyển một thư mục vào chính nó."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "无法将文件夹移动到其自身内部。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "無法將資料夾移動到自身內部。"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -46874,7 +46571,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "容器"
->>>>>>> upstream/main
           }
         }
       }
@@ -46948,30 +46644,6 @@
             "value": "Målet innehåller redan %@."
           }
         },
-<<<<<<< HEAD
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Hedefte zaten %@ var."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Đích đã chứa %@."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "目标位置已包含 %@。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "目標位置已包含 %@。"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -46988,7 +46660,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "已安装应用"
->>>>>>> upstream/main
           }
         }
       }
@@ -47056,36 +46727,6 @@
             "value": "Загруженный файл твика не найден."
           }
         },
-<<<<<<< HEAD
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Den nedladdade tweak-filen hittades inte."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "İndirilen tweak dosyası bulunamadı."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Không tìm thấy tệp tweak đã tải xuống."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "未找到已下载的模块文件。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "找不到已下載的補丁檔案。"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47102,7 +46743,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "没有应用存储数据"
->>>>>>> upstream/main
           }
         }
       }
@@ -47164,42 +46804,6 @@
             "value": "Nenhum .dylib ou .framework foi encontrado nesta pasta."
           }
         },
-<<<<<<< HEAD
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "В этой папке не найдено .dylib или .framework."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ingen .dylib eller .framework hittades i den här mappen."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Bu klasörde .dylib veya .framework bulunamadı."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Không tìm thấy .dylib hoặc .framework trong thư mục này."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此文件夹中未找到 .dylib 或 .framework。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "此資料夾中找不到 .dylib 或 .framework。"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47216,7 +46820,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "其他"
->>>>>>> upstream/main
           }
         }
       }
@@ -47266,54 +46869,6 @@
             "value": "패키지에서 .dylib 또는 .framework를 찾을 수 없습니다."
           }
         },
-<<<<<<< HEAD
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "W pakiecie nie znaleziono pliku .dylib ani .framework."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nenhum .dylib ou .framework foi encontrado no pacote."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "В пакете не найдено .dylib или .framework."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Ingen .dylib eller .framework hittades i paketet."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pakette .dylib veya .framework bulunamadı."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Không tìm thấy .dylib hoặc .framework trong gói."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "包中未找到 .dylib 或 .framework。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "套件中找不到 .dylib 或 .framework。"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47330,7 +46885,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "临时文件"
->>>>>>> upstream/main
           }
         }
       }
@@ -47380,54 +46934,6 @@
             "value": "지원되지 않는 트윅 패키지입니다. .dylib 또는 .dylib/.framework를 포함한 압축 파일을 사용하세요."
           }
         },
-<<<<<<< HEAD
-        "pl": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Nieobsługiwany pakiet modyfikacji. Użyj pliku .dylib lub archiwum zawierającego .dylib/.framework."
-          }
-        },
-        "pt-BR": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Pacote de tweak não suportado. Use .dylib ou um arquivo compactado contendo .dylib/.framework."
-          }
-        },
-        "ru": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Неподдерживаемый пакет твика. Используйте .dylib или архив, содержащий .dylib/.framework."
-          }
-        },
-        "sv": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Tweak-paketet stöds inte. Använd .dylib eller ett arkiv som innehåller .dylib/.framework."
-          }
-        },
-        "tr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Desteklenmeyen tweak paketi. .dylib veya .dylib/.framework içeren bir arşiv kullanın."
-          }
-        },
-        "vi": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Gói tweak không được hỗ trợ. Hãy dùng .dylib hoặc gói nén chứa .dylib/.framework."
-          }
-        },
-        "zh-Hans": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "不支持的模块包。请使用 .dylib 或包含 .dylib/.framework 的压缩包。"
-          }
-        },
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "不支援的補丁封裝。請使用 .dylib 或包含 .dylib/.framework 的壓縮檔。"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47444,7 +46950,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "总存储"
->>>>>>> upstream/main
           }
         }
       }
@@ -47536,12 +47041,6 @@
             "value": "无法更新模块设置。"
           }
         },
-<<<<<<< HEAD
-        "zh-Hant": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "無法更新補丁設定。"
-=======
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47558,7 +47057,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Tweaks"
->>>>>>> upstream/main
           }
         }
       }
@@ -47679,12 +47177,6 @@
             "value": "Help"
           }
         },
-<<<<<<< HEAD
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Aide"
-=======
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -47695,7 +47187,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Paramètres"
->>>>>>> upstream/main
           }
         },
         "it": {
@@ -49507,12 +48998,6 @@
             "value": "This web page is trying to launch \"%@\", continue?"
           }
         },
-<<<<<<< HEAD
-        "fr": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Cette page web tente de lancer \"%@\", continuer ?"
-=======
         "es" : {
           "stringUnit" : {
             "state" : "translated",
@@ -49523,7 +49008,6 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "Cette page web tente de lancer \"%@\", continuer ?"
->>>>>>> upstream/main
           }
         },
         "it": {
