@@ -179,6 +179,7 @@ extern const UIApplication *UIApp;
 
 @interface UIMutableApplicationSceneSettings(Multitask)
 @property(nonatomic, assign, readwrite) BOOL canShowAlerts;
+@property(nonatomic, assign, readwrite) NSUInteger deactivationReasons;
 @property(nonatomic, assign) BOOL deviceOrientationEventsEnabled;
 @property(nonatomic, assign, readwrite) NSInteger interruptionPolicy;
 @property(nonatomic, strong, readwrite) NSString *persistenceIdentifier;

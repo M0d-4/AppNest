@@ -332,6 +332,13 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         // _scenePresenter was a property in 26, but made only ivar in 27
         self.presenter = [self.hostingController.sceneView valueForKey:@"_scenePresenter"];
         self.sceneID = self.presenter.identifier;
+        
+        // For new API, let FBSSceneObserver send host scene events instead of NSExtensionContext
+        NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
+        [center removeObserver:self.extension name:UIApplicationDidBecomeActiveNotification object:UIApp];
+        [center removeObserver:self.extension name:UIApplicationWillResignActiveNotification object:UIApp];
+        [center removeObserver:self.extension name:UIApplicationDidEnterBackgroundNotification object:UIApp];
+        [center removeObserver:self.extension name:UIApplicationWillEnterForegroundNotification object:UIApp];
     } else {
         self.sceneID = [NSString stringWithFormat:@"sceneID:%@-%@", @"LiveProcess", self.dataUUID];
         FBSMutableSceneDefinition *definition = [PrivClass(FBSMutableSceneDefinition) definition];
@@ -582,14 +589,24 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
 }
 
 - (void)setBackgroundNotificationEnabled:(bool)enabled {
+    if(self.usesHostingControllerAPI) {
+        /// Issue with new API: FBSSceneObserver takes priority over to send UIApplicationWillResignActiveNotification regressed #942,
+        /// so here we make it foreground (UIApplicationDidBecomeActiveNotification) again.
+        [self.presenter.scene updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
+            settings.foreground = YES;
+            settings.deactivationReasons = 0;
+        }];
+        return;
+    }
+    NSNotificationCenter *center = NSNotificationCenter.defaultCenter;
     if(enabled) {
         // Re-add UIApplicationDidEnterBackgroundNotification
-        [NSNotificationCenter.defaultCenter addObserver:self.extension selector:@selector(_hostDidEnterBackgroundNote:) name:UIApplicationDidEnterBackgroundNotification object:UIApplication.sharedApplication];
-        [NSNotificationCenter.defaultCenter addObserver:self.extension selector:@selector(_hostWillResignActiveNote:) name:UIApplicationWillResignActiveNotification object:UIApplication.sharedApplication];
+        [center addObserver:self.extension selector:@selector(_hostDidEnterBackgroundNote:) name:UIApplicationDidEnterBackgroundNotification object:UIApp];
+        [center addObserver:self.extension selector:@selector(_hostWillResignActiveNote:) name:UIApplicationWillResignActiveNotification object:UIApp];
     } else {
         // Remove UIApplicationDidEnterBackgroundNotification so apps like YouTube can continue playing video
-        [NSNotificationCenter.defaultCenter removeObserver:self.extension name:UIApplicationDidEnterBackgroundNotification object:UIApplication.sharedApplication];
-        [NSNotificationCenter.defaultCenter removeObserver:self.extension name:UIApplicationWillResignActiveNotification object:UIApplication.sharedApplication];
+        [center removeObserver:self.extension name:UIApplicationDidEnterBackgroundNotification object:UIApp];
+        [center removeObserver:self.extension name:UIApplicationWillResignActiveNotification object:UIApp];
     }
 }
 
