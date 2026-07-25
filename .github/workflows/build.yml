@@ -15,7 +15,7 @@ jobs:
     name: Build using xcodebuild command
     runs-on: macos-latest
     env:
-      scheme: LiveContainer
+      scheme: AppNest
       archive_path: archive
     outputs:
       scheme: ${{ steps.scheme.outputs.scheme }}
@@ -80,7 +80,7 @@ jobs:
           name: ${{ env.scheme }}.ipa
           path: ${{ env.scheme }}.ipa
       
-      - name: Upload LiveContainer+SideStore
+      - name: Upload AppNest+SideStore
         uses: actions/upload-artifact@v7
         with:
           name: ${{ env.scheme }}+SideStore.ipa
@@ -146,8 +146,8 @@ jobs:
             **Commit:** [${{ github.sha }}](https://github.com/${{ github.repository }}/commit/${{ github.sha }})
             
             **Downloads:**
-            - `LiveContainer.ipa` - Standalone version
-            - `LiveContainer+SideStore.ipa` - Integrated with SideStore features (widgets, etc.)
+            - `AppNest.ipa` - Standalone version
+            - `AppNest+SideStore.ipa` - Integrated with SideStore features (widgets, etc.)
             
             This is a nightly release [created automatically with GitHub Actions workflow](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}/attempts/${{ github.run_attempt }}).
           files: |
