@@ -1,7 +1,7 @@
 @import UIKit;
 #import "LCSharedUtils.h"
 #import "UIKitPrivate.h"
-#import "../LiveContainer/utils.h"
+#import "../AppNest/utils.h"
 #import <LocalAuthentication/LocalAuthentication.h>
 #import "Localization.h"
 #import "../LiveProcess/LiveProcessHandler.h"
@@ -128,7 +128,7 @@ static NSSet<NSString *> *LCBlockedExternalURLSchemes(void) {
         blockedSchemes = [NSSet setWithArray:@[
             @"github",
             @"sidestore",
-            @"livecontainer",
+            @"appnest",
             // TODO: Shadowrocket
         ]];
     });
@@ -316,7 +316,7 @@ static void Real_UIKitGuestHooksInit(void) {
 NSString* findDefaultContainerWithBundleId(NSString* bundleId) {
     // find app's default container
     NSString *appGroupPath = [NSUserDefaults lcAppGroupPath];
-    NSString* appGroupFolder = [appGroupPath stringByAppendingPathComponent:@"LiveContainer"];
+    NSString* appGroupFolder = [appGroupPath stringByAppendingPathComponent:@"AppNest"];
     
     NSString* bundleInfoPath = [NSString stringWithFormat:@"%@/Applications/%@/LCAppInfo.plist", appGroupFolder, bundleId];
     NSDictionary* infoDict = [NSDictionary dictionaryWithContentsOfFile:bundleInfoPath];
@@ -356,7 +356,7 @@ void forEachInstalledNotCurrentLC(BOOL isFree, void (^block)(NSString* scheme, B
 void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId, bool isSharedApp) {
     NSURLComponents* newUrlComp = [NSURLComponents componentsWithURL:url resolvingAgainstBaseURL:NO];
     
-    // check if there's any free LiveContainer to run the app
+    // check if there's any free AppNest to run the app
     if(isSharedApp) {
         __block BOOL anotherLCLaunched = false;
         forEachInstalledNotCurrentLC(YES, ^(NSString * scheme, BOOL* isBreak) {
@@ -381,7 +381,7 @@ void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId, bool isSharedAp
 
     NSString *message = [@"lc.guestTweak.appSwitchTip %@" localizeWithFormat:bundleId];
     UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"LiveContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"AppNest" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         [NSUserDefaults.lcUserDefaults setBool:NO forKey:@"LCOpenSideStore"];
         [NSClassFromString(@"LCSharedUtils") launchToGuestAppWithURL:url];
@@ -416,7 +416,7 @@ void LCShowSwitchAppConfirmation(NSURL *url, NSString* bundleId, bool isSharedAp
 
 void LCShowAlert(NSString* message) {
     UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"LiveContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"AppNest" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         window.windowScene = nil;
     }];
@@ -491,7 +491,7 @@ void LCOpenWebPage(NSString* webPageUrlString, NSString* originalUrl) {
     
     NSString *message = @"lc.guestTweak.openWebPageTip".loc;
     UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"LiveContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"AppNest" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         [NSClassFromString(@"LCSharedUtils") setWebPageUrlForNextLaunch:webPageUrlString];
         [NSClassFromString(@"LCSharedUtils") launchToGuestApp];
@@ -536,7 +536,7 @@ void LCOpenSideStoreURL(NSURL* sidestoreUrl) {
     }
     NSString *message = [@"lc.guestTweak.appSwitchTip %@" localizeWithFormat:@"SideStore"];
     UIWindow *window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"LiveContainer" message:message preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"AppNest" message:message preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"lc.common.ok".loc style:UIAlertActionStyleDefault handler:^(UIAlertAction * action) {
         [NSUserDefaults.lcUserDefaults setObject:sidestoreUrl.absoluteString forKey:@"launchAppUrlScheme"];
         [NSUserDefaults.lcUserDefaults setObject:@"builtinSideStore" forKey:@"selected"];
@@ -587,7 +587,7 @@ void authenticateUser(void (^completion)(BOOL success, NSError *error)) {
     }
 }
 
-void handleLiveContainerLaunch(NSString* bundleName, NSString* containerFolderName, NSURL* url) {
+void handleAppNestLaunch(NSString* bundleName, NSString* containerFolderName, NSURL* url) {
     // check if there are other LCs is running this app
         NSString* runningLC = [NSClassFromString(@"LCSharedUtils") getContainerUsingLCSchemeWithFolderName:containerFolderName];
         // the app is running in an lc, that lc is not me, also is not my avatar
@@ -595,7 +595,7 @@ void handleLiveContainerLaunch(NSString* bundleName, NSString* containerFolderNa
             if([runningLC hasSuffix:@"liveprocess"]) {
                 runningLC = runningLC.stringByDeletingPathExtension;
             }
-            NSString* urlStr = [NSString stringWithFormat:@"%@://livecontainer-launch?bundle-name=%@&container-folder-name=%@", runningLC, bundleName, containerFolderName];
+            NSString* urlStr = [NSString stringWithFormat:@"%@://appnest-launch?bundle-name=%@&container-folder-name=%@", runningLC, bundleName, containerFolderName];
             LCWithExternalURLBlockBypass(^{
                 [UIApplication.sharedApplication openURL:[NSURL URLWithString:urlStr] options:@{} completionHandler:nil];
             });
@@ -721,7 +721,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     }
 
     // pass through sidestore urls
-    if(NSUserDefaults.isSideStore && ![url.scheme isEqualToString:@"livecontainer"]) {
+    if(NSUserDefaults.isSideStore && ![url.scheme isEqualToString:@"appnest"]) {
         return LCControlAppURLHandlingPassThrough;
     }
 
@@ -737,11 +737,11 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     }
     NSString* urlHost = url.host;
     
-    if([urlHost isEqualToString:@"livecontainer-relaunch"]) {
+    if([urlHost isEqualToString:@"appnest-relaunch"]) {
         return LCControlAppURLHandlingStop;
     }
     
-    if([urlHost isEqualToString:@"livecontainer-launch"]) {
+    if([urlHost isEqualToString:@"appnest-launch"]) {
         // If it's not current app, then switch, otherwise check if we need to open the url
         NSString* bundleName = nil;
         NSString* openUrl = nil;
@@ -758,9 +758,9 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
             }
         }
         
-        // launch to LiveContainerUI
+        // launch to AppNestUI
         if([bundleName isEqualToString:@"ui"]) {
-            LCShowSwitchAppConfirmation(url, @"LiveContainer", false);
+            LCShowSwitchAppConfirmation(url, @"AppNest", false);
             return LCControlAppURLHandlingStop;
         }
         
@@ -785,7 +785,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
                 LCShowSwitchAppConfirmation(url, @"SideStore", NO);
                 return LCControlAppURLHandlingStop;
             }
-            handleLiveContainerLaunch(bundleName, containerFolderName, url);
+            handleAppNestLaunch(bundleName, containerFolderName, url);
         }
         
         return LCControlAppURLHandlingStop;
@@ -822,7 +822,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 }
 
 // Handler for AppDelegate
-@implementation UIApplication(LiveContainerHook)
+@implementation UIApplication(AppNestHook)
 - (void)hook__applicationOpenURLAction:(id)action payload:(NSDictionary *)payload origin:(id)origin {
     NSURL *url = [NSURL URLWithString:payload[UIApplicationLaunchOptionsURLKey]];
     NSString* replacementURLString = nil;
@@ -928,7 +928,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     }
 
     // When running as built-in SideStore, pass ALL URLs straight through — including
-    // livecontainer:// which is otherwise in the blocked list. relaunchLC needs it.
+    // appnest:// which is otherwise in the blocked list. relaunchLC needs it.
     // This check must come BEFORE LCShouldBlockExternalURL.
     if(NSUserDefaults.isSideStore) {
         [self hook_openURL:url options:options completionHandler:completion];
@@ -945,7 +945,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     BOOL openSelf = canAppOpenItself(url);
     BOOL redirectToHost = shouldRedirectOpenURLToHost(url);;
     if(openSelf || redirectToHost) {
-        NSString* schemeToUse = openSelf ? NSUserDefaults.lcAppUrlScheme : @"livecontainer";
+        NSString* schemeToUse = openSelf ? NSUserDefaults.lcAppUrlScheme : @"appnest";
         NSData *data = [url.absoluteString dataUsingEncoding:NSUTF8StringEncoding];
         NSString *encodedUrl = [data base64EncodedStringWithOptions:0];
         NSString* finalUrlStr = [NSString stringWithFormat:@"%@://open-url?url=%@", schemeToUse, encodedUrl];
@@ -959,7 +959,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     if(strictTestMode) {
         return strictModeAllowsOpenURL(url);
     }
-    // When running as built-in SideStore pass through directly — livecontainer://
+    // When running as built-in SideStore pass through directly — appnest://
     // is in the blocked list but SideStore needs it for relaunchLC.
     // This check must come BEFORE LCShouldBlockExternalURL.
     if (NSUserDefaults.isSideStore) {
@@ -1000,7 +1000,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 @end
 
 // Handler for SceneDelegate
-@implementation UIScene(LiveContainerHook)
+@implementation UIScene(AppNestHook)
 - (void)hook_scene:(id)scene didReceiveActions:(NSSet *)actions fromTransitionContext:(id)context {
     UIOpenURLAction *urlAction = nil;
     for (id obj in actions.allObjects) {
@@ -1057,7 +1057,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     BOOL openSelf = canAppOpenItself(url);
     BOOL redirectToHost = shouldRedirectOpenURLToHost(url);
     if(openSelf || redirectToHost) {
-        NSString* schemeToUse = openSelf ? NSUserDefaults.lcAppUrlScheme : @"livecontainer";
+        NSString* schemeToUse = openSelf ? NSUserDefaults.lcAppUrlScheme : @"appnest";
         NSData *data = [url.absoluteString dataUsingEncoding:NSUTF8StringEncoding];
         NSString *encodedUrl = [data base64EncodedStringWithOptions:0];
         NSString* finalUrlStr = [NSString stringWithFormat:@"%@://open-url?url=%@", schemeToUse, encodedUrl];
@@ -1069,7 +1069,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 }
 @end
 
-@implementation FBSSceneParameters(LiveContainerHook)
+@implementation FBSSceneParameters(AppNestHook)
 - (instancetype)hook_initWithXPCDictionary:(NSDictionary*)dict {
 
     FBSSceneParameters* ans = [self hook_initWithXPCDictionary:dict];
@@ -1085,7 +1085,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 
 
 
-@implementation UIViewController(LiveContainerHook)
+@implementation UIViewController(AppNestHook)
 
 - (UIInterfaceOrientationMask)hook___supportedInterfaceOrientations {
     if(LCOrientationLock == UIInterfaceOrientationLandscapeRight) {
@@ -1102,7 +1102,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 
 @end
 
-@implementation UIScreen (LiveContainerHook)
+@implementation UIScreen (AppNestHook)
 - (CGRect)hook_UIScreen_bounds {
     NSString *appId = NSUserDefaults.lcGuestAppId;
     BOOL isSideStore = [appId.lowercaseString containsString:@"sidestore"];

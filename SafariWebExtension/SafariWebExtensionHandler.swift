@@ -105,8 +105,8 @@ final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     private func launchURL(for target: LaunchTarget) -> URL? {
         let encodedOpenURL = Data(target.openURL.absoluteString.utf8).base64EncodedString()
         var components = URLComponents()
-        components.scheme = "livecontainer"
-        components.host = "livecontainer-launch"
+        components.scheme = "appnest"
+        components.host = "appnest-launch"
         components.queryItems = [
             URLQueryItem(name: "bundle-name", value: target.bundleName),
             URLQueryItem(name: "open-url", value: encodedOpenURL)
@@ -214,7 +214,7 @@ final class SafariWebExtensionHandler: NSObject, NSExtensionRequestHandling {
     }
 
     private func configuredAppGroups() -> [String] {
-        (Bundle.main.object(forInfoDictionaryKey: "LiveContainerAppGroups") as? [String] ?? [])
+        (Bundle.main.object(forInfoDictionaryKey: "AppNestAppGroups") as? [String] ?? [])
             .filter { !$0.isEmpty }
     }
 

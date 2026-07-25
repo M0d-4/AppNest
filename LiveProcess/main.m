@@ -9,8 +9,8 @@
 #import <UIKit/UIKit.h>
 #import <mach-o/dyld.h>
 #import "LiveProcessHandler.h"
-#import "../LiveContainer/utils.h"
-#import "../LiveContainer/Tweaks/Tweaks.h"
+#import "../AppNest/utils.h"
+#import "../AppNest/Tweaks/Tweaks.h"
 #import "../MultitaskSupport/LCMultitaskXPCService.h"
 #import "../SideStore/XPCServer.h"
 
@@ -32,7 +32,7 @@ static NSDictionary *retrievedAppInfo;
 - (void)beginRequestWithExtensionContext:(NSExtensionContext *)context {
     extensionContext = context;
     retrievedAppInfo = [context.inputItems.firstObject userInfo];
-    // Return control to LiveContainerMain
+    // Return control to AppNestMain
     CFRunLoopStop(CFRunLoopGetMain());
 }
 
@@ -50,7 +50,7 @@ static NSDictionary *retrievedAppInfo;
 }
 @end
 
-extern int LiveContainerMain(int argc, char *argv[]);
+extern int AppNestMain(int argc, char *argv[]);
 static char **_envp, **_apple = NULL;
 int LiveProcessMain(int argc, char *argv[]) {
     // Let NSExtensionContext initialize, once it's done it will call CFRunLoopStop
@@ -72,7 +72,7 @@ int LiveProcessMain(int argc, char *argv[]) {
     }
 
     NSLog(@"Retrieved app info: %@", appInfo);
-    // Set LiveContainer's home path
+    // Set AppNest's home path
     setenv("LP_HOME_PATH", getenv("HOME"), 1);
     const char *overrideHomePath = [appInfo[@"lcHomePath"] fileSystemRepresentation];
     if(overrideHomePath) setenv("LC_HOME_PATH", overrideHomePath, 1);
@@ -104,7 +104,7 @@ int LiveProcessMain(int argc, char *argv[]) {
     }
 
     
-    return LiveContainerMain(argc, argv);
+    return AppNestMain(argc, argv);
 }
 
 // this is our fake UIApplicationMain called from _xpc_objc_uimain (xpc_main)

@@ -1,11 +1,11 @@
 //
 //  LCStatusBarManager.m
-//  LiveContainer
+//  AppNest
 //
 //  Created by Duy Tran on 20/2/26.
 //
 #import "LCStatusBarManager.h"
-#import "LiveContainerSwiftUI-Swift.h"
+#import "AppNestSwiftUI-Swift.h"
 #import "VirtualWindowsHostView.h"
 
 @implementation LCStatusBarManager
@@ -21,7 +21,7 @@
 }
 @end
 
-@implementation UIApplication(LiveContainer)
+@implementation UIApplication(AppNest)
 + (Class)_statusBarManagerClass {
     if (@available(iOS 16.0, *)) {
         return LCStatusBarManager.class;

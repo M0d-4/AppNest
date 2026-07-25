@@ -2426,55 +2426,55 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "حول التطبيقات الى تطبيقات مُشارَكه لاستعمالها في LiveContainer2"
+            "value" : "حول التطبيقات الى تطبيقات مُشارَكه لاستعمالها في AppNest2"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Apps in geteilte Apps umwandeln, um sie in LiveContainer2 nutzen zu können."
+            "value" : "Apps in geteilte Apps umwandeln, um sie in AppNest2 nutzen zu können."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Convert Apps to Shared Apps to Use Them in LiveContainer2"
+            "value" : "Convert Apps to Shared Apps to Use Them in AppNest2"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Convierte las apps en Apps Compartidas para usarlas en LiveContainer2"
+            "value" : "Convierte las apps en Apps Compartidas para usarlas en AppNest2"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Convertir des applications en applications partagées pour les utiliser dans LiveContainer2"
+            "value" : "Convertir des applications en applications partagées pour les utiliser dans AppNest2"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Converti App in App Condivise per poterle usare in LiveContainer2"
+            "value" : "Converti App in App Condivise per poterle usare in AppNest2"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アプリを共有アプリに変換するとLiveContainer 2で使用できます"
+            "value" : "アプリを共有アプリに変換するとAppNest 2で使用できます"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer2에서 앱을 사용하려면, LiveContainer에서 앱을 공유 앱으로 변환해주세요."
+            "value" : "AppNest2에서 앱을 사용하려면, AppNest에서 앱을 공유 앱으로 변환해주세요."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zamień Aplikacje w Aplikacje Dzielone aby używać ich w LiveContainer2"
+            "value" : "Zamień Aplikacje w Aplikacje Dzielone aby używać ich w AppNest2"
           }
         },
         "pt-BR" : {
@@ -2486,37 +2486,37 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Конвертировать приложения в общие приложения для использования их во втором LiveContainer'е"
+            "value" : "Конвертировать приложения в общие приложения для использования их во втором AppNest'е"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konvertera appar till delade appar för att använda dem i LiveContainer2"
+            "value" : "Konvertera appar till delade appar för att använda dem i AppNest2"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uygulamaları LiveContainer2'de kullanabilmek için onları Paylaşılan Uygulamalara dönüştürün"
+            "value" : "Uygulamaları AppNest2'de kullanabilmek için onları Paylaşılan Uygulamalara dönüştürün"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Chuyển các App thành Được Chia sẻ để Dùng trong LiveContainer2"
+            "value" : "Chuyển các App thành Được Chia sẻ để Dùng trong AppNest2"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "将App转换为共享App以在LiveContainer2中使用"
+            "value" : "将App转换为共享App以在AppNest2中使用"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "將應用程式轉換為共享應用程式，以便在LiveContainer2中使用"
+            "value" : "將應用程式轉換為共享應用程式，以便在AppNest2中使用"
           }
         }
       }
@@ -4071,55 +4071,55 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "أداره التطبيقات في LiveContainer حصراً"
+            "value" : "أداره التطبيقات في AppNest حصراً"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verwalten Sie Apps im primären LiveContainer"
+            "value" : "Verwalten Sie Apps im primären AppNest"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Manage apps in the primary LiveContainer"
+            "value" : "Manage apps in the primary AppNest"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Administrar apps en el LiveContainer primario"
+            "value" : "Administrar apps en el AppNest primario"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gérer les applications dans le LiveContainer principal"
+            "value" : "Gérer les applications dans le AppNest principal"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Gestisci l'app nell'app principale LiveContainer"
+            "value" : "Gestisci l'app nell'app principale AppNest"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "メインのLiveContainerを管理"
+            "value" : "メインのAppNestを管理"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer에서 앱을 관리하세요."
+            "value" : "AppNest에서 앱을 관리하세요."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Zarządzaj aplikacjami w głównym LiveContainer"
+            "value" : "Zarządzaj aplikacjami w głównym AppNest"
           }
         },
         "pt-BR" : {
@@ -4131,37 +4131,37 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Управляйте приложениями в основном LiveContainer"
+            "value" : "Управляйте приложениями в основном AppNest"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hantera appar i den primära LiveContainer"
+            "value" : "Hantera appar i den primära AppNest"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Birincil LiveContainer'daki uygulamaları yönetin"
+            "value" : "Birincil AppNest'daki uygulamaları yönetin"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mở LiveContainer gốc để quản lý ứng dụng"
+            "value" : "Mở AppNest gốc để quản lý ứng dụng"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "请在主LiveContainer中管理App"
+            "value" : "请在主AppNest中管理App"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在主LiveContainer中管理應用程式"
+            "value" : "在主AppNest中管理應用程式"
           }
         }
       }
@@ -4623,55 +4623,55 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "لا يمكن فتح المخطط '%@' بواسطة أي تطبيق مثبت في LiveContainer."
+            "value" : "لا يمكن فتح المخطط '%@' بواسطة أي تطبيق مثبت في AppNest."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Schema \"%@\" kann von keiner in LiveContainer installierten App geöffnet werden."
+            "value" : "Das Schema \"%@\" kann von keiner in AppNest installierten App geöffnet werden."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scheme \"%@\" cannot be opened by any app installed in LiveContainer."
+            "value" : "Scheme \"%@\" cannot be opened by any app installed in AppNest."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "El esquema \"%@\" no se puede abrir con ninguna app instalada en LiveContainer."
+            "value" : "El esquema \"%@\" no se puede abrir con ninguna app instalada en AppNest."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Le schéma \"%@\" ne peut être ouvert par aucune application installée dans LiveContainer."
+            "value" : "Le schéma \"%@\" ne peut être ouvert par aucune application installée dans AppNest."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "\"%@\" non può essere aperto da nessuna app installata in LiveContainer."
+            "value" : "\"%@\" non può essere aperto da nessuna app installata in AppNest."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "スキーム \"%@\"はLiveContainerにインストールしているアプリでは開けません。"
+            "value" : "スキーム \"%@\"はAppNestにインストールしているアプリでは開けません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer로 설치된 앱은 \"%@\" Scheme을 사용할 수 없습니다."
+            "value" : "AppNest로 설치된 앱은 \"%@\" Scheme을 사용할 수 없습니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Schemat \"%@\" nie może być otwarty przez żadną aplikację zainstalowaną w LiveContainer."
+            "value" : "Schemat \"%@\" nie może być otwarty przez żadną aplikację zainstalowaną w AppNest."
           }
         },
         "pt-BR" : {
@@ -4689,31 +4689,31 @@
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scheme \"%@\" kan inte öppnas av någon app installerad i LiveContainer."
+            "value" : "Scheme \"%@\" kan inte öppnas av någon app installerad i AppNest."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "“%@” şeması, LiveContainer içinde yüklü olan hiçbir uygulama tarafından açılamaz."
+            "value" : "“%@” şeması, AppNest içinde yüklü olan hiçbir uygulama tarafından açılamaz."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Scheme \"%@\" không thể được mở trong bất kỳ app nào cài trong LiveContainer."
+            "value" : "Scheme \"%@\" không thể được mở trong bất kỳ app nào cài trong AppNest."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "协议“%@”无法被LiveContainer中安装的任何App打开。"
+            "value" : "协议“%@”无法被AppNest中安装的任何App打开。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "安裝在LiveContainer中的任何應用程式都無法開啟方案「%@」。"
+            "value" : "安裝在AppNest中的任何應用程式都無法開啟方案「%@」。"
           }
         }
       }
@@ -4724,43 +4724,43 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "تم توقيع التطبيق بنجاح، لكن LiveContainer لم يستطيع ان يُوقع الملفات التالية. يمكنك ان تستعمل التطبيق، لكن توقف مفاجئ على أي لحظه متوقع."
+            "value" : "تم توقيع التطبيق بنجاح، لكن AppNest لم يستطيع ان يُوقع الملفات التالية. يمكنك ان تستعمل التطبيق، لكن توقف مفاجئ على أي لحظه متوقع."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Die App wurde erfolgreich signiert, aber LiveContainer konnte die folgenden Dateien nicht signieren. Möglicherweise können Sie die App verwenden, rechnen Sie jedoch mit Abstürzen."
+            "value" : "Die App wurde erfolgreich signiert, aber AppNest konnte die folgenden Dateien nicht signieren. Möglicherweise können Sie die App verwenden, rechnen Sie jedoch mit Abstürzen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App was signed successfully, but LiveContainer was unable to sign the following files. You may be able to use the app, but do expect crash."
+            "value" : "App was signed successfully, but AppNest was unable to sign the following files. You may be able to use the app, but do expect crash."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "La app se firmó correctamente, pero LiveContainer no pudo firmar los siguientes archivos. Es posible que puedas usar la app, pero espera fallos."
+            "value" : "La app se firmó correctamente, pero AppNest no pudo firmar los siguientes archivos. Es posible que puedas usar la app, pero espera fallos."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'application a été signée avec succès, mais LiveContainer n'a pas pu signer les fichiers suivants. Vous pouvez utiliser l'application, mais attendez-vous à un crash."
+            "value" : "L'application a été signée avec succès, mais AppNest n'a pas pu signer les fichiers suivants. Vous pouvez utiliser l'application, mais attendez-vous à un crash."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "L'app è stata registrata con successo, ma LiveContainer non è stata in grado di registrare i seguenti file. Potresti essere in grado di usare l'app, ma aspettati dei crash."
+            "value" : "L'app è stata registrata con successo, ma AppNest non è stata in grado di registrare i seguenti file. Potresti essere in grado di usare l'app, ma aspettati dei crash."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アプリの署名に成功しましたが、LiveContainerは以下のファイルに署名できませんでした。アプリは使用できますが、クラッシュする可能性があります。"
+            "value" : "アプリの署名に成功しましたが、AppNestは以下のファイルに署名できませんでした。アプリは使用できますが、クラッシュする可能性があります。"
           }
         },
         "ko" : {
@@ -4772,37 +4772,37 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Z powodzeniem, Aplikacja została podpisana. Jednak LiveContainer nie był w stanie podpisać tych plików. Będziesz mieć możliwość używania aplikacji, ale oczekuj błędów."
+            "value" : "Z powodzeniem, Aplikacja została podpisana. Jednak AppNest nie był w stanie podpisać tych plików. Będziesz mieć możliwość używania aplikacji, ale oczekuj błędów."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aplicativo foi assinado com sucesso, porém o LiveContainer foi incapaz de assinar os seguintes arquivos. Você consegue utilizar o aplicativo, mas não possua expectativas de que não irá encerrar involuntariamente até certo ponto."
+            "value" : "Aplicativo foi assinado com sucesso, porém o AppNest foi incapaz de assinar os seguintes arquivos. Você consegue utilizar o aplicativo, mas não possua expectativas de que não irá encerrar involuntariamente até certo ponto."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Приложение было успешно подписано, но LiveContainer не смог подписать следующие файлы. Вы сможете воспользоваться приложением, но делайте это на свой страх и риск."
+            "value" : "Приложение было успешно подписано, но AppNest не смог подписать следующие файлы. Вы сможете воспользоваться приложением, но делайте это на свой страх и риск."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Appen signerades framgångsrikt, men LiveContainer kunde inte signera följande filer. Du kanske kan använda appen, men förvänta dig krasch."
+            "value" : "Appen signerades framgångsrikt, men AppNest kunde inte signera följande filer. Du kanske kan använda appen, men förvänta dig krasch."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uygulama başarıyla imzalandı, ancak LiveContainer aşağıdaki dosyaları imzalayamadı. Uygulamayı kullanabilirsiniz, ancak çökme olasılığı vardır."
+            "value" : "Uygulama başarıyla imzalandı, ancak AppNest aşağıdaki dosyaları imzalayamadı. Uygulamayı kullanabilirsiniz, ancak çökme olasılığı vardır."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "App đã được ký, nhưng LiveContainer không ký được các file sau đây. Bạn có thể dùng app, nhưng nó có thể văng."
+            "value" : "App đã được ký, nhưng AppNest không ký được các file sau đây. Bạn có thể dùng app, nhưng nó có thể văng."
           }
         },
         "zh-Hans" : {
@@ -4814,7 +4814,7 @@
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "應用程式已成功簽名，但LiveContainer無法簽署以下檔案。 您可能能夠使用該應用程式，但可能會崩潰。"
+            "value" : "應用程式已成功簽名，但AppNest無法簽署以下檔案。 您可能能夠使用該應用程式，但可能會崩潰。"
           }
         }
       }
@@ -7560,108 +7560,108 @@
         }
       }
     },
-    "lc.appSettings.hideLiveContainer" : {
+    "lc.appSettings.hideAppNest" : {
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "اخفي LiveContainer من Dyld Api"
+            "value" : "اخفي AppNest من Dyld Api"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Verstecke LiveContainer von Dyld Api"
+            "value" : "Verstecke AppNest von Dyld Api"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hide LiveContainer from dyld API"
+            "value" : "Hide AppNest from dyld API"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ocultar LiveContainer de la API Dyld "
+            "value" : "Ocultar AppNest de la API Dyld "
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Masquer LiveContainer de l'API Dyld"
+            "value" : "Masquer AppNest de l'API Dyld"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Nascondi LiveContainer da Dyld Api"
+            "value" : "Nascondi AppNest da Dyld Api"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dyld ApiからLiveContainerを隠す"
+            "value" : "Dyld ApiからAppNestを隠す"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "dyld API에서 LiveContainer 숨기기"
+            "value" : "dyld API에서 AppNest 숨기기"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ukryj LiveContainer z Api Dyld"
+            "value" : "Ukryj AppNest z Api Dyld"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esconder o LiveContainer do Dyld Api"
+            "value" : "Esconder o AppNest do Dyld Api"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Скрыть LiveContainer от Dyld"
+            "value" : "Скрыть AppNest от Dyld"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dölj LiveContainer från Dyld Api"
+            "value" : "Dölj AppNest från Dyld Api"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer'ı Dyld Api'den gizle"
+            "value" : "AppNest'ı Dyld Api'den gizle"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ẩn LiveContainer khỏi Dyld Api"
+            "value" : "Ẩn AppNest khỏi Dyld Api"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "从dyld API中隐藏LiveContainer"
+            "value" : "从dyld API中隐藏AppNest"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "從Dyld Api隱藏LiveContainer"
+            "value" : "從Dyld Api隱藏AppNest"
           }
         }
       }
     },
-    "lc.appSettings.hideLiveContainerDesc" : {
+    "lc.appSettings.hideAppNestDesc" : {
       "extractionState" : "manual",
       "localizations" : {
         "ar" : {
@@ -8155,43 +8155,43 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "سوف يحاول LiveContainer بالحصول على JIT قبل ان يُشغل التطبيق."
+            "value" : "سوف يحاول AppNest بالحصول على JIT قبل ان يُشغل التطبيق."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer wird vor dem Start der App versuchen, die JIT-Berechtigung zu erlangen."
+            "value" : "AppNest wird vor dem Start der App versuchen, die JIT-Berechtigung zu erlangen."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer will try to acquire JIT permission before launching the app."
+            "value" : "AppNest will try to acquire JIT permission before launching the app."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer intentará obtener permiso JIT antes de lanzar la app."
+            "value" : "AppNest intentará obtener permiso JIT antes de lanzar la app."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer essaiera d'obtenir l'autorisation de JIT avant de lancer l'application."
+            "value" : "AppNest essaiera d'obtenir l'autorisation de JIT avant de lancer l'application."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer proverà ad acquisire i permessi JIT prima di lanciare l'app."
+            "value" : "AppNest proverà ad acquisire i permessi JIT prima di lanciare l'app."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainerはアプリを起動する前にJIT権限の取得を試みます。"
+            "value" : "AppNestはアプリを起動する前にJIT権限の取得を試みます。"
           }
         },
         "ko" : {
@@ -8203,49 +8203,49 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer spróbuje dostać uprawnienia JIT przed uruchomieniem aplikacji."
+            "value" : "AppNest spróbuje dostać uprawnienia JIT przed uruchomieniem aplikacji."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer tentará adquirir a permissão para obter a compilação 'JIT' antes de iniciar o aplicativo."
+            "value" : "AppNest tentará adquirir a permissão para obter a compilação 'JIT' antes de iniciar o aplicativo."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer попытается получить разрешение JIT перед запуском приложения."
+            "value" : "AppNest попытается получить разрешение JIT перед запуском приложения."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer kommer att försöka skaffa JIT-tillstånd innan appen startas."
+            "value" : "AppNest kommer att försöka skaffa JIT-tillstånd innan appen startas."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer, uygulamayı başlatmadan önce JIT iznini almaya çalışacaktır."
+            "value" : "AppNest, uygulamayı başlatmadan önce JIT iznini almaya çalışacaktır."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer sẽ thử nhận quyền JIT trước khi mở app."
+            "value" : "AppNest sẽ thử nhận quyền JIT trước khi mở app."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在启动App前LiveContainer会尝试获取JIT权限。"
+            "value" : "在启动App前AppNest会尝试获取JIT权限。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在啟動應用程式之前，LiveContainer將嘗試獲取JIT許可權。"
+            "value" : "在啟動應用程式之前，AppNest將嘗試獲取JIT許可權。"
           }
         }
       }
@@ -9057,55 +9057,55 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "بنقل هذا البرنامَج إلى ملفات مستندات خاصة سوف يمنحك هذا صلاحية أضافه التعديلات والتحكم بملفات البرنامَج في برنامَج الملفات، لكن لا يمكن تشغيله من تطبيقات LiveContainers  الاخرى."
+            "value" : "بنقل هذا البرنامَج إلى ملفات مستندات خاصة سوف يمنحك هذا صلاحية أضافه التعديلات والتحكم بملفات البرنامَج في برنامَج الملفات، لكن لا يمكن تشغيله من تطبيقات AppNests  الاخرى."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Wenn Sie diese App in den privaten Dokumentenordner verschieben, können Sie in der Dateien-App auf ihre Daten und Tweaks zugreifen, aber sie kann nicht von anderen LiveContainern ausgeführt werden."
+            "value" : "Wenn Sie diese App in den privaten Dokumentenordner verschieben, können Sie in der Dateien-App auf ihre Daten und Tweaks zugreifen, aber sie kann nicht von anderen AppNestn ausgeführt werden."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moving this app to Private Document Folder allows you to access its data and tweaks in the Files app, but it can not be run by other LiveContainers."
+            "value" : "Moving this app to Private Document Folder allows you to access its data and tweaks in the Files app, but it can not be run by other AppNests."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mover esta app a la carpeta de documentos privada te permite acceder a sus datos y tweaks en la app Archivos, pero no podrá ser ejecutada por otros LiveContainers."
+            "value" : "Mover esta app a la carpeta de documentos privada te permite acceder a sus datos y tweaks en la app Archivos, pero no podrá ser ejecutada por otros AppNests."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "En déplaçant cette application vers le dossier de documents privés, vous pouvez accéder à ses données et à ses tweaks dans l'application Fichiers, mais elle ne peut pas être lancée par d'autres LiveContainers."
+            "value" : "En déplaçant cette application vers le dossier de documents privés, vous pouvez accéder à ses données et à ses tweaks dans l'application Fichiers, mais elle ne peut pas être lancée par d'autres AppNests."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spostando l'app nella Cartella Documenti Privati ti permette di accedere ai suoi dati e tweak nell'Applicazione File, ma non può essere eseguito da altri LiveContainer."
+            "value" : "Spostando l'app nella Cartella Documenti Privati ti permette di accedere ai suoi dati e tweak nell'Applicazione File, ma non può essere eseguito da altri AppNest."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このアプリをプライベートドキュメントフォルダに移動すると、ファイルアプリでそのデータや調整にアクセスできますが、他のLiveContainerでは実行できません。"
+            "value" : "このアプリをプライベートドキュメントフォルダに移動すると、ファイルアプリでそのデータや調整にアクセスできますが、他のAppNestでは実行できません。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "비공개 앱으로 전환 시, 파일 앱에서 데이터 및 트윅 접근이 다시 가능해집니다. 다만, 다른 LiveContainer에서 실행은 불가능해집니다."
+            "value" : "비공개 앱으로 전환 시, 파일 앱에서 데이터 및 트윅 접근이 다시 가능해집니다. 다만, 다른 AppNest에서 실행은 불가능해집니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przenoszenie tej aplikacji do Prywatnego Katalogu Dokumentów pozwala na dostęp do danych oraz modyfikacji w aplikacji \"Pliki\", za to tracisz możliwość uruchomienia aplikacji używających innego LiveContainer."
+            "value" : "Przenoszenie tej aplikacji do Prywatnego Katalogu Dokumentów pozwala na dostęp do danych oraz modyfikacji w aplikacji \"Pliki\", za to tracisz możliwość uruchomienia aplikacji używających innego AppNest."
           }
         },
         "pt-BR" : {
@@ -9117,37 +9117,37 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перемещение данного приложения в папку личных документов даст доступ к его данным и твикам в приложении \"Файлы\", но вы потеряете возможность запустить это приложение в других LiveContainer."
+            "value" : "Перемещение данного приложения в папку личных документов даст доступ к его данным и твикам в приложении \"Файлы\", но вы потеряете возможность запустить это приложение в других AppNest."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Genom att flytta denna app till privat dokumentmapp kan du komma åt dess data och tweaks i appen Filer, men det kan inte köras av andra LiveContainers."
+            "value" : "Genom att flytta denna app till privat dokumentmapp kan du komma åt dess data och tweaks i appen Filer, men det kan inte köras av andra AppNests."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu uygulamayı Özel Belge Klasörüne taşıyarak, Dosyalar uygulamasında uygulamanın verilerine ve ayarlarına erişebilirsiniz, ancak diğer LiveContainer'lar tarafından çalıştırılamaz."
+            "value" : "Bu uygulamayı Özel Belge Klasörüne taşıyarak, Dosyalar uygulamasında uygulamanın verilerine ve ayarlarına erişebilirsiniz, ancak diğer AppNest'lar tarafından çalıştırılamaz."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Di chuyển app này sang Thư mục Riêng tư cho phép bạn truy cập dữ liệu và tweak trong app Tệp, nhưng nó không thể được mở bởi các LiveContainer khác."
+            "value" : "Di chuyển app này sang Thư mục Riêng tư cho phép bạn truy cập dữ liệu và tweak trong app Tệp, nhưng nó không thể được mở bởi các AppNest khác."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "将App此转换为私有App允许您在文件App中访问其数据和模块，但它不能由其他LiveContainers运行。"
+            "value" : "将App此转换为私有App允许您在文件App中访问其数据和模块，但它不能由其他AppNests运行。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "將此應用程式移動到私人文件資料夾允許您在檔案應用程式中訪問其資料和補訂，但其他LiveContainers無法執行它。"
+            "value" : "將此應用程式移動到私人文件資料夾允許您在檔案應用程式中訪問其資料和補訂，但其他AppNests無法執行它。"
           }
         }
       }
@@ -9265,49 +9265,49 @@
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Das Verschieben dieser App in die App-Gruppe ermöglicht es anderen LiveContainern, diese App mit allen Daten und Einstellungen auszuführen. Wenn Sie von der Datei-App aus wieder auf die Daten und Einstellungen zugreifen möchten, verschieben Sie sie zurück."
+            "value" : "Das Verschieben dieser App in die App-Gruppe ermöglicht es anderen AppNestn, diese App mit allen Daten und Einstellungen auszuführen. Wenn Sie von der Datei-App aus wieder auf die Daten und Einstellungen zugreifen möchten, verschieben Sie sie zurück."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Moving this app to App Group allows other LiveContainers to run this app with all its data and tweak preserved. If you want to access its data and tweak again from the file app, move it back."
+            "value" : "Moving this app to App Group allows other AppNests to run this app with all its data and tweak preserved. If you want to access its data and tweak again from the file app, move it back."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Mover esta app al grupo de apps permite que otros LiveContainers la ejecuten conservando todos sus datos y tweaks. Si quieres volver a acceder a sus datos y tweaks desde la app Archivos, muévela de nuevo."
+            "value" : "Mover esta app al grupo de apps permite que otros AppNests la ejecuten conservando todos sus datos y tweaks. Si quieres volver a acceder a sus datos y tweaks desde la app Archivos, muévela de nuevo."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Déplacer cette application vers un groupe d'apps permet à d'autres LiveContainers de lancer cette application en conservant toutes ses données et ses tweaks. Si vous voulez accéder à nouveau à ses données et à ses tweaks à partir de l'application Fichiers, déplacez-la à nouveau."
+            "value" : "Déplacer cette application vers un groupe d'apps permet à d'autres AppNests de lancer cette application en conservant toutes ses données et ses tweaks. Si vous voulez accéder à nouveau à ses données et à ses tweaks à partir de l'application Fichiers, déplacez-la à nouveau."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Spostando quest'app nel Gruppo App permette ad altri LiveContainer di eseguire quest'app con tutti i i suoi dati e tweak preservati. Se vuoi accedere di nuovo ai suoi dati e tweak dai file dell'app, spostali indietro."
+            "value" : "Spostando quest'app nel Gruppo App permette ad altri AppNest di eseguire quest'app con tutti i i suoi dati e tweak preservati. Se vuoi accedere di nuovo ai suoi dati e tweak dai file dell'app, spostali indietro."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "このアプリをアプリグループに移動すると、他のLiveContainerからもこのアプリをデータや調整を保持したまま実行できるようになります。ファイルアプリから再びデータや調整にアクセスしたい場合は元に戻してください。"
+            "value" : "このアプリをアプリグループに移動すると、他のAppNestからもこのアプリをデータや調整を保持したまま実行できるようになります。ファイルアプリから再びデータや調整にアクセスしたい場合は元に戻してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "공유 앱으로 전환 시, 다른 LiveContainer에서도 실행이 가능해집니다. 다만, 파일 앱에서 데이터 및 트윅 접근이 제한됩니다."
+            "value" : "공유 앱으로 전환 시, 다른 AppNest에서도 실행이 가능해집니다. 다만, 파일 앱에서 데이터 및 트윅 접근이 제한됩니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Przenoszenie tej aplikacji do Grupy Aplikacji pozwala innym LiveContainer’om uruchamiać tę aplikację z wszystkimi danymi oraz modyfikacjami. Jeżeli chcesz mieć dostęp do aplikacji oraz modyfikacji z aplikacji \"Pliki\", przenieś ją z powrotem."
+            "value" : "Przenoszenie tej aplikacji do Grupy Aplikacji pozwala innym AppNest’om uruchamiać tę aplikację z wszystkimi danymi oraz modyfikacjami. Jeżeli chcesz mieć dostęp do aplikacji oraz modyfikacji z aplikacji \"Pliki\", przenieś ją z powrotem."
           }
         },
         "pt-BR" : {
@@ -9319,37 +9319,37 @@
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Перемещение данного приложения в App Group позволит другим LiveContainer запускать это приложение, сохранив все данные и твики. Если вам снова понадобится доступ к данным и твикам приложения, переместите его обратно."
+            "value" : "Перемещение данного приложения в App Group позволит другим AppNest запускать это приложение, сохранив все данные и твики. Если вам снова понадобится доступ к данным и твикам приложения, переместите его обратно."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Genom att flytta denna app till App Group kan andra LiveContainers köra denna app med alla dess data och tweaks bevarade. Om du vill komma åt dess data och justera igen från filappen, flytta den tillbaka."
+            "value" : "Genom att flytta denna app till App Group kan andra AppNests köra denna app med alla dess data och tweaks bevarade. Om du vill komma åt dess data och justera igen från filappen, flytta den tillbaka."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bu uygulamayı Uygulama Grubuna taşıyarak, diğer LiveContainer'ların tüm verileri ve ayarları korunarak bu uygulamayı çalıştırmasını sağlayabilirsiniz. Verilerine ve ayarlarına dosya uygulamasından tekrar erişmek istiyorsanız, uygulamayı geri taşıyın."
+            "value" : "Bu uygulamayı Uygulama Grubuna taşıyarak, diğer AppNest'ların tüm verileri ve ayarları korunarak bu uygulamayı çalıştırmasını sağlayabilirsiniz. Verilerine ve ayarlarına dosya uygulamasından tekrar erişmek istiyorsanız, uygulamayı geri taşıyın."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Di chuyển app này sang App Group cho phép các LiveContainer khác mở app này với dữ liệu và tweak như cũ. Nếu bạn muốn truy cập dữ liệu và tweak từ app tệp thì di chuyển nó lại."
+            "value" : "Di chuyển app này sang App Group cho phép các AppNest khác mở app này với dữ liệu và tweak như cũ. Nếu bạn muốn truy cập dữ liệu và tweak từ app tệp thì di chuyển nó lại."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "将此App移动到AppGroup以允许其他LiveContainers运行此App，并保留其所有数据和模块。如果你想访问它的数据和模块，请将其转换为私有App。"
+            "value" : "将此App移动到AppGroup以允许其他AppNests运行此App，并保留其所有数据和模块。如果你想访问它的数据和模块，请将其转换为私有App。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "將此應用程式移動到應用程式組允許其他LiveContainers執行此應用程式，並保留其所有資料和補訂。 如果您想訪問其資料並從檔案應用程式中再次調整，請將其移回。"
+            "value" : "將此應用程式移動到應用程式組允許其他AppNests執行此應用程式，並保留其所有資料和補訂。 如果您想訪問其資料並從檔案應用程式中再次調整，請將其移回。"
           }
         }
       }
@@ -9461,91 +9461,91 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "استخدام مُعرف مجموعة LiveContainer"
+            "value" : "استخدام مُعرف مجموعة AppNest"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Benutze die Bundle-ID des LiveContainers"
+            "value" : "Benutze die Bundle-ID des AppNests"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Use LiveContainer's Bundle ID"
+            "value" : "Use AppNest's Bundle ID"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usar el ID de paquete de LiveContainer"
+            "value" : "Usar el ID de paquete de AppNest"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Utiliser l'ID du bundle de LiveContainer"
+            "value" : "Utiliser l'ID du bundle de AppNest"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usa il Bundle ID di LiveContainer"
+            "value" : "Usa il Bundle ID di AppNest"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainerのバンドル識別子を使用"
+            "value" : "AppNestのバンドル識別子を使用"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer 번들 ID 사용"
+            "value" : "AppNest 번들 ID 사용"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Użyj identyfikatora pakietu aplikacji LiveContainer"
+            "value" : "Użyj identyfikatora pakietu aplikacji AppNest"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Usar o ID do Pacote do LiveContainer"
+            "value" : "Usar o ID do Pacote do AppNest"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Использовать ИД пакета LiveContainer"
+            "value" : "Использовать ИД пакета AppNest"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer'ın Paket Kimliğini kullan"
+            "value" : "AppNest'ın Paket Kimliğini kullan"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Dùng Bundle ID của LiveContainer"
+            "value" : "Dùng Bundle ID của AppNest"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用LiveContainer的包名"
+            "value" : "使用AppNest的包名"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "使用LiveContainer的包名"
+            "value" : "使用AppNest的包名"
           }
         }
       }
@@ -9556,97 +9556,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "أصحّح هذه الأخطاء باستخدام معرف الحزمه الخاص ب LiveContainer ويضعه فوق معرف الحزمة الخاص بالتطبيق."
+            "value" : "أصحّح هذه الأخطاء باستخدام معرف الحزمه الخاص ب AppNest ويضعه فوق معرف الحزمة الخاص بالتطبيق."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Behebt diese Probleme durch die Verwendung der Bundle-Kennung von LiveContainer beim Überschreiben des Haupt-Bundles."
+            "value" : "Behebt diese Probleme durch die Verwendung der Bundle-Kennung von AppNest beim Überschreiben des Haupt-Bundles."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fixes these issues by using LiveContainer’s bundle identifier when overwriting main bundle."
+            "value" : "Fixes these issues by using AppNest’s bundle identifier when overwriting main bundle."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Corrige estos problemas usando el identificador de paquete de LiveContainer al sobrescribir el paquete principal."
+            "value" : "Corrige estos problemas usando el identificador de paquete de AppNest al sobrescribir el paquete principal."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Corrige ces problèmes en utilisant l'identifiant du bundle de LiveContainer lors de l'écrasement du bundle principal."
+            "value" : "Corrige ces problèmes en utilisant l'identifiant du bundle de AppNest lors de l'écrasement du bundle principal."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sistema questi problemi usando il Bundle ID di LiveContainer quando sovrascrivi il bundle principale."
+            "value" : "Sistema questi problemi usando il Bundle ID di AppNest quando sovrascrivi il bundle principale."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "メインバンドルを上書きするときにLiveContainerのバンドル識別子を使用することでこれらの問題を修正します。"
+            "value" : "メインバンドルを上書きするときにAppNestのバンドル識別子を使用することでこれらの問題を修正します。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "메인 번들을 LiveContainer 번들 식별자로 덮어씌워서 문제를 해결합니다."
+            "value" : "메인 번들을 AppNest 번들 식별자로 덮어씌워서 문제를 해결합니다."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Naprawia te problemy przy użyciu identyfikatora pakietu LiveContainer podczas nadpisywania głównego pakietu."
+            "value" : "Naprawia te problemy przy użyciu identyfikatora pakietu AppNest podczas nadpisywania głównego pakietu."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Esta opção corrige estes erros usando o identificador do pacote do LiveContainer para substituir o pacote principal."
+            "value" : "Esta opção corrige estes erros usando o identificador do pacote do AppNest para substituir o pacote principal."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Исправляет некоторые проблемы использованием ИД пакета LiveContainer'а в ходе перезаписи основного пакета."
+            "value" : "Исправляет некоторые проблемы использованием ИД пакета AppNest'а в ходе перезаписи основного пакета."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Fixar dessa problem genom att använda LiveContainers bunt identifierare när du skriver över huvudbuntet."
+            "value" : "Fixar dessa problem genom att använda AppNests bunt identifierare när du skriver över huvudbuntet."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ana paketi üzerine yazarken LiveContainer paket tanımlayıcısını kullanarak bu sorunları giderir"
+            "value" : "Ana paketi üzerine yazarken AppNest paket tanımlayıcısını kullanarak bu sorunları giderir"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Sửa các lỗi này bằng cách dùng định danh LiveContainer khi ghi đè gói chính."
+            "value" : "Sửa các lỗi này bằng cách dùng định danh AppNest khi ghi đè gói chính."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "通过使用LiveContainer的包名解决上述问题。"
+            "value" : "通过使用AppNest的包名解决上述问题。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在覆蓋主捆綁包時，透過使用LiveContainer的捆綁包識別符號來修復這些問題。"
+            "value" : "在覆蓋主捆綁包時，透過使用AppNest的捆綁包識別符號來修復這些問題。"
           }
         }
       }
@@ -13045,7 +13045,7 @@
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "기본 LiveContainer입니다."
+            "value" : "기본 AppNest입니다."
           }
         },
         "pl" : {
@@ -13389,43 +13389,43 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "سوف يستعمل LiveContainer الحاوية الأساسية أذا لم يتم تحديد واحدة."
+            "value" : "سوف يستعمل AppNest الحاوية الأساسية أذا لم يتم تحديد واحدة."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer wird den Standard-Container verwenden, wenn keiner angegeben ist."
+            "value" : "AppNest wird den Standard-Container verwenden, wenn keiner angegeben ist."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer will use the default container when none is specified."
+            "value" : "AppNest will use the default container when none is specified."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer usará el contenedor predeterminado cuando no se especifique ninguno."
+            "value" : "AppNest usará el contenedor predeterminado cuando no se especifique ninguno."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer utilisera le conteneur par défaut si aucun n'est spécifié."
+            "value" : "AppNest utilisera le conteneur par défaut si aucun n'est spécifié."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer userà il contenitore predefinito quando non ne viene specificato nessuno."
+            "value" : "AppNest userà il contenitore predefinito quando non ne viene specificato nessuno."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "指定がない場合、LiveContainerはデフォルトのコンテナを使用します。"
+            "value" : "指定がない場合、AppNestはデフォルトのコンテナを使用します。"
           }
         },
         "ko" : {
@@ -13437,49 +13437,49 @@
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer będzie używał domyślnego kontenera, kiedy żaden inny nie jest wybrany."
+            "value" : "AppNest będzie używał domyślnego kontenera, kiedy żaden inny nie jest wybrany."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer usará o contêiner padrão quando nenhum contêiner é especificado."
+            "value" : "AppNest usará o contêiner padrão quando nenhum contêiner é especificado."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer будет использовать контейнер по умолчанию, когда ничего не указано."
+            "value" : "AppNest будет использовать контейнер по умолчанию, когда ничего не указано."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer kommer att använda standardbehållaren när inget anges."
+            "value" : "AppNest kommer att använda standardbehållaren när inget anges."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer hiç bir şey belirtilmediğinde varsayılan konteyneri kullanır."
+            "value" : "AppNest hiç bir şey belirtilmediğinde varsayılan konteyneri kullanır."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer sẽ dùng thư mục mặc định khi không cái nào được chọn."
+            "value" : "AppNest sẽ dùng thư mục mặc định khi không cái nào được chọn."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "当没有指定容器时，LiveContainer会使用默认容器。"
+            "value" : "当没有指定容器时，AppNest会使用默认容器。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "當沒有指定時，LiveContainer將使用預設容器。"
+            "value" : "當沒有指定時，AppNest將使用預設容器。"
           }
         }
       }
@@ -15956,97 +15956,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "الرجاء أعادة تشغيل LiveContainer لتثبيت التطبيقات."
+            "value" : "الرجاء أعادة تشغيل AppNest لتثبيت التطبيقات."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Bitte starten Sie LiveContainer neu, um Apps zu installieren."
+            "value" : "Bitte starten Sie AppNest neu, um Apps zu installieren."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Please restart LiveContainer to install apps."
+            "value" : "Please restart AppNest to install apps."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Reinicia LiveContainer para instalar apps."
+            "value" : "Reinicia AppNest para instalar apps."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Veuillez redémarrer LiveContainer pour installer les applications."
+            "value" : "Veuillez redémarrer AppNest pour installer les applications."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Riavvia LiveContainer per installare le applicazioni."
+            "value" : "Riavvia AppNest per installare le applicazioni."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "アプリをインストールするにはLiveContainerを再起動してください。"
+            "value" : "アプリをインストールするにはAppNestを再起動してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "앱을 설치하려면 LiveContainer를 재실행해주세요."
+            "value" : "앱을 설치하려면 AppNest를 재실행해주세요."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Proszę Uruchomić Ponownie LiveContainer, aby zainstalować aplikacje."
+            "value" : "Proszę Uruchomić Ponownie AppNest, aby zainstalować aplikacje."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Por favor, reinicie o LiveContainer para instalar aplicativos."
+            "value" : "Por favor, reinicie o AppNest para instalar aplicativos."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Пожалуйста, перезапустите LiveContainer, чтобы установить приложение."
+            "value" : "Пожалуйста, перезапустите AppNest, чтобы установить приложение."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Starta om LiveContainer för att installera appar."
+            "value" : "Starta om AppNest för att installera appar."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Uygulamaları yüklemek için lütfen LiveContainer'ı yeniden başlatın."
+            "value" : "Uygulamaları yüklemek için lütfen AppNest'ı yeniden başlatın."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Vui lòng mở lại LiveContainer để cài app."
+            "value" : "Vui lòng mở lại AppNest để cài app."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "请重启LiveContainer以安装App。"
+            "value" : "请重启AppNest以安装App。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "請重新啟動LiveContainer 來安裝App。"
+            "value" : "請重新啟動AppNest 來安裝App。"
           }
         }
       }
@@ -16057,97 +16057,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "إعداد وضع بدون-JIT في الإعدادات لاستخدام LiveContainer بدون JIT.\nتحقق من صفحة تشخيص بدون-JIT في الإعدادات إذا واجهت مشكلة في تفعيل وضع بدون-JIT.\nاضغط على زر الإضافة لتثبيت التطبيقات.\nاضغط مطولاً على التطبيق للوصول إلى إعدادات المحددة للتطبيق، وإصلاحات، وإضافة التطبيقات إلى الشاشة الرئيسية."
+            "value" : "إعداد وضع بدون-JIT في الإعدادات لاستخدام AppNest بدون JIT.\nتحقق من صفحة تشخيص بدون-JIT في الإعدادات إذا واجهت مشكلة في تفعيل وضع بدون-JIT.\nاضغط على زر الإضافة لتثبيت التطبيقات.\nاضغط مطولاً على التطبيق للوصول إلى إعدادات المحددة للتطبيق، وإصلاحات، وإضافة التطبيقات إلى الشاشة الرئيسية."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Richten Sie den JIT-freien-Modus in den Einstellungen ein, um LiveContainer ohne JIT zu verwenden.\n\n**Prüfen Sie die JITless-Diagnose-Seite in den Einstellungen, wenn Sie Probleme mit der Aktivierung des JIT-Less-Modus haben.**\n\nDrücken Sie die Plus-Taste, um Apps zu installieren.\n\nDrücken Sie lange auf die App, um app-spezifische Einstellungen, Fehlerbehebungen und das Hinzufügen von Apps zum Homescreen zu erhalten."
+            "value" : "Richten Sie den JIT-freien-Modus in den Einstellungen ein, um AppNest ohne JIT zu verwenden.\n\n**Prüfen Sie die JITless-Diagnose-Seite in den Einstellungen, wenn Sie Probleme mit der Aktivierung des JIT-Less-Modus haben.**\n\nDrücken Sie die Plus-Taste, um Apps zu installieren.\n\nDrücken Sie lange auf die App, um app-spezifische Einstellungen, Fehlerbehebungen und das Hinzufügen von Apps zum Homescreen zu erhalten."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Setup JITLess mode in settings to use LiveContainer without JIT.\n\n**Check JITLess Diagnose page in settings if you have trouble enabling JITLess mode.**\n\nPress plus button to install apps.\n\nHolding app banner for app-specific settings, fixes and adding apps to home screen."
+            "value" : "Setup JITLess mode in settings to use AppNest without JIT.\n\n**Check JITLess Diagnose page in settings if you have trouble enabling JITLess mode.**\n\nPress plus button to install apps.\n\nHolding app banner for app-specific settings, fixes and adding apps to home screen."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configura el modo JITLess en los ajustes para usar LiveContainer sin JIT.\n\n**Consulta la página de diagnóstico JITLess en los ajustes si tienes problemas para activar el modo JITLess.**\n\nPulsa el botón más para instalar apps.\n\nMantén pulsado el banner de la app para acceder a los ajustes específicos, correcciones y añadirla a la pantalla de inicio."
+            "value" : "Configura el modo JITLess en los ajustes para usar AppNest sin JIT.\n\n**Consulta la página de diagnóstico JITLess en los ajustes si tienes problemas para activar el modo JITLess.**\n\nPulsa el botón más para instalar apps.\n\nMantén pulsado el banner de la app para acceder a los ajustes específicos, correcciones y añadirla a la pantalla de inicio."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configurer le mode sans JIT dans les paramètres pour utiliser LiveContainer sans le JIT.\n\n**Consultez la page Diagnostic du mode sans JIT dans les paramètres si vous avez des difficultés à activer le mode sans JIT.\n\nAppuyez sur le bouton Plus pour installer des applications.\n\nAppuyez longuement sur une application pour accéder aux paramètres spécifiques à l'application, aux correctifs et pour ajouter l'application à l'écran d'accueil."
+            "value" : "Configurer le mode sans JIT dans les paramètres pour utiliser AppNest sans le JIT.\n\n**Consultez la page Diagnostic du mode sans JIT dans les paramètres si vous avez des difficultés à activer le mode sans JIT.\n\nAppuyez sur le bouton Plus pour installer des applications.\n\nAppuyez longuement sur une application pour accéder aux paramètres spécifiques à l'application, aux correctifs et pour ajouter l'application à l'écran d'accueil."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Imposta la modalità JITLess nelle impostazioni per utilizzare LiveContainer senza JIT.\n\n**Controlla la pagina JITLess Diagnose nelle impostazioni se hai problemi ad abilitare la modalità JITLess. *\n\nPremi il pulsante plus per installare le applicazioni.\n\nPremi a lungo l'app per le impostazioni, le correzioni e l'aggiunta di app alla schermata iniziale."
+            "value" : "Imposta la modalità JITLess nelle impostazioni per utilizzare AppNest senza JIT.\n\n**Controlla la pagina JITLess Diagnose nelle impostazioni se hai problemi ad abilitare la modalità JITLess. *\n\nPremi il pulsante plus per installare le applicazioni.\n\nPremi a lungo l'app per le impostazioni, le correzioni e l'aggiunta di app alla schermata iniziale."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "設定でJITレスモードを設定して、JITなしでLiveContainerを使用します。\n\n**JITレスモードを有効化する際に問題がある場合は、設定内のJITレス診断ページを確認してください。**\n\nアプリをインストールするには、｢＋｣ ボタンを押してください。\n\nアプリ固有の設定、修正、ホーム画面にアプリを追加するには、アプリを長押ししてください。"
+            "value" : "設定でJITレスモードを設定して、JITなしでAppNestを使用します。\n\n**JITレスモードを有効化する際に問題がある場合は、設定内のJITレス診断ページを確認してください。**\n\nアプリをインストールするには、｢＋｣ ボタンを押してください。\n\nアプリ固有の設定、修正、ホーム画面にアプリを追加するには、アプリを長押ししてください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "JIT 없이 LiveContainer를 사용하려면 JIT-Less 모드를 활성화하세요.\n\n**JIT-Less 모드 활성화 도중 문제가 있을 경우 JIT-Less 모드 진단을 활용해보세요.**\n\n앱을 설치하려면 +를 누르세요.\n\n앱을 홈 화면에 추가하거나, 앱 설정을 열고 싶으면 앱을 길게 누르세요."
+            "value" : "JIT 없이 AppNest를 사용하려면 JIT-Less 모드를 활성화하세요.\n\n**JIT-Less 모드 활성화 도중 문제가 있을 경우 JIT-Less 모드 진단을 활용해보세요.**\n\n앱을 설치하려면 +를 누르세요.\n\n앱을 홈 화면에 추가하거나, 앱 설정을 열고 싶으면 앱을 길게 누르세요."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ustaw tryb JIT-Less w ustawieniach aby używać LiveContainer bez JIT/\n\n**Sprawdź stronę Diagnozy JIT-Less jeśli masz problemy włączając tą funkcje.**\n\nNaciśnij + aby instalować aplikacje\n\nPrzytrzymując baner aplikacji, będzie dostępne menu z ustawieniami dotyczącej aplikacji oraz dodawanie aplikacji do ekranu początkowego."
+            "value" : "Ustaw tryb JIT-Less w ustawieniach aby używać AppNest bez JIT/\n\n**Sprawdź stronę Diagnozy JIT-Less jeśli masz problemy włączając tą funkcje.**\n\nNaciśnij + aby instalować aplikacje\n\nPrzytrzymując baner aplikacji, będzie dostępne menu z ustawieniami dotyczącej aplikacji oraz dodawanie aplikacji do ekranu początkowego."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Configure o modo JIT-Less (requer SideStore/AltStore) nas configurações para usar o LiveContainer.\n\n**Verifique a página de diagnóstico do modo JIT-Less nas configurações se você encontrar problemas ativando-o.**\n\nPressione o sinal de '+' para adicionar e instalar aplicativos.\n\nPressione e segure o aplicativo para alterar sua configuração, corrigir erros e adicionar aplicativos à tela de início."
+            "value" : "Configure o modo JIT-Less (requer SideStore/AltStore) nas configurações para usar o AppNest.\n\n**Verifique a página de diagnóstico do modo JIT-Less nas configurações se você encontrar problemas ativando-o.**\n\nPressione o sinal de '+' para adicionar e instalar aplicativos.\n\nPressione e segure o aplicativo para alterar sua configuração, corrigir erros e adicionar aplicativos à tela de início."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Если вы собираетесь использовать LiveContainer без JIT, установите режим JIT-less в настройках.\n\n**Воспользуйтесь диагностикой режима JIT-less в настройках, если вы сталкиваетесь с проблемами.**\n\nНажмите на кнопку '+', чтобы установить приложение.\n\nНажмите и удерживайте приложение для настроек и исправлений, связанных с ним, а также чтобы добавить его на домашний экран."
+            "value" : "Если вы собираетесь использовать AppNest без JIT, установите режим JIT-less в настройках.\n\n**Воспользуйтесь диагностикой режима JIT-less в настройках, если вы сталкиваетесь с проблемами.**\n\nНажмите на кнопку '+', чтобы установить приложение.\n\nНажмите и удерживайте приложение для настроек и исправлений, связанных с ним, а также чтобы добавить его на домашний экран."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Konfigurera JITLess i inställningar för att använda LiveContainer utan JIT.\n\n**Kontrollera JITLess diagnostisera sidan i inställningar om du har problem med att aktivera JITLess läge. **\n\nTryck på plusknappen för att installera appar.\n\nTryck länge på appen för appspecifika inställningar, fixar och lägger till appar på startskärmen."
+            "value" : "Konfigurera JITLess i inställningar för att använda AppNest utan JIT.\n\n**Kontrollera JITLess diagnostisera sidan i inställningar om du har problem med att aktivera JITLess läge. **\n\nTryck på plusknappen för att installera appar.\n\nTryck länge på appen för appspecifika inställningar, fixar och lägger till appar på startskärmen."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "JIT olmadan LiveContainer'ı kullanmak için ayarlarda JITLess modunu etkinleştirin.\n\n**JITLess modunu etkinleştirirken sorun yaşıyorsanız, ayarlardaki JITLess Teşhis sayfasını kontrol edin.**\n\nUygulamaları yüklemek için artı düğmesine basın.\n\nUygulamaya özgü ayarlar, düzeltmeler ve uygulamaları ana ekrana eklemek için uygulamaya uzun basın."
+            "value" : "JIT olmadan AppNest'ı kullanmak için ayarlarda JITLess modunu etkinleştirin.\n\n**JITLess modunu etkinleştirirken sorun yaşıyorsanız, ayarlardaki JITLess Teşhis sayfasını kontrol edin.**\n\nUygulamaları yüklemek için artı düğmesine basın.\n\nUygulamaya özgü ayarlar, düzeltmeler ve uygulamaları ana ekrana eklemek için uygulamaya uzun basın."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Thiết lập chế độ JITLess trong cài đặt để dùng LiveContainer không JIT.\n\n**Kiểm tra trang Chuẩn đoán JITLess trong cài đặt nếu bạn gặp vấn đề khi dùng chế độ này.**\n\nNhấn vào dấu cộng để cài thêm app.\n\nNhấn giữ app để mở cài đặt của app, các sửa lỗi và thêm app vào màn hình chính."
+            "value" : "Thiết lập chế độ JITLess trong cài đặt để dùng AppNest không JIT.\n\n**Kiểm tra trang Chuẩn đoán JITLess trong cài đặt nếu bạn gặp vấn đề khi dùng chế độ này.**\n\nNhấn vào dấu cộng để cài thêm app.\n\nNhấn giữ app để mở cài đặt của app, các sửa lỗi và thêm app vào màn hình chính."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在设置中配置免JIT模式来使得LiveContainer无需JIT权限即可使用。\n\n**如果配置免JIT模式时遇到问题，请查看免JIT模式诊断页面。**\n\n点击加号按钮来安装App。\n\n长按App可查看App设置，修复App问题，以及将App添加到主屏幕。"
+            "value" : "在设置中配置免JIT模式来使得AppNest无需JIT权限即可使用。\n\n**如果配置免JIT模式时遇到问题，请查看免JIT模式诊断页面。**\n\n点击加号按钮来安装App。\n\n长按App可查看App设置，修复App问题，以及将App添加到主屏幕。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "在設定中設定免JIT模式來使得LiveContainer無需JIT即可使用。\n\n**如果在設定免JIT模式時遇到問題，請查看免JIT模式診斷頁面。 **\n\n點選加號按鈕來安裝App。\n\n長按App可以查看App設置、修復App問題、和將App添加至主畫面。"
+            "value" : "在設定中設定免JIT模式來使得AppNest無需JIT即可使用。\n\n**如果在設定免JIT模式時遇到問題，請查看免JIT模式診斷頁面。 **\n\n點選加號按鈕來安裝App。\n\n長按App可以查看App設置、修復App問題、和將App添加至主畫面。"
           }
         }
       }
@@ -16158,97 +16158,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "أفحص [الأسئلة المتكررة LiveContainer]\n(https://github.com/khanhduytran0/LiveContainer/issues/265) للأخطاء الشائعة.\n\nوأذا واجهت مشكله أو مشكله توافق الرجاء إرسال طلب مساعده او شكوى في [Github]\n(https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "أفحص [الأسئلة المتكررة AppNest]\n(https://github.com/khanhduytran0/AppNest/issues/265) للأخطاء الشائعة.\n\nوأذا واجهت مشكله أو مشكله توافق الرجاء إرسال طلب مساعده او شكوى في [Github]\n(https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Häufige Probleme finden Sie unter [LiveContainer FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265).**\n                         \nWenn Sie einen Fehler oder ein Kompatibilitätsproblem feststellen, melden Sie dies bitte unter [GitHub issues](https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "**Häufige Probleme finden Sie unter [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265).**\n                         \nWenn Sie einen Fehler oder ein Kompatibilitätsproblem feststellen, melden Sie dies bitte unter [GitHub issues](https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Check [LiveContainer FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265) for common issues.**\n                         \nIf you encounter a bug or compatibility issue please submit on [GitHub issues](https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "**Check [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265) for common issues.**\n                         \nIf you encounter a bug or compatibility issue please submit on [GitHub issues](https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Comprueba [LiveContainer FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265) para problemas comunes.**\n                         \nSi encuentras un error o un problema de compatibilidad, por favor envíalo en [GitHub issues](https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "**Comprueba [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265) para problemas comunes.**\n                         \nSi encuentras un error o un problema de compatibilidad, por favor envíalo en [GitHub issues](https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Consultez la [FAQ de LiveContainer](https://github.com/khanhduytran0/LiveContainer/issues/265) (en anglais) pour voir les problèmes courants.\n                         \nSi vous rencontrez un bug ou un problème de compatibilité, veuillez le soumettre sur [GitHub](https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "**Consultez la [FAQ de AppNest](https://github.com/khanhduytran0/AppNest/issues/265) (en anglais) pour voir les problèmes courants.\n                         \nSi vous rencontrez un bug ou un problème de compatibilité, veuillez le soumettre sur [GitHub](https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Controlla [LiveContainer FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265) per problemi comuni.**\n                         \nSe riscontri un problema di bug o compatibilità, invia su [problemi GitHub](https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "**Controlla [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265) per problemi comuni.**\n                         \nSe riscontri un problema di bug o compatibilità, invia su [problemi GitHub](https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "一般的な問題は[LiveContainer FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265)を確認してください。\n\nバグや互換性の問題が発生した場合は[GitHub Issues](https://github.com/khanhduytran0/LiveContainer/issues)に報告してください。"
+            "value" : "一般的な問題は[AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265)を確認してください。\n\nバグや互換性の問題が発生した場合は[GitHub Issues](https://github.com/khanhduytran0/AppNest/issues)に報告してください。"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**자주 묻는 질문은 [LiveContainer FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265)를 확인해주세요.**\n                         \n버그나 호환성 문제는 [GitHub issues](https://github.com/khanhduytran0/LiveContainer/issues)에 보고해주세요."
+            "value" : "**자주 묻는 질문은 [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265)를 확인해주세요.**\n                         \n버그나 호환성 문제는 [GitHub issues](https://github.com/khanhduytran0/AppNest/issues)에 보고해주세요."
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Zobacz [Często Zadawane Pytania dotyczące problemów z LiveContainer](https://github.com/khanhduytran0/LiveContainer/issues/265)**\n\nJeśli napotkasz błąd czy problem z kompatybilnością, Proszę o złożenie wniosku na portalu [GitHub issues](https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "**Zobacz [Często Zadawane Pytania dotyczące problemów z AppNest](https://github.com/khanhduytran0/AppNest/issues/265)**\n\nJeśli napotkasz błąd czy problem z kompatybilnością, Proszę o złożenie wniosku na portalu [GitHub issues](https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Verifique as [Perguntas frequentes do LiveContainer](https://github.com/khanhduytran0/LiveContainer/issues/265) para as possíveis soluções para seus problemas.**\n\nSe você encontrar um erro técnico ou um problema na compatibilidade do LiveContainer por favor relate isso na [Página de problemas no GitHub](https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "**Verifique as [Perguntas frequentes do AppNest](https://github.com/khanhduytran0/AppNest/issues/265) para as possíveis soluções para seus problemas.**\n\nSe você encontrar um erro técnico ou um problema na compatibilidade do AppNest por favor relate isso na [Página de problemas no GitHub](https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Загляните в [ЧАВО LiveContainer'а](https://github.com/khanhduytran0/LiveContainer/issues/265) для решений на частые проблемы**\n                      \nЕсли вы обнаружили баг и проблему с совместимостью, то отправьте его на [GitHub issues](https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "**Загляните в [ЧАВО AppNest'а](https://github.com/khanhduytran0/AppNest/issues/265) для решений на частые проблемы**\n                      \nЕсли вы обнаружили баг и проблему с совместимостью, то отправьте его на [GitHub issues](https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Kontrollera [Vanliga frågor om LiveContainer](https://github.com/khanhduytran0/LiveContainer/issues/265) för vanliga problem.**\n                         \nOm du stöter på ett fel eller kompatibilitetsproblem vänligen skicka in [GitHub-problem](https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "**Kontrollera [Vanliga frågor om AppNest](https://github.com/khanhduytran0/AppNest/issues/265) för vanliga problem.**\n                         \nOm du stöter på ett fel eller kompatibilitetsproblem vänligen skicka in [GitHub-problem](https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Sık karşılaşılan sorunlar için [LiveContainer SSS](https://github.com/khanhduytran0/LiveContainer/issues/265) bölümünü kontrol edin.**\n                         \nBir hata veya uyumluluk sorunu ile karşılaşırsanız, lütfen [GitHub sorunları](https://github.com/khanhduytran0/LiveContainer/issues) bölümüne bildirin."
+            "value" : "**Sık karşılaşılan sorunlar için [AppNest SSS](https://github.com/khanhduytran0/AppNest/issues/265) bölümünü kontrol edin.**\n                         \nBir hata veya uyumluluk sorunu ile karşılaşırsanız, lütfen [GitHub sorunları](https://github.com/khanhduytran0/AppNest/issues) bölümüne bildirin."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**Vào [LiveContainer FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265) để xem các lỗi thường gặp.**\n                         \nNếu bạn gặp lỗi hay vấn đề tương thích vui lòng gửi vào [GitHub issues](https://github.com/khanhduytran0/LiveContainer/issues)."
+            "value" : "**Vào [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265) để xem các lỗi thường gặp.**\n                         \nNếu bạn gặp lỗi hay vấn đề tương thích vui lòng gửi vào [GitHub issues](https://github.com/khanhduytran0/AppNest/issues)."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "**遇到问题时请先查看[LiveContainer常见问题（英语）](https://github.com/khanhduytran0/LiveContainer/issues/265)。**\n                         \n如果你遇到Bug或者App兼容性问题，请到[GitHub issues](https://github.com/khanhduytran0/LiveContainer/issues)提交。"
+            "value" : "**遇到问题时请先查看[AppNest常见问题（英语）](https://github.com/khanhduytran0/AppNest/issues/265)。**\n                         \n如果你遇到Bug或者App兼容性问题，请到[GitHub issues](https://github.com/khanhduytran0/AppNest/issues)提交。"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "                         **遇到問題時請先查看[LiveContainer常見問題（英文）](https://github.com/khanhduytran0/LiveContainer/issues/265)。 **\n                         \n如果您遇到Bug或是App相容性問題，請至[GitHub issues](https://github.com/khanhduytran0/LiveContainer/issues)提交錯誤。"
+            "value" : "                         **遇到問題時請先查看[AppNest常見問題（英文）](https://github.com/khanhduytran0/AppNest/issues/265)。 **\n                         \n如果您遇到Bug或是App相容性問題，請至[GitHub issues](https://github.com/khanhduytran0/AppNest/issues)提交錯誤。"
           }
         }
       }
@@ -16259,97 +16259,97 @@
         "ar" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "مساعدة LiveContainer"
+            "value" : "مساعدة AppNest"
           }
         },
         "de" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Hilfe für LiveContainer"
+            "value" : "Hilfe für AppNest"
           }
         },
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer Help"
+            "value" : "AppNest Help"
           }
         },
         "es" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ayuda de LiveContainer"
+            "value" : "Ayuda de AppNest"
           }
         },
         "fr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Aide LiveContainer"
+            "value" : "Aide AppNest"
           }
         },
         "it" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Guida LiveContainer"
+            "value" : "Guida AppNest"
           }
         },
         "ja" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainerの使いかた"
+            "value" : "AppNestの使いかた"
           }
         },
         "ko" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer 도움말"
+            "value" : "AppNest 도움말"
           }
         },
         "pl" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Pomoc z LiveContainer"
+            "value" : "Pomoc z AppNest"
           }
         },
         "pt-BR" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Ajuda do LiveContainer"
+            "value" : "Ajuda do AppNest"
           }
         },
         "ru" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Помощь по LiveContainer"
+            "value" : "Помощь по AppNest"
           }
         },
         "sv" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer hjälp"
+            "value" : "AppNest hjälp"
           }
         },
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer Yardım"
+            "value" : "AppNest Yardım"
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Trợ giúp LiveContainer"
+            "value" : "Trợ giúp AppNest"
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer帮助"
+            "value" : "AppNest帮助"
           }
         },
         "zh-Hant" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "LiveContainer 協助"
+            "value" : "AppNest 協助"
           }
         }
       }
@@ -24521,7 +24521,7 @@
         }
       }
     },
-    "lc.appSettings.hideLiveContainer": {
+    "lc.appSettings.hideAppNest": {
       "extractionState": "manual",
       "localizations": {
         "ar": {
@@ -32739,91 +32739,91 @@
         "ar": {
           "stringUnit": {
             "state": "translated",
-            "value": "أفحص [الأسئلة المتكررة AppNest]\n(https://github.com/khanhduytran0/LiveContainer/issues/265) للأخطاء الشائعة.\n\nوأذا واجهت مشكله أو مشكله توافق الرجاء إرسال طلب مساعده او شكوى في [Github]\n(https://github.com/M0d-4/AppNest/issues)."
+            "value": "أفحص [الأسئلة المتكررة AppNest]\n(https://github.com/khanhduytran0/AppNest/issues/265) للأخطاء الشائعة.\n\nوأذا واجهت مشكله أو مشكله توافق الرجاء إرسال طلب مساعده او شكوى في [Github]\n(https://github.com/M0d-4/AppNest/issues)."
           }
         },
         "de": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Sehen Sie sich [AppNest FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265) für allgemeine Probleme an.**\n                         \nWenn Sie einen Fehler oder ein Kompatibilitätsproblem entdecken, melden Sie es bitte auf [GitHub issues](https://github.com/M0d-4/AppNest/issues)."
+            "value": "**Sehen Sie sich [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265) für allgemeine Probleme an.**\n                         \nWenn Sie einen Fehler oder ein Kompatibilitätsproblem entdecken, melden Sie es bitte auf [GitHub issues](https://github.com/M0d-4/AppNest/issues)."
           }
         },
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Check [AppNest FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265) for common issues.**\n                         \nIf you encounter a bug or compatibility issue please submit on [GitHub issues](https://github.com/M0d-4/AppNest/issues)."
+            "value": "**Check [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265) for common issues.**\n                         \nIf you encounter a bug or compatibility issue please submit on [GitHub issues](https://github.com/M0d-4/AppNest/issues)."
           }
         },
         "fr": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Consultez la [FAQ de AppNest](https://github.com/khanhduytran0/LiveContainer/issues/265) (en anglais) pour voir les problèmes courants.\n                         \nSi vous rencontrez un bug ou un problème de compatibilité, veuillez le soumettre sur [GitHub](https://github.com/M0d-4/AppNest/issues)."
+            "value": "**Consultez la [FAQ de AppNest](https://github.com/khanhduytran0/AppNest/issues/265) (en anglais) pour voir les problèmes courants.\n                         \nSi vous rencontrez un bug ou un problème de compatibilité, veuillez le soumettre sur [GitHub](https://github.com/M0d-4/AppNest/issues)."
           }
         },
         "it": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Controlla [AppNest FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265) per problemi comuni.**\n                         \nSe riscontri un problema di bug o compatibilità, invia su [problemi GitHub](https://github.com/M0d-4/AppNest/issues)."
+            "value": "**Controlla [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265) per problemi comuni.**\n                         \nSe riscontri un problema di bug o compatibilità, invia su [problemi GitHub](https://github.com/M0d-4/AppNest/issues)."
           }
         },
         "ja": {
           "stringUnit": {
             "state": "translated",
-            "value": "一般的な問題は[AppNest FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265)を確認してください。\n\nバグや互換性の問題が発生した場合は[GitHub Issues](https://github.com/M0d-4/AppNest/issues)に報告してください。"
+            "value": "一般的な問題は[AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265)を確認してください。\n\nバグや互換性の問題が発生した場合は[GitHub Issues](https://github.com/M0d-4/AppNest/issues)に報告してください。"
           }
         },
         "ko": {
           "stringUnit": {
             "state": "translated",
-            "value": "**자주 묻는 질문은 [AppNest FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265)를 확인해주세요.**\n                         \n버그나 호환성 문제는 [GitHub issues](https://github.com/M0d-4/AppNest/issues)에 보고해주세요."
+            "value": "**자주 묻는 질문은 [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265)를 확인해주세요.**\n                         \n버그나 호환성 문제는 [GitHub issues](https://github.com/M0d-4/AppNest/issues)에 보고해주세요."
           }
         },
         "pl": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Zobacz [Często Zadawane Pytania dotyczące problemów z AppNest](https://github.com/khanhduytran0/LiveContainer/issues/265)**\n\nJeśli napotkasz błąd czy problem z kompatybilnością, Proszę o złożenie wniosku na portalu [GitHub issues](https://github.com/M0d-4/AppNest/issues)."
+            "value": "**Zobacz [Często Zadawane Pytania dotyczące problemów z AppNest](https://github.com/khanhduytran0/AppNest/issues/265)**\n\nJeśli napotkasz błąd czy problem z kompatybilnością, Proszę o złożenie wniosku na portalu [GitHub issues](https://github.com/M0d-4/AppNest/issues)."
           }
         },
         "pt-BR": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Verifique as [Perguntas frequentes do AppNest](https://github.com/khanhduytran0/LiveContainer/issues/265) para as possíveis soluções para seus problemas.**\n\nSe você encontrar um erro técnico ou um problema na compatibilidade do AppNest por favor relate isso na [Página de problemas no GitHub](https://github.com/M0d-4/AppNest/issues)."
+            "value": "**Verifique as [Perguntas frequentes do AppNest](https://github.com/khanhduytran0/AppNest/issues/265) para as possíveis soluções para seus problemas.**\n\nSe você encontrar um erro técnico ou um problema na compatibilidade do AppNest por favor relate isso na [Página de problemas no GitHub](https://github.com/M0d-4/AppNest/issues)."
           }
         },
         "ru": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Загляните в [ЧАВО AppNest'а](https://github.com/khanhduytran0/LiveContainer/issues/265) для решений на частые проблемы**\n                      \nЕсли вы обнаружили баг и проблему с совместимостью, то отправьте его на [GitHub issues](https://github.com/M0d-4/AppNest/issues)."
+            "value": "**Загляните в [ЧАВО AppNest'а](https://github.com/khanhduytran0/AppNest/issues/265) для решений на частые проблемы**\n                      \nЕсли вы обнаружили баг и проблему с совместимостью, то отправьте его на [GitHub issues](https://github.com/M0d-4/AppNest/issues)."
           }
         },
         "sv": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Kontrollera [Vanliga frågor om AppNest](https://github.com/khanhduytran0/LiveContainer/issues/265) för vanliga problem.**\n                         \nOm du stöter på ett fel eller kompatibilitetsproblem vänligen skicka in [GitHub-problem](https://github.com/M0d-4/AppNest/issues)."
+            "value": "**Kontrollera [Vanliga frågor om AppNest](https://github.com/khanhduytran0/AppNest/issues/265) för vanliga problem.**\n                         \nOm du stöter på ett fel eller kompatibilitetsproblem vänligen skicka in [GitHub-problem](https://github.com/M0d-4/AppNest/issues)."
           }
         },
         "tr": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Sık karşılaşılan sorunlar için [AppNest SSS](https://github.com/khanhduytran0/LiveContainer/issues/265) bölümünü kontrol edin.**\n                         \nBir hata veya uyumluluk sorunu ile karşılaşırsanız, lütfen [GitHub sorunları](https://github.com/M0d-4/AppNest/issues) bölümüne bildirin."
+            "value": "**Sık karşılaşılan sorunlar için [AppNest SSS](https://github.com/khanhduytran0/AppNest/issues/265) bölümünü kontrol edin.**\n                         \nBir hata veya uyumluluk sorunu ile karşılaşırsanız, lütfen [GitHub sorunları](https://github.com/M0d-4/AppNest/issues) bölümüne bildirin."
           }
         },
         "vi": {
           "stringUnit": {
             "state": "translated",
-            "value": "**Vào [AppNest FAQ](https://github.com/khanhduytran0/LiveContainer/issues/265) để xem các lỗi thường gặp.**\n                         \nNếu bạn gặp lỗi hay vấn đề tương thích vui lòng gửi vào [GitHub issues](https://github.com/M0d-4/AppNest/issues)."
+            "value": "**Vào [AppNest FAQ](https://github.com/khanhduytran0/AppNest/issues/265) để xem các lỗi thường gặp.**\n                         \nNếu bạn gặp lỗi hay vấn đề tương thích vui lòng gửi vào [GitHub issues](https://github.com/M0d-4/AppNest/issues)."
           }
         },
         "zh-Hans": {
           "stringUnit": {
             "state": "translated",
-            "value": "**遇到问题时请先查看[AppNest常见问题（英语）](https://github.com/khanhduytran0/LiveContainer/issues/265)。**\n                         \n如果你遇到Bug或者App兼容性问题，请到[GitHub issues](https://github.com/M0d-4/AppNest/issues)提交。"
+            "value": "**遇到问题时请先查看[AppNest常见问题（英语）](https://github.com/khanhduytran0/AppNest/issues/265)。**\n                         \n如果你遇到Bug或者App兼容性问题，请到[GitHub issues](https://github.com/M0d-4/AppNest/issues)提交。"
           }
         },
         "zh-Hant": {
           "stringUnit": {
             "state": "translated",
-            "value": "                         **遇到問題時請先查看[AppNest常見問題（英文）](https://github.com/khanhduytran0/LiveContainer/issues/265)。 **\n                         \n如果您遇到Bug或是App相容性問題，請至[GitHub issues](https://github.com/M0d-4/AppNest/issues)提交錯誤。"
+            "value": "                         **遇到問題時請先查看[AppNest常見問題（英文）](https://github.com/khanhduytran0/AppNest/issues/265)。 **\n                         \n如果您遇到Bug或是App相容性問題，請至[GitHub issues](https://github.com/M0d-4/AppNest/issues)提交錯誤。"
           }
         }
       }
@@ -41499,19 +41499,19 @@
         "tr" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Paylaşılan uygulamalar başlatılırken önce hangisinin deneneceğini belirlemek için LiveContainer’ları sürükleyin."
+            "value" : "Paylaşılan uygulamalar başlatılırken önce hangisinin deneneceğini belirlemek için AppNest’ları sürükleyin."
           }
         },
         "vi" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "Kéo các LiveContainer để chọn cái nào được thử trước khi chạy app được chia sẻ."
+            "value" : "Kéo các AppNest để chọn cái nào được thử trước khi chạy app được chia sẻ."
           }
         },
         "zh-Hans" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "拖动 LiveContainer 来设置启动共享 App 时的尝试顺序。"
+            "value" : "拖动 AppNest 来设置启动共享 App 时的尝试顺序。"
           }
         }
       }

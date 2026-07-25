@@ -1,10 +1,10 @@
 //
 //  LaunchAppExtension-Bridging-Header.h
-//  LiveContainer
+//  AppNest
 //
 //  Created by s s on 2026/1/23.
 //
 
-#import "../LiveContainer/LCSharedUtils.h"
-#import "../LiveContainer/FoundationPrivate.h"
+#import "../AppNest/LCSharedUtils.h"
+#import "../AppNest/FoundationPrivate.h"
 bool lsApplicationWorkspaceCanOpenURL(NSURL* url);

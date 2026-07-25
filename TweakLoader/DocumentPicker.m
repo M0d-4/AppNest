@@ -2,7 +2,7 @@
 #import "LCSharedUtils.h"
 #import "UIKitPrivate.h"
 #import "utils.h"
-#import "../LiveContainer/FoundationPrivate.h"
+#import "../AppNest/FoundationPrivate.h"
 
 BOOL fixFilePicker;
 __attribute__((constructor))
@@ -27,7 +27,7 @@ static void NSFMGuestHooksInit() {
 
 }
 
-@implementation UIDocumentPickerViewController(LiveContainerHook)
+@implementation UIDocumentPickerViewController(AppNestHook)
 
 - (instancetype)hook_initForOpeningContentTypes:(NSArray<UTType *> *)contentTypes asCopy:(BOOL)asCopy {
     
@@ -91,7 +91,7 @@ static void NSFMGuestHooksInit() {
 @end
 
 
-@implementation UIDocumentBrowserViewController(LiveContainerHook)
+@implementation UIDocumentBrowserViewController(AppNestHook)
 
 - (instancetype)hook_initForOpeningContentTypes:(NSArray<UTType *> *)contentTypes {
     NSArray<UTType *> * contentTypesNew = @[UTTypeItem, UTTypeFolder];
@@ -101,7 +101,7 @@ static void NSFMGuestHooksInit() {
 @end
 
 
-@implementation NSURL(LiveContainerHook)
+@implementation NSURL(AppNestHook)
 
 - (BOOL)hook_startAccessingSecurityScopedResource {
     [self hook_startAccessingSecurityScopedResource];
@@ -110,7 +110,7 @@ static void NSFMGuestHooksInit() {
 
 @end
 
-@implementation UTType(LiveContainerHook)
+@implementation UTType(AppNestHook)
 
 +(instancetype)hook_typeWithIdentifier:(NSString*)identifier {
     UTType* ans = [UTType hook_typeWithIdentifier:identifier];
@@ -127,7 +127,7 @@ static void NSFMGuestHooksInit() {
 @end
 
 
-@implementation DOCConfiguration(LiveContainerHook)
+@implementation DOCConfiguration(AppNestHook)
 
 - (void)hook_setHostIdentifier:(NSString *)ignored {
     CFErrorRef error = NULL;

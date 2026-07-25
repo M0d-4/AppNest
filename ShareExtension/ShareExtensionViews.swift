@@ -55,7 +55,7 @@ struct ShareExtensionRootView: View {
             } message: {
                 Text(viewModel.errorMessage ?? "")
             }
-            .navigationTitle(Text("LiveContainer"))
+            .navigationTitle(Text("AppNest"))
             .navigationBarTitleDisplayMode(.inline)
         }
     }
@@ -193,7 +193,7 @@ private struct ShareInstallGridEntry: View {
 
     var body: some View {
         Button {
-            Task { await viewModel.installSharedFileInLiveContainer(context: extensionContext) }
+            Task { await viewModel.installSharedFileInAppNest(context: extensionContext) }
         } label: {
             VStack(spacing: 7) {
                 Image(systemName: "square.and.arrow.down")

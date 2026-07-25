@@ -1,6 +1,6 @@
 //
 //  UIKitPrivate+MultitaskSupport.h
-//  LiveContainer
+//  AppNest
 //
 //  Created by Duy Tran on 6/5/25.
 //
@@ -315,7 +315,7 @@ API_AVAILABLE(ios(17.0))
 @interface UIMutableScenePresentationContext : UIScenePresentationContext
 @property(nonatomic, assign) NSUInteger appearanceStyle;
 @end
-@interface UIMutableScenePresentationContext(LiveContainerHooks)
+@interface UIMutableScenePresentationContext(AppNestHooks)
 - (void)_setVisibilityPropagationEnabled:(BOOL)enabled;
 @end
 

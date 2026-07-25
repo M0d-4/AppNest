@@ -1,6 +1,6 @@
 //
 //  LCStatusBarManager.h
-//  LiveContainer
+//  AppNest
 //
 //  Created by Duy Tran on 20/2/26.
 //

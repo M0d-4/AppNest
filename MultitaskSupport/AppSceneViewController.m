@@ -1,6 +1,6 @@
 //
 //  AppSceneView.m
-//  LiveContainer
+//  AppNest
 //
 //  Created by s s on 2025/5/17.
 //
@@ -12,14 +12,14 @@
 #import "Localization.h"
 #import "LCSharedUtils.h"
 #import "utils.h"
-#import "../LiveContainerSwiftUI/Utilities/LCUtils.h"
+#import "../AppNestSwiftUI/Utilities/LCUtils.h"
 
 
 #import "FoundationPrivate.h"
 #import "UIKitPrivate+MultitaskSupport.h"
 
 
-#import "LiveContainerSwiftUI-Swift.h"
+#import "AppNestSwiftUI-Swift.h"
 #import "LCMultitaskXPCService.h"
 
 
@@ -75,7 +75,7 @@ static NSString *LCContainerPathForDataUUID(NSString *dataUUID) {
     }
     NSURL *appGroupPath = [LCSharedUtils appGroupPath];
     if(appGroupPath) {
-        [candidateURLs addObject:[appGroupPath URLByAppendingPathComponent:[NSString stringWithFormat:@"LiveContainer/Data/Application/%@", dataUUID]]];
+        [candidateURLs addObject:[appGroupPath URLByAppendingPathComponent:[NSString stringWithFormat:@"AppNest/Data/Application/%@", dataUUID]]];
     }
 
     for(NSURL *candidateURL in candidateURLs) {
@@ -647,7 +647,7 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     self.childProcessAssertions = [NSMutableArray array];
 
     // 1. Take a foreground assertion for the guest app process itself
-    [self acquireAssertionForPid:self.pid explanation:@"LiveContainer guest app foreground"];
+    [self acquireAssertionForPid:self.pid explanation:@"AppNest guest app foreground"];
 
     // 2. Monitor for WebKit child processes (WebContent, GPU) spawned by the guest app
     //    They appear shortly after the guest app creates a WKWebView
@@ -662,9 +662,9 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         for (NSNumber *childPid in childPids) {
             if (![knownPids containsObject:childPid]) {
                 [knownPids addObject:childPid];
-                NSString *explanation = [NSString stringWithFormat:@"LiveContainer WebKit child (pid %@)", childPid];
+                NSString *explanation = [NSString stringWithFormat:@"AppNest WebKit child (pid %@)", childPid];
                 [weakSelf acquireAssertionForPid:childPid.intValue explanation:explanation];
-                NSLog(@"[LiveContainer] Acquired foreground assertion for child process %@", childPid);
+                NSLog(@"[AppNest] Acquired foreground assertion for child process %@", childPid);
             }
         }
     }];
@@ -700,9 +700,9 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     BOOL acquired = [assertion acquireWithError:&error];
     if (acquired) {
         [self.childProcessAssertions addObject:assertion];
-        NSLog(@"[LiveContainer] Foreground assertion acquired for pid %d", pid);
+        NSLog(@"[AppNest] Foreground assertion acquired for pid %d", pid);
     } else {
-        NSLog(@"[LiveContainer] Failed to acquire assertion for pid %d: %@", pid, error);
+        NSLog(@"[AppNest] Failed to acquire assertion for pid %d: %@", pid, error);
     }
 }
 

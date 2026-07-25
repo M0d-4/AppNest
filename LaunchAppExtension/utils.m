@@ -1,13 +1,13 @@
 //
 //  utils.m
-//  LiveContainer
+//  AppNest
 //
 //  Created by s s on 2026/1/23.
 //
 @import Foundation;
 @import ObjectiveC;
-#import "../LiveContainer/UIKitPrivate.h"
-#import "../LiveContainer/utils.h"
+#import "../AppNest/UIKitPrivate.h"
+#import "../AppNest/utils.h"
 
 bool lsApplicationWorkspaceCanOpenURL(NSURL* url) {
     LSApplicationWorkspace* workspace = [PrivClass(LSApplicationWorkspace) defaultWorkspace];

@@ -4,18 +4,18 @@
 #import "UIKitPrivate+MultitaskSupport.h"
 #import "PiPManager.h"
 #import "VirtualWindowsHostView.h"
-#import "../LiveContainer/Localization.h"
+#import "../AppNest/Localization.h"
 #import "utils.h"
 
 // Let us manage BSServiceConnectionEndpointInjector on our own
-@implementation UIScenePresentationContext(LiveContainerHooks)
+@implementation UIScenePresentationContext(AppNestHooks)
 - (BOOL)_isVisibilityPropagationEnabled {
     return NO;
 }
 @end
 
 #import <objc/runtime.h> 
-#import "LiveContainerSwiftUI-Swift.h"
+#import "AppNestSwiftUI-Swift.h"
 
 
 @interface NSFileManager (GuestHooks)

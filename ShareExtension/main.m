@@ -1,12 +1,12 @@
 //
 //  main.m
-//  LiveContainer
+//  AppNest
 //
 //  Created by s s on 2026/2/17.
 //
 #import "LCShareExtensionLauncher.h"
-#import "../LiveContainer/utils.h"
-#import "../LiveContainer/UIKitPrivate.h"
+#import "../AppNest/utils.h"
+#import "../AppNest/UIKitPrivate.h"
 
 
 @implementation LCShareExtensionLauncher

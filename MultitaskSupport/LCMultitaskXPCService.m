@@ -1,6 +1,6 @@
 //
 //  LCMultitaskXPCService.m
-//  LiveContainer
+//  AppNest
 //
 //  Created by Duy Tran on 29/4/26
 //

@@ -21,7 +21,7 @@ final class ShareExtensionViewModel: ObservableObject {
 
     init() {
         sharedDefaults = UserDefaults(suiteName: LCSharedUtils.appGroupID())
-        appGroupRootURL = LCSharedUtils.appGroupPath()?.appendingPathComponent("LiveContainer")
+        appGroupRootURL = LCSharedUtils.appGroupPath()?.appendingPathComponent("AppNest")
         privateDocURL = Self.resolvePrivateDocURL(sharedDefaults: sharedDefaults)
         privateDocAccessing = privateDocURL != nil
         reloadApps()
@@ -444,7 +444,7 @@ final class ShareExtensionViewModel: ObservableObject {
         return ext == "ipa" || ext == "tipa"
     }
 
-    func installSharedFileInLiveContainer(context: NSExtensionContext?) async {
+    func installSharedFileInAppNest(context: NSExtensionContext?) async {
         if isLaunching {
             return
         }
@@ -456,7 +456,7 @@ final class ShareExtensionViewModel: ObservableObject {
 
         do {
             try storeBookmark(for: fileURL)
-            guard var components = URLComponents(string: "livecontainer://install") else {
+            guard var components = URLComponents(string: "appnest://install") else {
                 throw ShareExtensionError("Unable to build install URL.")
             }
             components.queryItems = [
@@ -492,14 +492,14 @@ final class ShareExtensionViewModel: ObservableObject {
     private func launchBuiltInSideStore(context: NSExtensionContext?) throws {
         let launchURLString = try preparePayloadForLaunch()
 
-        sharedDefaults?.set("livecontainer", forKey: "LCLaunchExtensionScheme")
+        sharedDefaults?.set("appnest", forKey: "LCLaunchExtensionScheme")
         sharedDefaults?.set("builtinSideStore", forKey: "LCLaunchExtensionBundleID")
         if let launchURLString {
             sharedDefaults?.set(launchURLString, forKey: "LCLaunchExtensionLaunchURL")
         }
         sharedDefaults?.set(Date(), forKey: "LCLaunchExtensionLaunchDate")
 
-        guard var components = URLComponents(string: "livecontainer://livecontainer-launch") else {
+        guard var components = URLComponents(string: "appnest://appnest-launch") else {
             throw ShareExtensionError("Unable to build SideStore launch URL.")
         }
         var queryItems = [
@@ -534,7 +534,7 @@ final class ShareExtensionViewModel: ObservableObject {
     }
 
     private func buildLaunchURL(for item: ShareLaunchItem, launchURLString: String?) -> URL? {
-        var schemeToLaunch = "livecontainer"
+        var schemeToLaunch = "appnest"
         var newLaunch = false
 
         if var runningLC = LCSharedUtils.getContainerUsingLCScheme(withFolderName: item.container.folderName) {
@@ -544,7 +544,7 @@ final class ShareExtensionViewModel: ObservableObject {
             schemeToLaunch = runningLC
         } else {
             newLaunch = true
-            schemeToLaunch = item.app.isShared ? (firstFreeInstalledLC() ?? "livecontainer") : "livecontainer"
+            schemeToLaunch = item.app.isShared ? (firstFreeInstalledLC() ?? "appnest") : "appnest"
         }
 
         if newLaunch && !item.app.isHidden && !item.app.isLocked && !item.app.isJITNeeded {
@@ -559,7 +559,7 @@ final class ShareExtensionViewModel: ObservableObject {
 
         var components = URLComponents()
         components.scheme = schemeToLaunch
-        components.host = "livecontainer-launch"
+        components.host = "appnest-launch"
         var queryItems = [
             URLQueryItem(name: "bundle-name", value: item.app.relativeBundlePath),
             URLQueryItem(name: "container-folder-name", value: item.container.folderName)

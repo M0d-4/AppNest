@@ -1,6 +1,6 @@
 //
 //  MultitaskDockView.swift
-//  LiveContainer
+//  AppNest
 //
 //  Created by boa-z on 2025/6/28.
 //
@@ -17,7 +17,7 @@ class AppInfoProvider {
     
     private var infoCacheByUUID = [String: LCAppInfo]()
     private var infoCacheByName = [String: LCAppInfo]()
-    private let cacheQueue = DispatchQueue(label: "com.livecontainer.appinfoprovider.cachequeue", attributes: .concurrent)
+    private let cacheQueue = DispatchQueue(label: "com.appnest.appinfoprovider.cachequeue", attributes: .concurrent)
     
     private init() {}
     
@@ -39,7 +39,7 @@ class AppInfoProvider {
         guard let appGroupPath = LCSharedUtils.appGroupPath()?.path else { return nil }
         
         let searchPaths = [
-            "\(appGroupPath)/LiveContainer/Data/Application/\(dataUUID)/LCAppInfo.plist",
+            "\(appGroupPath)/AppNest/Data/Application/\(dataUUID)/LCAppInfo.plist",
             "\(appGroupPath)/Containers/\(dataUUID)/LCAppInfo.plist",
             "\(FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.path ?? "")/Data/Application/\(dataUUID)/LCAppInfo.plist"
         ]
@@ -64,7 +64,7 @@ class AppInfoProvider {
 
         var searchPaths: [String] = []
         if let appGroupPath = LCSharedUtils.appGroupPath()?.path {
-            searchPaths.append("\(appGroupPath)/LiveContainer/Applications")
+            searchPaths.append("\(appGroupPath)/AppNest/Applications")
         }
         if let docPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask).first?.path {
             searchPaths.append("\(docPath)/Applications")

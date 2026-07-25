@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
-  "name": "LiveContainer Scheme Bridge",
-  "description": "Redirect custom URL schemes from Safari to LiveContainer.",
+  "name": "AppNest Scheme Bridge",
+  "description": "Redirect custom URL schemes from Safari to AppNest.",
   "version": "1.0",
   "permissions": [
     "nativeMessaging"

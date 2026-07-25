@@ -1,6 +1,6 @@
 //
 //  ResizeHandleView.h
-//  LiveContainer
+//  AppNest
 //
 //  Created by Duy Tran on 2/6/25.
 //

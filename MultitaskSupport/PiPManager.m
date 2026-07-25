@@ -1,15 +1,15 @@
 //
 //  PiPManager.m
-//  LiveContainer
+//  AppNest
 //
 //  Created by s s on 2025/6/3.
 //
 #include "PiPManager.h"
 #include "AppSceneViewController.h"
 #include "DecoratedAppSceneViewController.h"
-#include "../LiveContainer/utils.h"
+#include "../AppNest/utils.h"
 //⭐️⭐️⭐️⤵️
-#import "LiveContainerSwiftUI-Swift.h"
+#import "AppNestSwiftUI-Swift.h"
 //⭐️⭐️⭐️⤴️
 API_AVAILABLE(ios(16.0))
 @interface PiPManager()
