@@ -1,4 +1,5 @@
 @import UIKit;
+@import QuartzCore;
 #import "LCSharedUtils.h"
 #import "UIKitPrivate.h"
 #import "../LiveContainer/utils.h"
@@ -10,7 +11,17 @@
 extern void _objc_msgForward(void);
 @interface LCRealIPhoneModeHelper : NSObject
 + (void)repositionAllWindows;
-+ (void)startBriefPollingBurst;
+// Starts (if not already running) a CADisplayLink-driven loop that
+// re-asserts the crop every frame, for as long as the app is foregrounded.
+// Unlike a timed polling burst, this never "expires" — it keeps enforcing
+// the invariant for the app's entire foreground lifetime, so it cannot miss
+// a geometry change no matter which private API caused it or when it fires,
+// including on iOS/iPadOS versions where the exact resize mechanism isn't
+// known. Safe to call repeatedly; a no-op if already running.
++ (void)startEnforcing;
+// Stops the per-frame loop (e.g. when backgrounding) to avoid needless work.
+// Safe to call repeatedly; a no-op if not running.
++ (void)stopEnforcing;
 @end
 // Shared Real iPhone Mode crop helpers (defined alongside the UIWindow hooks
 // further down this file) — forward-declared here so LCRealIPhoneModeHelper,
@@ -226,40 +237,42 @@ static void Real_UIKitGuestHooksInit(void) {
         // exchange in that case would swap UIView's shared implementation —
         // affecting every view in the app, not just windows.
         LCSwizzleInstanceMethodSafely(UIWindow.class, @selector(layoutSubviews), @selector(hook_layoutSubviews));
-        [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationWillEnterForegroundNotification
-                                                          object:nil
-                                                           queue:[NSOperationQueue mainQueue]
-                                                      usingBlock:^(NSNotification * _Nonnull note) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.02 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [LCRealIPhoneModeHelper repositionAllWindows];
-            });
-        }];
-        // WillEnterForeground only fires on background->foreground transitions,
-        // not on a cold launch — DidBecomeActive fires in both cases, so this
-        // is a second chance to apply the crop if the initial -setFrame:/
-        // -layoutSubviews pass ran before geometry had settled.
+
+        // The swizzles above (-setFrame:, -layoutSubviews, -makeKeyAndVisible)
+        // catch the overwhelming majority of resizes immediately, with zero
+        // visible flicker. But which private mechanism is responsible for
+        // any *given* geometry change is an OS-version-specific implementation
+        // detail we don't have visibility into (this is exactly what made
+        // iPadOS 27 unreliable outside multitask: some resize path there
+        // doesn't route through any of the swizzled selectors). Rather than
+        // keep chasing individual hook points per OS version, the
+        // CADisplayLink loop below re-asserts the crop every frame as a
+        // catch-all that is correct by construction: it doesn't matter *how*
+        // a window's geometry changed, only that it's checked and corrected
+        // before the next frame is presented. A one-frame (~16ms) correction
+        // window is imperceptible, and the check itself (a couple of
+        // NSUserDefaults reads plus a CGRect compare) is cheap enough to run
+        // every frame for as long as the app is in the foreground.
+        //
+        // Started immediately here (not deferred to a foreground
+        // notification) so a cold launch is covered from frame one, and
+        // paused/resumed with the app's active state purely to avoid
+        // spending a frame callback while backgrounded — eligibility
+        // (feature on, not multitask, not SideStore, main window) is still
+        // re-checked live on every tick, so toggling the setting or the
+        // multitask state still takes effect immediately either way.
+        [LCRealIPhoneModeHelper startEnforcing];
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification
                                                           object:nil
                                                            queue:[NSOperationQueue mainQueue]
                                                       usingBlock:^(NSNotification * _Nonnull note) {
-            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.02 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-                [LCRealIPhoneModeHelper repositionAllWindows];
-            });
-            // On iPadOS 27, outside multitask, none of the specific hook
-            // points above have been confirmed to catch every case that
-            // changes a standalone window's geometry — and without SDK
-            // access to iPadOS 27 to find whatever new private mechanism
-            // might be responsible, guessing at another exact hook point
-            // risks the same "fixes nothing, or breaks multitask" outcome
-            // as previous attempts. Polling directly for a few seconds
-            // sidesteps needing to know which API is responsible at all:
-            // it can't miss a geometry change regardless of how it happened.
-            // Starting only here — after the app is confirmed fully active,
-            // not speculatively early from the constructor like the last
-            // attempt that broke multitask — means LCIsMultitaskLaunch has
-            // had every chance to have already synced, so this is properly
-            // gated by the same eligibility check as everything else.
-            [LCRealIPhoneModeHelper startBriefPollingBurst];
+            [LCRealIPhoneModeHelper startEnforcing];
+        }];
+        [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidEnterBackgroundNotification
+                                                          object:nil
+                                                           queue:[NSOperationQueue mainQueue]
+                                                      usingBlock:^(NSNotification * _Nonnull note) {
+            [LCRealIPhoneModeHelper stopEnforcing];
         }];
     }
 
@@ -1118,59 +1131,68 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 }
 @end
 
+// Target for the CADisplayLink below. A plain NSObject can't be a display
+// link target/selector pair cleanly across old runtimes, so this tiny class
+// just forwards each tick to +repositionAllWindows.
+@interface LCRealIPhoneModeDisplayLinkTarget : NSObject
+- (void)tick:(CADisplayLink *)link;
+@end
+@implementation LCRealIPhoneModeDisplayLinkTarget
+- (void)tick:(CADisplayLink *)link {
+    [LCRealIPhoneModeHelper repositionAllWindows];
+}
+@end
+
 @implementation LCRealIPhoneModeHelper
 + (void)repositionAllWindows {
-    UIWindowScene *scene = nil;
-    for (UIWindowScene *s in UIApplication.sharedApplication.connectedScenes) {
-        if ([s isKindOfClass:UIWindowScene.class]) {
-            scene = s;
-            break;
-        }
-    }
-    if (!scene) return;
-
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
-    for (UIWindow *window in scene.windows) {
-        // Reuses the exact same eligibility check (feature on, not
-        // SideStore, main window only, and — importantly — skipped
-        // entirely under multitask, where the host does its own
-        // centering) as the -setFrame:/-layoutSubviews hooks, so
-        // foregrounding can't apply different logic than everyday
-        // resizes do.
-        if (!LCShouldApplyRealIPhoneModeCrop(window)) continue;
-        CGRect targetFrame = LCRealIPhoneModeCroppedFrame(window.frame);
-        window.frame = targetFrame;
+    for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+        if (![scene isKindOfClass:UIWindowScene.class]) continue;
+        for (UIWindow *window in ((UIWindowScene *)scene).windows) {
+            // Reuses the exact same eligibility check (feature on, not
+            // SideStore, main window only, and — importantly — skipped
+            // entirely under multitask, where the host does its own
+            // centering) as the -setFrame:/-layoutSubviews hooks, so this
+            // per-frame pass can't apply different logic than everyday
+            // resizes do.
+            if (!LCShouldApplyRealIPhoneModeCrop(window)) continue;
+            CGRect targetFrame = LCRealIPhoneModeCroppedFrame(window.frame);
+            // Cheap early-out: on the overwhelming majority of frames
+            // nothing has moved the window since the last tick, so avoid
+            // touching .frame (and re-entering the -setFrame:/-layoutSubviews
+            // swizzles) unless the crop has actually drifted.
+            if (fabs(window.frame.size.width - targetFrame.size.width) < 0.5 &&
+                fabs(window.frame.origin.x - targetFrame.origin.x) < 0.5) {
+                continue;
+            }
+            window.frame = targetFrame;
+        }
     }
     [CATransaction commit];
 }
 
-// Polls and re-asserts the crop every 0.1s for 3 seconds, then stops itself.
-// Each tick is just a call to the already-cheap, already-correctly-gated
-// repositionAllWindows above, so this costs nothing once eligibility (real
-// iPhone mode on, not multitask, not SideStore) is false, which is true for
-// the overwhelming majority of launches. A second call while a burst is
-// already running (e.g. rapid foreground/background cycling) cancels the
-// previous timer and starts fresh rather than stacking multiple timers.
-+ (void)startBriefPollingBurst {
-    static dispatch_source_t currentTimer;
-    if (currentTimer) {
-        dispatch_source_cancel(currentTimer);
-        currentTimer = nil;
+static CADisplayLink *LCRealIPhoneModeDisplayLink;
+static LCRealIPhoneModeDisplayLinkTarget *LCRealIPhoneModeDisplayLinkTargetInstance;
+
++ (void)startEnforcing {
+    if (LCRealIPhoneModeDisplayLink) return; // already running
+    if (!LCRealIPhoneModeDisplayLinkTargetInstance) {
+        LCRealIPhoneModeDisplayLinkTargetInstance = [LCRealIPhoneModeDisplayLinkTarget new];
     }
-    dispatch_source_t timer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
-    dispatch_source_set_timer(timer, dispatch_time(DISPATCH_TIME_NOW, 0), 0.1 * NSEC_PER_SEC, 0.02 * NSEC_PER_SEC);
-    __block int ticksRemaining = 30; // 30 * 0.1s = 3s
-    dispatch_source_set_event_handler(timer, ^{
-        [self repositionAllWindows];
-        ticksRemaining -= 1;
-        if (ticksRemaining <= 0) {
-            dispatch_source_cancel(timer);
-            if (currentTimer == timer) currentTimer = nil;
-        }
-    });
-    currentTimer = timer;
-    dispatch_resume(timer);
+    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:LCRealIPhoneModeDisplayLinkTargetInstance
+                                                       selector:@selector(tick:)];
+    // Common run loop modes so this keeps ticking during UI tracking (e.g.
+    // scroll views, drags) rather than pausing exactly when a gesture might
+    // be actively resizing something.
+    [link addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
+    LCRealIPhoneModeDisplayLink = link;
+}
+
++ (void)stopEnforcing {
+    if (!LCRealIPhoneModeDisplayLink) return;
+    [LCRealIPhoneModeDisplayLink invalidate];
+    LCRealIPhoneModeDisplayLink = nil;
 }
 @end
 
