@@ -470,11 +470,12 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     }
     CGFloat offsetX = 0;
     CGFloat constrainedW = viewW;
-    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-        constrainedW = MIN(viewH * (9.0 / 16.0), viewW);
-        offsetX = (viewW - constrainedW) / 2.0;
+    if (LCRealIPhoneModeEnabled()) {
+        CGRect constrained = LCRealIPhoneModeConstrainedRect(CGRectMake(0, 0, viewW, viewH));
+        constrainedW = constrained.size.width;
+        offsetX = constrained.origin.x;
         _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingNone;
-        _appSceneVC.contentView.frame = CGRectMake(offsetX, 0, constrainedW, viewH);
+        _appSceneVC.contentView.frame = constrained;
     } else {
         _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         _appSceneVC.contentView.frame = CGRectMake(0, 0, viewW, viewH);
@@ -617,8 +618,21 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     self.resizeHandle.frame = CGRectMake(self.view.frame.size.width - handleSize, self.view.frame.size.height - handleSize, handleSize, handleSize);
     CGFloat viewW = self.view.frame.size.width / self.scaleRatio;
     CGFloat viewH = (self.view.frame.size.height - self.navigationBar.frame.size.height) / self.scaleRatio;
-    
-    _appSceneVC.contentView.frame = CGRectMake(0, 0, viewW, viewH);
+
+    // This call site was tagged as a Real iPhone Mode spot but never actually
+    // applied the crop — it always set contentView to the full uncropped
+    // rect, so every tick of a live drag-resize flashed uncropped content
+    // until the next unrelated layout pass happened to call
+    // -viewWillLayoutSubviews and correct it. Route through the same shared
+    // helper as every other call site so dragging the resize handle can't
+    // desync from windowed/maximized/initial-launch behavior again.
+    if (LCRealIPhoneModeEnabled()) {
+        _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingNone;
+        _appSceneVC.contentView.frame = LCRealIPhoneModeConstrainedRect(CGRectMake(0, 0, viewW, viewH));
+    } else {
+        _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+        _appSceneVC.contentView.frame = CGRectMake(0, 0, viewW, viewH);
+    }
     [self.appSceneVC updateFrameWithSettingsBlock:nil];
 }
 
