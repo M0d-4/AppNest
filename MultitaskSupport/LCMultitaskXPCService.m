@@ -6,6 +6,7 @@
 //
 
 #import <Foundation/Foundation.h>
+#import "utils.h"
 #import "LCMultitaskXPCService.h"
 
 @implementation LCMultitaskXPCServiceHandler
