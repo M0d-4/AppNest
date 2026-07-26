@@ -10,6 +10,29 @@
 
 extern const UIApplication *UIApp;
 
+// Real iPhone Mode: single source of truth for the 9:16 constrained content
+// rect within a given available area. This formula used to be hand-copied at
+// four separate call sites across AppSceneViewController and
+// DecoratedAppSceneViewController (initial scene settings, per-frame layout,
+// the debounced settings-frame update, and the windowed/maximized resize
+// path) — each written slightly differently (some against .frame, some
+// against .bounds, some before/after dividing by scaleRatio). That kind of
+// duplication is exactly what let the crop drift out of sync between
+// windowed, maximized, and initial-launch states whenever only one copy got
+// fixed. Every call site should route through this instead of recomputing it.
+static inline CGRect LCRealIPhoneModeConstrainedRect(CGRect availableBounds) {
+    CGFloat availW = availableBounds.size.width;
+    CGFloat availH = availableBounds.size.height;
+    if (availW <= 0 || availH <= 0) return availableBounds;
+    CGFloat targetW = MIN(availW, availH * (9.0 / 16.0));
+    CGFloat offsetX = availableBounds.origin.x + (availW - targetW) / 2.0;
+    return CGRectMake(offsetX, availableBounds.origin.y, targetW, availH);
+}
+
+static inline BOOL LCRealIPhoneModeEnabled(void) {
+    return [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"];
+}
+
 @interface LSResourceProxy : NSObject
     @property (setter=_setLocalizedName:,nonatomic,copy) NSString *localizedName;
 @end
