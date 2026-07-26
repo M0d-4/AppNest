@@ -10,6 +10,18 @@
 
 extern const UIApplication *UIApp;
 
+// Forward-declared rather than imported from LiveContainer/utils.h or
+// TweakLoader/utils.h (where the category is actually implemented): this
+// header is included from multiple targets with different header search
+// paths — notably LiveProcess, via LiveProcessHandler.h ->
+// LCMultitaskXPCService.h -> here — and at least one of those targets never
+// imports either utils.h. A plain interface re-declaration (matching what
+// each target's own utils.h already declares) makes the signature visible
+// here without coupling this header to one target's file layout.
+@interface NSUserDefaults (LCRealIPhoneModeSharedDefaultsForwardDecl)
++ (instancetype)lcSharedDefaults;
+@end
+
 // Real iPhone Mode: single source of truth for the 9:16 constrained content
 // rect within a given available area. This formula used to be hand-copied at
 // four separate call sites across AppSceneViewController and
