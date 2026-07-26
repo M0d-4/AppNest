@@ -28,6 +28,23 @@ extern void _objc_msgForward(void);
 // which appears earlier in the file, can use them too.
 static BOOL LCShouldApplyRealIPhoneModeCrop(UIWindow *window);
 static CGRect LCRealIPhoneModeCroppedFrame(CGRect frame);
+// Unlike the crop above, idiom spoofing isn't gated on "not multitask" —
+// whether the guest process is hosted standalone or inside a multitask
+// tile, it should always report being a phone once the feature is on. It's
+// also unrelated to window geometry entirely: no amount of resizing the
+// window changes what UIDevice/UITraitCollection report, and a lot of apps
+// pick their whole UI paradigm (split view vs. plain stack, popovers vs.
+// full-screen sheets, iPad-specific storyboards) off that idiom check
+// rather than off actual window size. That's what made standalone launches
+// still "look like an iPad app" even once the crop itself was working
+// correctly: the crop only ever changed what's on screen, never what the
+// app believes the device to be.
+static BOOL LCShouldReportPhoneIdiom(void) {
+    if (![NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) return NO;
+    NSString *lcappid = NSUserDefaults.lcGuestAppId;
+    if ([lcappid.lowercaseString containsString:@"sidestore"]) return NO;
+    return YES;
+}
 UIInterfaceOrientation LCOrientationLock = UIInterfaceOrientationUnknown;
 NSMutableArray<NSString*>* LCSupportedUrlSchemes = nil;
 BOOL strictTestMode = NO;
@@ -223,6 +240,14 @@ static void Real_UIKitGuestHooksInit(void) {
               [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]);
         swizzle(UIWindow.class, @selector(setFrame:), @selector(hook_setFrame:));
         swizzle(UIScreen.class, @selector(bounds), @selector(hook_UIScreen_bounds));
+        // Crop-related hooks only fire for actual window geometry. Idiom
+        // spoofing is a separate concern (see LCShouldReportPhoneIdiom above)
+        // and needs its own swizzles: UI_USER_INTERFACE_IDIOM() expands to
+        // -[UIDevice userInterfaceIdiom], but plenty of code reads idiom off
+        // a UITraitCollection instead (traitCollectionDidChange:, size-class
+        // adaptive presentation controllers, etc.), so both need covering.
+        swizzle(UIDevice.class, @selector(userInterfaceIdiom), @selector(hook_userInterfaceIdiom));
+        swizzle(UITraitCollection.class, @selector(userInterfaceIdiom), @selector(hook_traitCollection_userInterfaceIdiom));
         // Scene-managed windows are sized directly by the window scene (or, in
         // multitask, by the host sending FBSSceneSettings over XPC) and often
         // never call the public -setFrame: setter at all, so the swizzle above
@@ -1114,6 +1139,20 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     return YES;
 }
 
+@end
+
+@implementation UIDevice (LCRealIPhoneModeIdiom)
+- (UIUserInterfaceIdiom)hook_userInterfaceIdiom {
+    if (LCShouldReportPhoneIdiom()) return UIUserInterfaceIdiomPhone;
+    return [self hook_userInterfaceIdiom];
+}
+@end
+
+@implementation UITraitCollection (LCRealIPhoneModeIdiom)
+- (UIUserInterfaceIdiom)hook_traitCollection_userInterfaceIdiom {
+    if (LCShouldReportPhoneIdiom()) return UIUserInterfaceIdiomPhone;
+    return [self hook_traitCollection_userInterfaceIdiom];
+}
 @end
 
 @implementation UIScreen (LiveContainerHook)
