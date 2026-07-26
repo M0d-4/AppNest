@@ -1140,7 +1140,7 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
         // resizes do.
         if (!LCShouldApplyRealIPhoneModeCrop(window)) continue;
         CGRect targetFrame = LCRealIPhoneModeCroppedFrame(window.frame);
-        window.layer.frame = targetFrame;
+        window.frame = targetFrame;
     }
     [CATransaction commit];
 }
