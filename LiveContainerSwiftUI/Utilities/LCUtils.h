@@ -12,6 +12,7 @@ typedef NS_ENUM(NSInteger, Store){
 
 void refreshFile(NSString* execPath);
 int dyld_get_program_sdk_version(void);
+uint32_t dyld_get_sdk_version(const struct mach_header* mh);
 
 @interface PKZipArchiver : NSObject
 
@@ -75,3 +76,4 @@ typedef NS_ENUM(NSInteger, GeneratedIconStyle){
 @end
 BOOL saveCGImage(CGImageRef image, NSURL *url);
 CGImageRef loadCGImageFromURL(NSURL *url);
+NSNumber *LCGetDefaultClassicMode(NSURL *appURL);

@@ -1512,6 +1512,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1547,6 +1548,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				OTHER_LDFLAGS = "-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1809,6 +1811,12 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 3.7.11;
+				OTHER_LDFLAGS = (
+					"-Wl,-U,_OBJC_CLASS_$__LSOpenConfiguration",
+					"-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace",
+					"-Wl,-U,_FBSOpenApplicationOptionKeyActivateAsClassic",
+					"-Wl,-U,_FBSOpenApplicationOptionKeyPayloadURL",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1846,6 +1854,12 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 3.7.11;
+				OTHER_LDFLAGS = (
+					"-Wl,-U,_OBJC_CLASS_$__LSOpenConfiguration",
+					"-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace",
+					"-Wl,-U,_FBSOpenApplicationOptionKeyActivateAsClassic",
+					"-Wl,-U,_FBSOpenApplicationOptionKeyPayloadURL",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2101,7 +2115,11 @@
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				OTHER_CFLAGS = "-fcommon";
-				OTHER_LDFLAGS = "";
+				OTHER_LDFLAGS = (
+					"-Wl,-U,_OBJC_CLASS_$__LSOpenConfiguration",
+					"-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace",
+					"-Wl,-U,_FBSOpenApplicationOptionKeyActivateAsClassic",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.kdt.livecontainer.LiveContainerShared;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
@@ -2143,7 +2161,11 @@
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				OTHER_CFLAGS = "-fcommon";
-				OTHER_LDFLAGS = "";
+				OTHER_LDFLAGS = (
+					"-Wl,-U,_OBJC_CLASS_$__LSOpenConfiguration",
+					"-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace",
+					"-Wl,-U,_FBSOpenApplicationOptionKeyActivateAsClassic",
+				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.kdt.livecontainer.LiveContainerShared;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;

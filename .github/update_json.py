@@ -14,7 +14,7 @@ def prepare_description(text):
     text = re.sub(r'\r\n\r\n', '\r \n', text) # Replace \r\n\r\n with \r \n (avoid incorrect display of the description regarding paragraphs)
     return text
 
-def fetch_latest_release(repo_url):
+def fetch_latest_release(repo_url, is_nightly: bool):
     api_url = f"https://api.github.com/repos/{repo_url}/releases"
     headers = {
         "Accept": "application/vnd.github+json",
@@ -22,8 +22,12 @@ def fetch_latest_release(repo_url):
     try:
         response = requests.get(api_url, headers=headers)
         response.raise_for_status()
-        release = response.json()
-        return release
+        releases = response.json()
+        latest_release = next((
+            release for release in releases
+            if (release["tag_name"] == "nightly") == is_nightly
+        ), None)
+        return [latest_release] if latest_release else []
     except requests.RequestException as e:
         print(f"Error fetching releases: {e}")
         raise
@@ -332,7 +336,7 @@ def main():
     is_nightly = "NIGHTLY_LINK" in os.environ
 
     try:
-        fetched_data_latest = fetch_latest_release(repo_url)
+        fetched_data_latest = fetch_latest_release(repo_url, is_nightly)
         if is_nightly:
             json_file = "./.github/apps_nightly.json"
             update_json_file_nightly(json_file, fetched_data_latest)

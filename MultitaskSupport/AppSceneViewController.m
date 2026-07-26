@@ -285,8 +285,8 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         clientSettings.statusBarStyle = 0;
     };
 
-    if (@available(iOS 17.4, *)) {
-        // Use new API for iOS 17+. While some of these APIs are available since 17.0, we're only interested in fixing event deferring issue
+    if (@available(iOS 18.0, *)) {
+        // Use new API for iOS 18+. While some of these APIs are available since 17.0, we're only interested in fixing event deferring issue
         _UISceneHostingControllerAdvancedConfiguration *config = [[_UISceneHostingControllerAdvancedConfiguration alloc] initWithProcessIdentity:processHandle.identity];
         config.sceneSpecification = specification;
         if (@available(iOS 27.0, *)) {} else {
@@ -458,7 +458,7 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         return;
     }
     
-    /// iOS 17.4 path, most are automatically handled by setting values to _UISceneHostingViewController
+    /// iOS 18.0 path, most are automatically handled by setting values to _UISceneHostingViewController
     /// This is also reachable on legacy path when contentView is nil during early setup
     UIMutableApplicationSceneSettings *tempSettings = [self.presenter.scene.settings mutableCopy];
     if(!tempSettings) {

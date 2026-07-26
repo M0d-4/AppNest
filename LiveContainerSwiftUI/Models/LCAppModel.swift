@@ -5,8 +5,8 @@ protocol LCAppModelDelegate {
     func closeNavigationView()
     func changeAppVisibility(app : LCAppModel)
     func appLaunchAvailabilityDidChange()
-    func jitLaunch(appName: String) async
-    func jitLaunch(withScript script: String, appName: String) async
+    func jitLaunch(appName: String, classicMode: UInt) async
+    func jitLaunch(withScript script: String, appName: String, classicMode: UInt) async
     func jitLaunch(withPID pid: Int, withScript script: String?, appName: String) async
     func showRunWhenMultitaskAlert() async -> Bool?
 }
@@ -23,6 +23,11 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
     @Published var uiIsJITNeeded : Bool {
         didSet {
             appInfo.isJITNeeded = uiIsJITNeeded
+        }
+    }
+    @Published var uiClassicMode : Bool {
+        didSet {
+            appInfo.classicMode = uiClassicMode
         }
     }
     @Published var uiIsHidden : Bool
@@ -728,6 +733,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         }
         
         self.uiIsJITNeeded = appInfo.isJITNeeded
+        self.uiClassicMode = appInfo.classicMode
         self.uiIsHidden = appInfo.isHidden
         self.uiIsLocked = appInfo.isLocked
         self.uiIsShared = appInfo.isShared
@@ -1261,7 +1267,8 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         is32bit = appInfo.is32bit
         #endif
 
-        var shouldMultitask = multitask ?? shouldLaunchInMultitaskMode
+        let classicMode = appInfo.defaultClassicMode
+        var shouldMultitask = classicMode == 0 ? (multitask ?? shouldLaunchInMultitaskMode) : false
         let jitEnabler = JITEnablerType(rawValue: LCUtils.appGroupUserDefault.integer(forKey: "LCJITEnablerType"))
         let supportsPIDJIT = jitEnabler == .StikJIT || jitEnabler == .StikJITLC || jitEnabler == .StosDebug || jitEnabler == .StosDebugLC
         if (appInfo.isJITNeeded || is32bit) && !supportsPIDJIT {
@@ -1394,9 +1401,9 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
                 } else {
                     // Non-multitask JIT flow remains unchanged
                     if let scriptData = jitLaunchScriptJs, !scriptData.isEmpty {
-                        await delegate?.jitLaunch(withScript: scriptData, appName: self.appInfo.displayName())
+                        await delegate?.jitLaunch(withScript: scriptData, appName: self.appInfo.displayName(), classicMode: classicMode)
                     } else {
-                        await delegate?.jitLaunch(appName: self.appInfo.displayName())
+                        await delegate?.jitLaunch(appName: self.appInfo.displayName(), classicMode: classicMode)
                     }
                 }
             } else if shouldMultitask, #available(iOS 16.0, *) {
@@ -1407,7 +1414,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
                     let fileURL = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask)[0].appendingPathComponent("preloadLibraries.txt")
                     try fileContents?.write(to: fileURL)
                 }
-                LCSharedUtils.launchToGuestApp()
+                LCSharedUtils.launchToGuestApp(withClassicMode: classicMode)
             }
             
             // Record the launch time

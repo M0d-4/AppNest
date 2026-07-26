@@ -2480,6 +2480,16 @@ struct LCAppSettingsView: View {
             }
             
             Section {
+            if #available(iOS 16.0, *) {
+                Section {
+                    Toggle(isOn: $model.uiClassicMode) {
+                        Text("lc.appSettings.classicMode".loc)
+                    }
+                } footer: {
+                    Text("lc.appSettings.classicModeDesc".loc)
+                }
+            }
+            
                 Toggle(isOn: $model.uiSpoofSDKVersion) {
                     Text("lc.appSettings.spoofSDKVersion".loc)
                 }
