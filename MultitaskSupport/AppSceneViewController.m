@@ -482,11 +482,8 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         // view back to flush-left, which is what made it drift left instead
         // of staying centered in multitask.
         CGFloat originX = 0;
-        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && self.presenter.presentationView) {
-            CGFloat viewW = self.view.bounds.size.width;
-            CGFloat viewH = self.view.bounds.size.height;
-            CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
-            originX = (viewW - targetW) / 2.0;
+        if (LCRealIPhoneModeEnabled() && self.presenter.presentationView) {
+            originX = LCRealIPhoneModeConstrainedRect(self.view.bounds).origin.x;
         }
         frame.origin = CGPointMake(originX, 0);
         self.contentView.frame = frame;
@@ -501,17 +498,13 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
 //⭐️⭐️⭐️Real iPhone mode + multitask mode
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
-    CGFloat viewW = self.view.bounds.size.width;
-    CGFloat viewH = self.view.bounds.size.height;
     if (self.presenter.presentationView) {
-        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-            CGFloat targetW = MIN(viewH * (9.0 / 16.0), viewW);
-            CGFloat offsetX = (viewW - targetW) / 2.0;
+        if (LCRealIPhoneModeEnabled()) {
             self.contentView.autoresizingMask = UIViewAutoresizingNone;
-            self.contentView.frame = CGRectMake(offsetX, 0, targetW, viewH);
+            self.contentView.frame = LCRealIPhoneModeConstrainedRect(self.view.bounds);
         } else {
             self.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
-            self.contentView.frame = CGRectMake(0, 0, viewW, viewH);
+            self.contentView.frame = self.view.bounds;
         }
     }
     [self updateFrameWithSettingsBlock:self.nextUpdateSettingsBlock];
@@ -531,10 +524,10 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         CGFloat w = self.view.frame.size.width / self.scaleRatio;
         CGFloat h = self.view.frame.size.height / self.scaleRatio;
         CGFloat offsetX = 0;
-        if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) {
-            CGFloat targetW = MIN(h * (9.0 / 16.0), w);
-            offsetX = (w - targetW) / 2.0;
-            w = targetW;
+        if (LCRealIPhoneModeEnabled()) {
+            CGRect constrained = LCRealIPhoneModeConstrainedRect(CGRectMake(0, 0, w, h));
+            offsetX = constrained.origin.x;
+            w = constrained.size.width;
         }
         CGRect frame = CGRectMake(offsetX, 0, w, h);
 
