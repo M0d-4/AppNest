@@ -124,8 +124,6 @@ NSString* FBSOpenApplicationOptionKeyPayloadURL = @"__PayloadURL";
 }
 
 + (BOOL)launchToGuestAppWithClassicMode:(NSUInteger)classicMode {
-    NSString *urlScheme = nil;
-
     void (^completionHandler)(BOOL) = ^(BOOL success) {
         // syscall(SYS_ptrace, PT_DENY_ATTACH, 0, 0, 0);
         __asm__ __volatile__ (
@@ -137,16 +135,19 @@ NSString* FBSOpenApplicationOptionKeyPayloadURL = @"__PayloadURL";
     };
     
     if (!self.certificatePassword) {
+        NSString *urlScheme = nil;
         NSString *tsPath = [NSString stringWithFormat:@"%@/../_TrollStore", NSBundle.mainBundle.bundlePath];
         if (!access(tsPath.UTF8String, F_OK)) {
             urlScheme = @"apple-magnifier://enable-jit?bundle-id=%@";
         }
-        NSURL *launchURL = [NSURL URLWithString:[NSString stringWithFormat:urlScheme, NSBundle.mainBundle.bundleIdentifier]];
-        UIApplication *application = [NSClassFromString(@"UIApplication") sharedApplication];
-        [application openURL:launchURL options:@{} completionHandler:completionHandler];
-        return YES;
+        
+        if(urlScheme) {
+            NSURL *launchURL = [NSURL URLWithString:[NSString stringWithFormat:urlScheme, NSBundle.mainBundle.bundleIdentifier]];
+            UIApplication *application = [NSClassFromString(@"UIApplication") sharedApplication];
+            [application openURL:launchURL options:@{} completionHandler:completionHandler];
+            return YES;
+        }
     }
-
 
     int tries = 2;
     _LSOpenConfiguration *configuration = [[PrivClass(_LSOpenConfiguration) alloc] init];
