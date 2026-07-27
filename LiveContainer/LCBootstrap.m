@@ -1285,7 +1285,18 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, NSSetUncaughtExceptionHandler, hook_do_nothing, nil);
     
     BOOL hookDlopen = !isSideStore && !isSharedBundle && LCSharedUtils.certificatePassword && isLiveProcess;
-    DyldHooksInit([guestAppInfo[@"hideLiveContainer"] boolValue], hookDlopen, [guestAppInfo[@"spoofSDKVersion"] unsignedIntValue]);
+    // SDK version spoofing overrides dyld_program_sdk_at_least/dyld_get_program_sdk_version,
+    // which CoreData's store-loading path (NSPersistentContainer ->
+    // NSPersistentStoreCoordinator) branches its internal behavior on. Feeding
+    // SideStore's bundled AltStoreCore a fake SDK version makes that codepath
+    // assume a different object shape than what's actually present at
+    // runtime, which is what crashes it with "unrecognized selector sent to
+    // instance" inside its persistent store setup. Same category of
+    // incompatibility as the other isSideStore special-cases in this file —
+    // force it off for SideStore regardless of the per-app setting, rather
+    // than leave a user-configurable option that reliably crashes this one app.
+    uint32_t spoofSDKVersion = isSideStore ? 0 : [guestAppInfo[@"spoofSDKVersion"] unsignedIntValue];
+    DyldHooksInit([guestAppInfo[@"hideLiveContainer"] boolValue], hookDlopen, spoofSDKVersion);
     
     // IDFV spoofing is handled by UIKit+GuestHooks.m via UIDevice.identifierForVendor swizzle,
     // which supports both blocking (blockDeviceInfoReads) and spoofing with a stable public API.
