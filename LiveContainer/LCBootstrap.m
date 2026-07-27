@@ -806,7 +806,17 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     }
     
     // Initialize Ghost-style device spoofing (profile-based with per-feature overrides)
-    BOOL useProfileSpoofing = [guestAppInfo[@"deviceSpoofingEnabled"] boolValue];
+    //
+    // Same failure category as the spoofSDKVersion fix above: SideStore's own
+    // code makes @available / OS-version-gated decisions, and spoofing
+    // UIDevice.systemVersion / NSProcessInfo.operatingSystemVersion to a
+    // profile value (e.g. "18.1") that doesn't match the real OS actually
+    // running lets it decide a class/method is (or isn't) available when the
+    // real runtime disagrees — that's the same class of "unrecognized
+    // selector" crash as before, just from a different spoofed value.
+    // Force it off for SideStore regardless of the per-app setting, same as
+    // spoofSDKVersion.
+    BOOL useProfileSpoofing = !isSideStore && [guestAppInfo[@"deviceSpoofingEnabled"] boolValue];
     BOOL legacyContainerIDFVEnabled = [guestContainerInfo[@"spoofIdentifierForVendor"] boolValue];
     LCDeviceSpoofingBeginConfiguration();
     LCSetDeviceSpoofingEnabled(NO);
