@@ -1233,6 +1233,14 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         let finalForceIPhone = !isHostDeviceIPhone && uiForceIPhoneMode
         LCUtils.appGroupUserDefault.set(finalForceIPhone, forKey: "LCRealIPhoneMode")
         LCUtils.appGroupUserDefault.set(isMultitask ?? false, forKey: "LCIsMultitaskLaunch")
+        // Both launch modes share this one write, so if forced iPhone mode is
+        // failing in both simultaneously, the shared inputs here (rather than
+        // anything mode-specific downstream) are the first thing to check.
+        // Logging them directly instead of guessing again: this line should
+        // show up in Console right at launch and settle whether
+        // isHostDeviceIPhone/uiForceIPhoneMode are what's expected before
+        // looking any further downstream.
+        NSLog("[AppNest] syncIPhoneMode: isHostDeviceIPhone=\(isHostDeviceIPhone) uiForceIPhoneMode=\(uiForceIPhoneMode) -> LCRealIPhoneMode=\(finalForceIPhone), isMultitask=\(isMultitask ?? false)")
         // These are read by the guest process almost immediately after it spawns;
         // make sure the write has actually propagated through the app-group
         // suite before we hand off, rather than relying on the OS to flush it
