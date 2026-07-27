@@ -45,6 +45,24 @@ static BOOL LCShouldReportPhoneIdiom(void) {
     if ([lcappid.lowercaseString containsString:@"sidestore"]) return NO;
     return YES;
 }
+// horizontalSizeClass is a *system-computed* trait — it comes from the real
+// window scene's assigned size, not from our local window.frame crop. In
+// multitask, the host actually tells the system the guest's scene is
+// narrower (see updateSettingsWithBlock: in AppSceneViewController, which
+// routes through the shared crop helper), so the system correctly computes
+// Compact width on its own there — no override needed or wanted. Standalone
+// launches never touch the real scene size at all, only our own window's
+// local frame, so the system still sees a full-width iPad scene and reports
+// Regular width regardless of the visual crop. Apps that adapt via size
+// class (the more modern, Apple-recommended alternative to checking idiom
+// directly) stay in iPad-style layout there unless we force this too.
+static BOOL LCShouldForceCompactWidthTraitCollection(void) {
+    if (![NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) return NO;
+    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCIsMultitaskLaunch"]) return NO;
+    NSString *lcappid = NSUserDefaults.lcGuestAppId;
+    if ([lcappid.lowercaseString containsString:@"sidestore"]) return NO;
+    return YES;
+}
 UIInterfaceOrientation LCOrientationLock = UIInterfaceOrientationUnknown;
 NSMutableArray<NSString*>* LCSupportedUrlSchemes = nil;
 BOOL strictTestMode = NO;
@@ -248,6 +266,7 @@ static void Real_UIKitGuestHooksInit(void) {
         // adaptive presentation controllers, etc.), so both need covering.
         swizzle(UIDevice.class, @selector(userInterfaceIdiom), @selector(hook_userInterfaceIdiom));
         swizzle(UITraitCollection.class, @selector(userInterfaceIdiom), @selector(hook_traitCollection_userInterfaceIdiom));
+        swizzle(UITraitCollection.class, @selector(horizontalSizeClass), @selector(hook_traitCollection_horizontalSizeClass));
         // Scene-managed windows are sized directly by the window scene (or, in
         // multitask, by the host sending FBSSceneSettings over XPC) and often
         // never call the public -setFrame: setter at all, so the swizzle above
@@ -1152,6 +1171,10 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 - (UIUserInterfaceIdiom)hook_traitCollection_userInterfaceIdiom {
     if (LCShouldReportPhoneIdiom()) return UIUserInterfaceIdiomPhone;
     return [self hook_traitCollection_userInterfaceIdiom];
+}
+- (UIUserInterfaceSizeClass)hook_traitCollection_horizontalSizeClass {
+    if (LCShouldForceCompactWidthTraitCollection()) return UIUserInterfaceSizeClassCompact;
+    return [self hook_traitCollection_horizontalSizeClass];
 }
 @end
 
