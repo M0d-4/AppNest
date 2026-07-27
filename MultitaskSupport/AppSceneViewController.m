@@ -309,8 +309,28 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         }];
         
         /// Fix keyboard focus by setting up event deferring extension. Previously we worked around it by changing identifier, but that broke other things
+        //
+        // _scenePresenter above needed valueForKey: instead of a direct property
+        // access because Apple moved it from a real property (iOS 26) to
+        // ivar-only (iOS 27). _eventDeferringComponent is read the "old" way
+        // below — the same pattern that just broke for its neighbor — so if
+        // keyboard focus silently stops working specifically on iOS 27 while
+        // still working on 26, this accessor moving the same way is the first
+        // thing to suspect. Falling back to valueForKey: here too so it keeps
+        // working either way regardless of which storage Apple uses this OS
+        // version. NSAssert is also a no-op in Release builds (NS_BLOCK_ASSERTIONS),
+        // so a nil deferringComponent previously wouldn't have crashed OR
+        // logged anything — it would have just made every line below a silent
+        // no-op message-to-nil, which matches "keyboard doesn't load" exactly:
+        // no error, just nothing happening. Logging explicitly instead so a
+        // future regression here is visible rather than silent again.
         _UISceneEventDeferringHostComponent *deferringComponent = self.hostingController._eventDeferringComponent;
-        NSAssert(deferringComponent, @"Unexpectedly nil _UISceneEventDeferringHostComponent");
+        if (!deferringComponent) {
+            deferringComponent = [self.hostingController valueForKey:@"_eventDeferringComponent"];
+        }
+        if (!deferringComponent) {
+            NSLog(@"[AppNest] _UISceneEventDeferringHostComponent is nil — keyboard focus setup below will be skipped entirely.");
+        }
         if (@available(iOS 27.0, *)) { // _UIKeyboardArbiterUsesDeferringGraph()
             /// UIKitCore`__85-[_UIRemoteViewControllerSceneHostingImpl _viewServiceHostSessionDidConnectToClient:]_block_invoke
             /// iOS 27 requires setting up _UISceneEventDeferringHostComponent for keyboard focus to work
