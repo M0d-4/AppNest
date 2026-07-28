@@ -38,6 +38,7 @@
 @property(nonatomic) NSString *sceneID;
 @property(nonatomic) NSExtension* extension;
 @property(nonatomic) bool isAppTerminationCleanUpCalled;
+- (void)lc_setupKeyboardEventDeferringWithRetriesRemaining:(int)retriesRemaining;
 @end
 
 static UIInterfaceOrientation LCInterfaceOrientationForView(UIView *view) {
@@ -310,43 +311,19 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         
         /// Fix keyboard focus by setting up event deferring extension. Previously we worked around it by changing identifier, but that broke other things
         //
-        // _scenePresenter above needed valueForKey: instead of a direct property
-        // access because Apple moved it from a real property (iOS 26) to
-        // ivar-only (iOS 27). _eventDeferringComponent is read the "old" way
-        // below — the same pattern that just broke for its neighbor — so if
-        // keyboard focus silently stops working specifically on iOS 27 while
-        // still working on 26, this accessor moving the same way is the first
-        // thing to suspect. Falling back to valueForKey: here too so it keeps
-        // working either way regardless of which storage Apple uses this OS
-        // version. NSAssert is also a no-op in Release builds (NS_BLOCK_ASSERTIONS),
-        // so a nil deferringComponent previously wouldn't have crashed OR
-        // logged anything — it would have just made every line below a silent
-        // no-op message-to-nil, which matches "keyboard doesn't load" exactly:
-        // no error, just nothing happening. Logging explicitly instead so a
-        // future regression here is visible rather than silent again.
-        _UISceneEventDeferringHostComponent *deferringComponent = self.hostingController._eventDeferringComponent;
-        if (!deferringComponent) {
-            deferringComponent = [self.hostingController valueForKey:@"_eventDeferringComponent"];
-        }
-        if (!deferringComponent) {
-            NSLog(@"[AppNest] _UISceneEventDeferringHostComponent is nil — keyboard focus setup below will be skipped entirely.");
-        }
-        if (@available(iOS 27.0, *)) { // _UIKeyboardArbiterUsesDeferringGraph()
-            /// UIKitCore`__85-[_UIRemoteViewControllerSceneHostingImpl _viewServiceHostSessionDidConnectToClient:]_block_invoke
-            /// iOS 27 requires setting up _UISceneEventDeferringHostComponent for keyboard focus to work
-
-            /// Replicate these methods since they are made private
-            /// -[_UISceneEventDeferringHostComponent setFirstResponderTrackingSelectionPath:]:
-            [deferringComponent setValue:self forKey:@"_firstResponderTrackingSelectionPath"];
-            // if (!deferringComponent->_flags.clientIsInChain) return;
-            /// -[_UISceneEventDeferringHostComponent becomeFirstResponderIfNecessary]:
-            // if (deferringComponent->_flags.maintainHostFirstResponderWhenClientWantsKeyboard)
-
-            deferringComponent.grantBehavior = 2;
-            deferringComponent.selectionRequestBehavior = 2;
-        }
-        /// UIKitCore`-[_UISceneHostingController createSceneWithConfiguration:]
-        /// Lower iOS uses _UISceneHostingEventDeferringExtension, no further setup needed
+        // This used to read _eventDeferringComponent synchronously, right here,
+        // immediately after allocating _UISceneHostingController. Two separate
+        // things could make that come back nil: Apple moved _scenePresenter
+        // (right above this) from a real property (iOS 26) to ivar-only (iOS
+        // 27), and _eventDeferringComponent is read the same "old" way that
+        // just broke for its neighbor -- but scene connection to a hosted
+        // process is also inherently asynchronous (cross-process XPC to
+        // FrontBoard), so this component may simply not exist *yet* at this
+        // exact point in the call stack, regardless of naming. Rather than
+        // assume which of the two is responsible, -lc_setupKeyboardEventDeferringWithRetriesRemaining:
+        // handles both: it tries the KVC fallback, and if still nil, retries
+        // on a short delay instead of giving up after one synchronous check.
+        [self lc_setupKeyboardEventDeferringWithRetriesRemaining:20]; // 20 * 50ms = up to ~1s
 
         [self addChildViewController:self.hostingController.sceneViewController];
         // _scenePresenter was a property in 26, but made only ivar in 27
@@ -414,6 +391,51 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     // Acquire foreground assertions for WebKit child processes (WebContent, GPU)
     // to prevent iOS 17+ from throttling their display link / rendering pipeline
     [self acquireForegroundAssertionForChildProcesses];
+}
+
+// See the call site's comment above for why this retries instead of checking
+// once. iOS-27-only: pre-27 doesn't need _eventDeferringComponent at all (see
+// the additionalExtensions branch above), so there's nothing to retry there.
+- (void)lc_setupKeyboardEventDeferringWithRetriesRemaining:(int)retriesRemaining {
+    if (@available(iOS 27.0, *)) {} else { return; }
+    if (!self.hostingController) return; // torn down already; nothing to do
+
+    _UISceneEventDeferringHostComponent *deferringComponent = self.hostingController._eventDeferringComponent;
+    if (!deferringComponent) {
+        // _scenePresenter needed valueForKey: instead of a direct property
+        // access because Apple moved it from a real property (iOS 26) to
+        // ivar-only (iOS 27) — same class of change this accessor could have
+        // gone through too.
+        deferringComponent = [self.hostingController valueForKey:@"_eventDeferringComponent"];
+    }
+    if (!deferringComponent) {
+        if (retriesRemaining > 0) {
+            __weak typeof(self) weakSelf = self;
+            dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.05 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+                [weakSelf lc_setupKeyboardEventDeferringWithRetriesRemaining:retriesRemaining - 1];
+            });
+            return;
+        }
+        // NSAssert here previously would have been a no-op in Release builds
+        // (NS_BLOCK_ASSERTIONS) even on total failure, matching "keyboard
+        // doesn't load" exactly: no crash, no log, every line below just a
+        // silent no-op message-to-nil. Logging explicitly instead.
+        NSLog(@"[AppNest] _UISceneEventDeferringHostComponent stayed nil after ~1s of retrying — keyboard focus setup skipped entirely.");
+        return;
+    }
+
+    /// UIKitCore`__85-[_UIRemoteViewControllerSceneHostingImpl _viewServiceHostSessionDidConnectToClient:]_block_invoke
+    /// iOS 27 requires setting up _UISceneEventDeferringHostComponent for keyboard focus to work
+
+    /// Replicate these methods since they are made private
+    /// -[_UISceneEventDeferringHostComponent setFirstResponderTrackingSelectionPath:]:
+    [deferringComponent setValue:self forKey:@"_firstResponderTrackingSelectionPath"];
+    // if (!deferringComponent->_flags.clientIsInChain) return;
+    /// -[_UISceneEventDeferringHostComponent becomeFirstResponderIfNecessary]:
+    // if (deferringComponent->_flags.maintainHostFirstResponderWhenClientWantsKeyboard)
+
+    deferringComponent.grantBehavior = 2;
+    deferringComponent.selectionRequestBehavior = 2;
 }
 
 - (void)setEnableVisibility:(BOOL)visible {
