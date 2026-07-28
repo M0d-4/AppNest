@@ -312,7 +312,20 @@ static NSDictionary *LCGuestAppInfoWithMergedAddonSettings(NSDictionary *appInfo
     return lcUserDefaults;
 }
 + (instancetype)lcSharedDefaults {
-    if(!lcUserDefaults) {
+    // Was checking `lcUserDefaults` (the *other* global, from the accessor
+    // right above) instead of `lcSharedDefaults` itself. Guest processes
+    // never hit this: LiveContainerMain sets both globals directly and
+    // unconditionally at boot, so this lazy path never actually runs there.
+    // But the host app's own SwiftUI entry point (LiveContainerSwiftUIApp)
+    // never calls LiveContainerMain — and the host process is exactly where
+    // AppSceneViewController/DecoratedAppSceneViewController run for
+    // multitask hosting, reading LCRealIPhoneMode through this accessor. If
+    // anything in the host touched +lcUserDefaults first (setting that
+    // global non-nil), this guard would then skip initializing
+    // lcSharedDefaults forever, and every multitask-side Real iPhone Mode
+    // check would silently read nil -> NO regardless of what was actually
+    // written.
+    if(!lcSharedDefaults) {
         lcSharedDefaults = [[NSUserDefaults alloc] initWithSuiteName: [LCSharedUtils appGroupID]];
     }
     return lcSharedDefaults;
