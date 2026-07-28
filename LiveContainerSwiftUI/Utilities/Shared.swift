@@ -102,7 +102,21 @@ class SharedModel: ObservableObject {
 
     
     static let isPhone: Bool = {
-        UIDevice.current.userInterfaceIdiom == .phone
+        // Deliberately not userInterfaceIdiom: Real iPhone Mode swizzles
+        // -[UIDevice userInterfaceIdiom] process-wide via
+        // method_exchangeImplementations, which can't be scoped or undone.
+        // Since this is a `static let`, if it's ever first evaluated in a
+        // process where that swizzle is active (e.g. LiveContainer's
+        // classic-mode relaunch resuming an existing suspended process
+        // instead of a truly fresh one, with leftover guest-mode state still
+        // sitting in the shared app-group defaults), this would cache a
+        // poisoned value for the rest of that process's life -- silently
+        // disabling Real iPhone Mode in *both* launch modes at once, since
+        // they share this one gate. UIDevice.model ("iPhone"/"iPad"/etc.) is
+        // a completely separate selector, untouched by that swizzle, so it
+        // stays correct regardless of any guest-mode state left over from a
+        // previous run in the same process.
+        UIDevice.current.model.hasPrefix("iPhone")
     }()
     
     static let isLiquidGlassEnabled = {
