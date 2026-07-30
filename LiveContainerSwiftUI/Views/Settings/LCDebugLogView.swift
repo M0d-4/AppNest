@@ -58,7 +58,7 @@ private struct LCActivityView: UIViewControllerRepresentable {
 }
 
 struct LCDebugLogDetailView: View {
-    let file: LCDebugLogFile
+    fileprivate let file: LCDebugLogFile
     @State private var text: String = ""
     @State private var showShareSheet = false
 
