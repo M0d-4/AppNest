@@ -17,14 +17,19 @@
 //
 //  Call LCDebugLogInstall(tag) once, as early as possible, in each process
 //  entry point -- before tweak loading / hook installation, so nothing gets
-//  missed. Safe to call more than once for the same tag (no-op after the
-//  first call within a process).
+//  missed. Only the FIRST call in a given process actually redirects
+//  stdout/stderr; later calls (even with a different tag) are no-ops. This
+//  matters because LiveProcessMain calls LCDebugLogInstall(@"liveprocess")
+//  and then, still in the same process, calls into LiveContainerMain, which
+//  calls LCDebugLogInstall(@"guest") -- without this guard the second call
+//  would silently re-redirect the fds to a different file, orphaning
+//  everything logged between the two calls (which is most of what a
+//  multitask launch actually does) in a file nobody's looking at.
 //
 //  To read the logs on-device: Settings > Debug Log in the app lists these
-//  files and lets you view/share/AirDrop them -- see LCDebugLogView.swift.
+//  files and lets you view/share/clear them -- see LCDebugLogView.swift.
 //
 #import <Foundation/Foundation.h>
-#import <dispatch/dispatch.h>
 #import "LCSharedUtils.h"
 
 NS_ASSUME_NONNULL_BEGIN
@@ -67,17 +72,13 @@ static inline void LCDebugLogTruncateIfNeeded(NSURL *fileURL) {
 }
 
 static inline void LCDebugLogInstall(NSString *tag) {
-    static NSMutableSet<NSString *> *installed;
-    static dispatch_once_t onceToken;
-    dispatch_once(&onceToken, ^{
-        installed = [NSMutableSet set];
-    });
-    @synchronized (installed) {
-        if ([installed containsObject:tag]) {
-            return;
-        }
-        [installed addObject:tag];
-    }
+    // Process-wide, not per-translation-unit: this header is #included
+    // separately into LCBootstrap.m, TweakLoader.m, and LiveProcess/main.m,
+    // each of which gets its own copy of any `static` variable declared
+    // here -- so a plain guard var wouldn't be seen across those files, but
+    // getenv/setenv is real process state and works everywhere.
+    if (getenv("LCDebugLogTag") != NULL) return;
+    setenv("LCDebugLogTag", tag.UTF8String, 1);
 
     NSURL *fileURL = LCDebugLogFileURL(tag);
     LCDebugLogTruncateIfNeeded(fileURL);
@@ -93,8 +94,7 @@ static inline void LCDebugLogInstall(NSString *tag) {
     setvbuf(stdout, NULL, _IOLBF, 0);
     setvbuf(stderr, NULL, _IOLBF, 0);
 
-    time_t now = time(NULL);
-    fprintf(stderr, "\n----- LCDebugLog: \"%s\" process started %s-----\n", tag.UTF8String, ctime(&now));
+    fprintf(stderr, "\n----- LCDebugLog: \"%s\" process started -----\n", tag.UTF8String);
 }
 
 NS_ASSUME_NONNULL_END

@@ -46,6 +46,18 @@ private func lcFormattedSize(_ bytes: Int) -> String {
     ByteCountFormatter.string(fromByteCount: Int64(bytes), countStyle: .file)
 }
 
+private func lcDeleteLogFile(_ file: LCDebugLogFile) {
+    try? FileManager.default.removeItem(at: file.url)
+}
+
+private func lcClearAllLogFiles() {
+    guard let dir = lcDebugLogDirectoryURL() else { return }
+    guard let urls = try? FileManager.default.contentsOfDirectory(at: dir, includingPropertiesForKeys: nil) else { return }
+    for url in urls where url.pathExtension == "log" {
+        try? FileManager.default.removeItem(at: url)
+    }
+}
+
 // Thin wrapper so a plain file URL can be handed to the system share sheet
 // (AirDrop / Files / Messages / Mail / etc.) -- this is the actual path to
 // getting the log off the device without a cable or Console.app.
@@ -106,6 +118,7 @@ struct LCDebugLogDetailView: View {
 
 struct LCDebugLogView: View {
     @State private var files: [LCDebugLogFile] = []
+    @State private var showClearAllConfirm = false
 
     var body: some View {
         List {
@@ -117,21 +130,38 @@ struct LCDebugLogView: View {
                 NavigationLink {
                     LCDebugLogDetailView(file: file)
                 } label: {
-                    VStack(alignment: .leading, spacing: 2) {
+                    HStack {
                         Text(file.name)
-                        HStack {
-                            Text(lcFormattedSize(file.sizeBytes))
-                            if let date = file.modifiedAt {
-                                Text(date, style: .relative)
-                            }
-                        }
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        Spacer()
+                        Text(lcFormattedSize(file.sizeBytes))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
+            .onDelete { offsets in
+                for index in offsets {
+                    lcDeleteLogFile(files[index])
+                }
+                files = lcListDebugLogFiles()
+            }
         }
         .navigationTitle("Debug Log")
+        .toolbar {
+            ToolbarItem(placement: .navigationBarTrailing) {
+                Button("Clear All") {
+                    showClearAllConfirm = true
+                }
+                .disabled(files.isEmpty)
+            }
+        }
+        .confirmationDialog("Clear all debug logs?", isPresented: $showClearAllConfirm, titleVisibility: .visible) {
+            Button("Clear All", role: .destructive) {
+                lcClearAllLogFiles()
+                files = lcListDebugLogFiles()
+            }
+            Button("Cancel", role: .cancel) {}
+        }
         .onAppear {
             files = lcListDebugLogFiles()
         }
