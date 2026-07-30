@@ -98,9 +98,9 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             appInfo.orientationLock = uiOrientationLock
         }
     }
-    @Published var uiForceIPhoneMode: Bool {
+    @Published var uiForceLandscapeMode: Bool {
         didSet {
-            appInfo.forceIPhoneMode = uiForceIPhoneMode
+            appInfo.forceLandscapeMode = uiForceLandscapeMode
         }
     }
     @Published var uiSelectedLanguage : String {
@@ -738,7 +738,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         self.uiIsLocked = appInfo.isLocked
         self.uiIsShared = appInfo.isShared
         self.uiSelectedLanguage = appInfo.selectedLanguage ?? ""
-        self.uiForceIPhoneMode = appInfo.forceIPhoneMode
+        self.uiForceLandscapeMode = appInfo.forceLandscapeMode
         self.uiDefaultDataFolder = appInfo.dataUUID
         self.uiContainers = appInfo.containers
         self.uiAddonSettingsContainerFolderName = appInfo.dataUUID ?? appInfo.containers.first?.folderName ?? ""
@@ -991,7 +991,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         self.uiSpoofCameraTransformFlip = appInfo.spoofCameraTransformFlip
 
         // Device spoofing
-        self.uiForceIPhoneMode = appInfo.forceIPhoneMode
+        self.uiForceLandscapeMode = appInfo.forceLandscapeMode
         self.uiDeviceSpoofingEnabled = appInfo.deviceSpoofingEnabled
         self.uiDeviceSpoofProfile = normalizedDeviceSpoofProfile(appInfo.deviceSpoofProfile)
         self.uiDeviceSpoofCustomVersion = appInfo.deviceSpoofCustomVersion ?? "26.3"
@@ -1210,37 +1210,31 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         hasher.combine(ObjectIdentifier(self))
     }
     
-    // True when this device itself is an iPhone. Forcing "iPhone mode" only makes
-    // sense on an iPad running an app in a wider layout, so the toggle is hidden
-    // and the mode is never applied when the host device is already an iPhone.
-    var isHostDeviceIPhone: Bool {
-        return SharedModel.isPhone
-    }
-    
-    // Determines whether this launch should run in forced iPhone (9:16) mode and
-    // writes the shared flags the guest-process hooks (and multitask window layout
-    // code) read at runtime. Applies in both single-app and multitask launches --
-    // MultitaskManager.isMultitasking() can route even an ordinary tap through the
-    // multitask path whenever another app is already multitasking, so gating this
-    // on isMultitask made the toggle silently do nothing in that common case.
+    // Determines whether this launch should run in Force Landscape Mode
+    // (portrait-aspect letterbox, black bars on the sides) and writes the
+    // shared flags the guest-process hooks (and multitask window layout
+    // code) read at runtime. Applies in both single-app and multitask
+    // launches -- MultitaskManager.isMultitasking() can route even an
+    // ordinary tap through the multitask path whenever another app is
+    // already multitasking, so gating this on isMultitask made the toggle
+    // silently do nothing in that common case.
     //
-    // Also records whether *this* launch is itself going through the multitask
-    // host (AppSceneViewController). That controller does its own Real iPhone
-    // Mode centering (it knows the actual tile bounds; the guest process
-    // doesn't), so the guest-side hooks use this flag to stay out of its way
-    // instead of re-cropping an already-correctly-cropped frame.
-    func syncIPhoneMode(isMultitask: Bool?) {
-        let finalForceIPhone = !isHostDeviceIPhone && uiForceIPhoneMode
-        LCUtils.appGroupUserDefault.set(finalForceIPhone, forKey: "LCRealIPhoneMode")
-        LCUtils.appGroupUserDefault.set(isMultitask ?? false, forKey: "LCIsMultitaskLaunch")
-        // Both launch modes share this one write, so if forced iPhone mode is
-        // failing in both simultaneously, the shared inputs here (rather than
-        // anything mode-specific downstream) are the first thing to check.
-        // Logging them directly instead of guessing again: this line should
-        // show up in Console right at launch and settle whether
-        // isHostDeviceIPhone/uiForceIPhoneMode are what's expected before
-        // looking any further downstream.
-        NSLog("[AppNest] syncIPhoneMode: isHostDeviceIPhone=\(isHostDeviceIPhone) uiForceIPhoneMode=\(uiForceIPhoneMode) -> LCRealIPhoneMode=\(finalForceIPhone), isMultitask=\(isMultitask ?? false)")
+    // Also records whether *this* launch is itself going through the
+    // multitask host (AppSceneViewController). That controller does its own
+    // Force Landscape Mode centering (it knows the actual tile bounds; the
+    // guest process doesn't), so the guest-side hooks use this flag to stay
+    // out of its way instead of re-letterboxing an already-correctly-
+    // letterboxed frame.
+    //
+    // Both flags are scoped per app (by bundle identifier) rather than
+    // written under one global key: multitasking can have several guest
+    // apps active simultaneously, each its own process/tile, and a single
+    // global flag would let one app's launch silently flip the setting for
+    // every other app already running elsewhere.
+    func syncLandscapeMode(isMultitask: Bool?) {
+        let appId = appInfo.bundleIdentifier() ?? ""
+        LCUtils.appGroupUserDefault.set(uiForceLandscapeMode, forKey: "LCForceLandscapeMode_\(appId)")
+        LCUtils.appGroupUserDefault.set(isMultitask ?? false, forKey: "LCIsMultitaskLaunch_\(appId)")
         // These are read by the guest process almost immediately after it spawns;
         // make sure the write has actually propagated through the app-group
         // suite before we hand off, rather than relying on the OS to flush it
@@ -1364,7 +1358,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             isAppRunning = true
         }
         do {
-            syncIPhoneMode(isMultitask: shouldMultitask)
+            syncLandscapeMode(isMultitask: shouldMultitask)
             try await signApp(force: false)
             
             if let bundleIdOverride {
