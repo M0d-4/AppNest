@@ -500,7 +500,7 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
         NSMutableDictionary *guestAppInfo = [[defaults objectForKey:@"guestAppInfo"] mutableCopy] ?: [@{} mutableCopy];
         
         guestAppInfo[@"hideLiveContainer"] = @(self.hideLiveContainer);
-        guestAppInfo[@"forceIPhoneMode"] = @(self.forceIPhoneMode);
+        guestAppInfo[@"forceLandscapeMode"] = @(self.forceLandscapeMode);
 
         // Keep camera values in guestAppInfo for hooks.
         guestAppInfo[@"spoofCamera"] = @(self.spoofCamera);
@@ -864,15 +864,15 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
     [self save];
 }
 
-- (bool)forceIPhoneMode {
-    if(_info[@"forceIPhoneMode"] != nil) {
-        return [_info[@"forceIPhoneMode"] boolValue];
+- (bool)forceLandscapeMode {
+    if(_info[@"forceLandscapeMode"] != nil) {
+        return [_info[@"forceLandscapeMode"] boolValue];
     }
     return NO;
 }
 
-- (void)setForceIPhoneMode:(bool)forceIPhoneMode {
-    _info[@"forceIPhoneMode"] = [NSNumber numberWithBool:forceIPhoneMode];
+- (void)setForceLandscapeMode:(bool)forceLandscapeMode {
+    _info[@"forceLandscapeMode"] = [NSNumber numberWithBool:forceLandscapeMode];
     [self save];
 }
 
