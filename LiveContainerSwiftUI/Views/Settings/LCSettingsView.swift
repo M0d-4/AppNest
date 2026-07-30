@@ -302,6 +302,16 @@ struct LCSettingsView: View {
                 }
                 
                 Section {
+                    NavigationLink {
+                        LCDebugLogView()
+                    } label: {
+                        Text("Debug Log")
+                    }
+                } footer: {
+                    Text("On-device logs from the host app, guest app, and multitask process — readable and shareable without a Mac.")
+                }
+                
+                Section {
                     HStack {
                         Image("GitHub")
                         Button("LiveContainer/LiveContainer") {

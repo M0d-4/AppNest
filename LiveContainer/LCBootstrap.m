@@ -1,6 +1,7 @@
 #import "FoundationPrivate.h"
 #import "LCMachOUtils.h"
 #import "LCSharedUtils.h"
+#import "LCDebugLog.h"
 #import "UIKitPrivate.h"
 #import "utils.h"
 
@@ -1470,6 +1471,9 @@ int LiveContainerMain(int argc, char *argv[]) {
     lcAppUrlScheme = NSBundle.mainBundle.infoDictionary[@"CFBundleURLTypes"][0][@"CFBundleURLSchemes"][0];
     lcAppGroupPath = [[NSFileManager.defaultManager containerURLForSecurityApplicationGroupIdentifier:[NSClassFromString(@"LCSharedUtils") appGroupID]] path];
     isLiveProcess = [lcAppUrlScheme isEqualToString:@"liveprocess"];
+    // As early as possible, before any tweak/hook installation below, so
+    // nothing gets missed -- see LCDebugLog.h.
+    LCDebugLogInstall(isLiveProcess ? @"guest" : @"host");
     setenv("LC_HOME_PATH", getenv("HOME"), 0);
 
     NSString *selectedApp = [lcUserDefaults stringForKey:@"selected"];

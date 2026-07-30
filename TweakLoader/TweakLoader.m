@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <objc/runtime.h>
 #include "utils.h"
+#include "../LiveContainer/LCDebugLog.h"
 
 static NSString *const kDisabledTweaksKey = @"disabledItems";
 static NSString *const kContainerInfoFileName = @"LCContainerInfo.plist";
@@ -229,6 +230,10 @@ static void showDlerrAlert(NSString *error) {
 
  __attribute__((constructor))
 static void TweakLoaderConstructor() {
+    // As early as possible -- before AppNest's own hooks and before any
+    // third-party tweak (e.g. a game's own cheat/mod dylib) gets a chance to
+    // install anything -- see LCDebugLog.h.
+    LCDebugLogInstall(@"guest");
     NSDictionary *guestContainerInfo = [NSUserDefaults guestContainerInfo];
     strictTestModeEnabled = [guestContainerInfo[@"strictTestMode"] boolValue];
     strictAutoWipeOnExitEnabled = strictTestModeEnabled && [guestContainerInfo[@"strictAutoWipeOnExit"] boolValue];

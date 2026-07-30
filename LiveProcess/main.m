@@ -10,6 +10,7 @@
 #import <mach-o/dyld.h>
 #import "LiveProcessHandler.h"
 #import "../LiveContainer/utils.h"
+#import "../LiveContainer/LCDebugLog.h"
 #import "../LiveContainer/Tweaks/Tweaks.h"
 #import "../MultitaskSupport/LCMultitaskXPCService.h"
 #import "../SideStore/XPCServer.h"
@@ -53,6 +54,10 @@ static NSDictionary *retrievedAppInfo;
 extern int LiveContainerMain(int argc, char *argv[]);
 static char **_envp, **_apple = NULL;
 int LiveProcessMain(int argc, char *argv[]) {
+    // See LCDebugLog.h. This is the multitask host process -- where
+    // AppSceneViewController's keyboard-focus-deferring retries and the
+    // ForceLandscapeMode letterbox logs actually happen.
+    LCDebugLogInstall(@"liveprocess");
     // Let NSExtensionContext initialize, once it's done it will call CFRunLoopStop
     CFRunLoopRun();
     // Ensure app info is delivered
