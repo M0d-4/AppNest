@@ -18,31 +18,41 @@ extern const UIApplication *UIApp;
 // imports either utils.h. A plain interface re-declaration (matching what
 // each target's own utils.h already declares) makes the signature visible
 // here without coupling this header to one target's file layout.
-@interface NSUserDefaults (LCRealIPhoneModeSharedDefaultsForwardDecl)
+@interface NSUserDefaults (LCForceLandscapeModeSharedDefaultsForwardDecl)
 + (instancetype)lcSharedDefaults;
 @end
 
-// Real iPhone Mode: single source of truth for the 9:16 constrained content
-// rect within a given available area. This formula used to be hand-copied at
-// four separate call sites across AppSceneViewController and
-// DecoratedAppSceneViewController (initial scene settings, per-frame layout,
-// the debounced settings-frame update, and the windowed/maximized resize
-// path) — each written slightly differently (some against .frame, some
-// against .bounds, some before/after dividing by scaleRatio). That kind of
-// duplication is exactly what let the crop drift out of sync between
+// Force Landscape Mode: single source of truth for the portrait-aspect
+// constrained content rect within a given available area. This formula used
+// to be hand-copied at four separate call sites across AppSceneViewController
+// and DecoratedAppSceneViewController (initial scene settings, per-frame
+// layout, the debounced settings-frame update, and the windowed/maximized
+// resize path) — each written slightly differently (some against .frame,
+// some against .bounds, some before/after dividing by scaleRatio). That kind
+// of duplication is exactly what let the letterbox drift out of sync between
 // windowed, maximized, and initial-launch states whenever only one copy got
 // fixed. Every call site should route through this instead of recomputing it.
-static inline CGRect LCRealIPhoneModeConstrainedRect(CGRect availableBounds) {
+static inline CGRect LCLandscapeLetterboxedRect(CGRect availableBounds) {
     CGFloat availW = availableBounds.size.width;
     CGFloat availH = availableBounds.size.height;
     if (availW <= 0 || availH <= 0) return availableBounds;
-    CGFloat targetW = MIN(availW, availH * (9.0 / 16.0));
+    // Roughly a typical iPad portrait proportion (3:4), not a phone aspect
+    // (9:16) -- this confines a portrait-only iPad app to its own natural
+    // portrait shape, smaller and centered within the landscape tile, rather
+    // than pretending to be a phone.
+    CGFloat targetW = MIN(availW, availH * (3.0 / 4.0));
     CGFloat offsetX = availableBounds.origin.x + (availW - targetW) / 2.0;
     return CGRectMake(offsetX, availableBounds.origin.y, targetW, availH);
 }
 
-static inline BOOL LCRealIPhoneModeEnabled(void) {
-    return [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"];
+// appId scopes the check per app, since multitasking can have several guest
+// apps active simultaneously — a single global flag would let one app's
+// launch (or exit-triggered relaunch) silently flip this for every other
+// app already running in a different tile. Each AppSceneViewController
+// already knows its own bundleId, so callers should always pass that.
+static inline BOOL LCForceLandscapeModeEnabled(NSString *appId) {
+    NSString *key = [NSString stringWithFormat:@"LCForceLandscapeMode_%@", appId ?: @""];
+    return [NSUserDefaults.lcSharedDefaults boolForKey:key];
 }
 
 @interface LSResourceProxy : NSObject
