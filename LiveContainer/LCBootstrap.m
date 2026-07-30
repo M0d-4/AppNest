@@ -319,12 +319,12 @@ static NSDictionary *LCGuestAppInfoWithMergedAddonSettings(NSDictionary *appInfo
     // But the host app's own SwiftUI entry point (LiveContainerSwiftUIApp)
     // never calls LiveContainerMain — and the host process is exactly where
     // AppSceneViewController/DecoratedAppSceneViewController run for
-    // multitask hosting, reading LCRealIPhoneMode through this accessor. If
-    // anything in the host touched +lcUserDefaults first (setting that
+    // multitask hosting, reading LCForceLandscapeMode through this accessor.
+    // If anything in the host touched +lcUserDefaults first (setting that
     // global non-nil), this guard would then skip initializing
-    // lcSharedDefaults forever, and every multitask-side Real iPhone Mode
-    // check would silently read nil -> NO regardless of what was actually
-    // written.
+    // lcSharedDefaults forever, and every multitask-side Force Landscape
+    // Mode check would silently read nil -> NO regardless of what was
+    // actually written.
     if(!lcSharedDefaults) {
         lcSharedDefaults = [[NSUserDefaults alloc] initWithSuiteName: [LCSharedUtils appGroupID]];
     }
