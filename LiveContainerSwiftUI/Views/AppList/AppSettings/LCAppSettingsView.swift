@@ -2373,21 +2373,19 @@ struct LCAppSettingsView: View {
                 }
             }
 
-            if !model.isHostDeviceIPhone {
-                Section {
-                   Toggle(isOn: $model.uiForceIPhoneMode) {
-                       HStack {
-                           Image(systemName: "iphone")
-                               .foregroundColor(.blue)
-                               .frame(width: 20)
-                           Text("Force iPhone Mode")
-                       }
+            Section {
+               Toggle(isOn: $model.uiForceLandscapeMode) {
+                   HStack {
+                       Image(systemName: "rectangle.landscape.rotate")
+                           .foregroundColor(.blue)
+                           .frame(width: 20)
+                       Text("Force Landscape Mode")
                    }
-                } header: {
-                    Label("Device Mode", systemImage: "iphone")
-                } footer: {
-                   Text("This app will run in iPhone layout.")
-                }
+               }
+            } header: {
+                Label("Device Mode", systemImage: "rectangle.landscape.rotate")
+            } footer: {
+               Text("For portrait-only apps: runs at a smaller, portrait-shaped size with black borders on the sides instead of filling the whole landscape screen.")
             }
 
             if #available(iOS 16.0, *) {
