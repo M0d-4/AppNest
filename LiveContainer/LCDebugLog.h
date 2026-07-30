@@ -32,7 +32,15 @@ NS_ASSUME_NONNULL_BEGIN
 static NSString *const kLCDebugLogDirectoryName = @"AppNestDebugLogs";
 
 static inline NSURL *LCDebugLogDirectory(void) {
-    NSURL *base = [LCSharedUtils appGroupPath];
+    // NSClassFromString, not a direct [LCSharedUtils ...] send: LCSharedUtils.m
+    // is only compiled into the main LiveContainer app target, but this header
+    // is also included from TweakLoader and LiveProcess, which merely dlopen
+    // into a process where that class already exists at runtime. A direct
+    // class reference needs the symbol at link time and fails those targets'
+    // link step (undefined _OBJC_CLASS_$_LCSharedUtils); this is the same
+    // runtime-lookup idiom already used everywhere else in TweakLoader for
+    // calling LCSharedUtils from those targets (e.g. UIKit+GuestHooks.m).
+    NSURL *base = [NSClassFromString(@"LCSharedUtils") appGroupPath];
     NSURL *dir = [base URLByAppendingPathComponent:kLCDebugLogDirectoryName isDirectory:YES];
     [NSFileManager.defaultManager createDirectoryAtURL:dir withIntermediateDirectories:YES attributes:nil error:nil];
     return dir;
