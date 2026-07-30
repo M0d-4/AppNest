@@ -424,7 +424,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
         [self.view insertSubview:label atIndex:0];
     }
 }
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
+//⭐️⭐️⭐️Force Landscape Mode + multitask mode
 - (void)appSceneVC:(AppSceneViewController*)vc didInitializeWithError:(NSError *)error {
     dispatch_async(dispatch_get_main_queue(), ^{
         if(error) {
@@ -470,8 +470,8 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     }
     CGFloat offsetX = 0;
     CGFloat constrainedW = viewW;
-    if (LCRealIPhoneModeEnabled()) {
-        CGRect constrained = LCRealIPhoneModeConstrainedRect(CGRectMake(0, 0, viewW, viewH));
+    if (LCForceLandscapeModeEnabled(self.appSceneVC.bundleId)) {
+        CGRect constrained = LCLandscapeLetterboxedRect(CGRectMake(0, 0, viewW, viewH));
         constrainedW = constrained.size.width;
         offsetX = constrained.origin.x;
         _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingNone;
@@ -598,7 +598,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     self.view.center = CGPointMake(self.view.center.x + point.x, self.view.center.y + point.y);
     [self updateOriginalFrame];
 }
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
+//⭐️⭐️⭐️Force Landscape Mode + multitask mode
 - (void)resizeWindow:(UIPanGestureRecognizer*)sender {
     if(_isMaximized) return;
     CGPoint point = [sender translationInView:self.view];
@@ -619,16 +619,16 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     CGFloat viewW = self.view.frame.size.width / self.scaleRatio;
     CGFloat viewH = (self.view.frame.size.height - self.navigationBar.frame.size.height) / self.scaleRatio;
 
-    // This call site was tagged as a Real iPhone Mode spot but never actually
+    // This call site was tagged as a Force Landscape Mode spot but never actually
     // applied the crop — it always set contentView to the full uncropped
     // rect, so every tick of a live drag-resize flashed uncropped content
     // until the next unrelated layout pass happened to call
     // -viewWillLayoutSubviews and correct it. Route through the same shared
     // helper as every other call site so dragging the resize handle can't
     // desync from windowed/maximized/initial-launch behavior again.
-    if (LCRealIPhoneModeEnabled()) {
+    if (LCForceLandscapeModeEnabled(self.appSceneVC.bundleId)) {
         _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingNone;
-        _appSceneVC.contentView.frame = LCRealIPhoneModeConstrainedRect(CGRectMake(0, 0, viewW, viewH));
+        _appSceneVC.contentView.frame = LCLandscapeLetterboxedRect(CGRectMake(0, 0, viewW, viewH));
     } else {
         _appSceneVC.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
         _appSceneVC.contentView.frame = CGRectMake(0, 0, viewW, viewH);
