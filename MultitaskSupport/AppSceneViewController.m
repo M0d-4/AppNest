@@ -227,7 +227,7 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
     
     return self;
 }
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
+//⭐️⭐️⭐️Force Landscape Mode + multitask mode
 - (BOOL)usesHostingControllerAPI {
     return self.hostingController != nil;
 }
@@ -464,7 +464,7 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         });
     }
 }
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
+//⭐️⭐️⭐️Force Landscape Mode + multitask mode
 - (void)_performActionsForUIScene:(UIScene *)scene withUpdatedFBSScene:(id)fbsScene settingsDiff:(FBSSceneSettingsDiff *)diff fromSettings:(UIApplicationSceneSettings *)settings transitionContext:(id)context lifecycleActionType:(uint32_t)actionType {
     if(!self.isAppRunning) {
         [self appTerminationCleanUp];
@@ -524,8 +524,8 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         // view back to flush-left, which is what made it drift left instead
         // of staying centered in multitask.
         CGFloat originX = 0;
-        if (LCRealIPhoneModeEnabled() && self.presenter.presentationView) {
-            originX = LCRealIPhoneModeConstrainedRect(self.view.bounds).origin.x;
+        if (LCForceLandscapeModeEnabled(self.bundleId) && self.presenter.presentationView) {
+            originX = LCLandscapeLetterboxedRect(self.view.bounds).origin.x;
         }
         frame.origin = CGPointMake(originX, 0);
         self.contentView.frame = frame;
@@ -537,13 +537,13 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
 
 
 
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
+//⭐️⭐️⭐️Force Landscape Mode + multitask mode
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
     if (self.presenter.presentationView) {
-        if (LCRealIPhoneModeEnabled()) {
+        if (LCForceLandscapeModeEnabled(self.bundleId)) {
             self.contentView.autoresizingMask = UIViewAutoresizingNone;
-            self.contentView.frame = LCRealIPhoneModeConstrainedRect(self.view.bounds);
+            self.contentView.frame = LCLandscapeLetterboxedRect(self.view.bounds);
         } else {
             self.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
             self.contentView.frame = self.view.bounds;
@@ -554,7 +554,7 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
 }
 
 
-//⭐️⭐️⭐️Real iPhone mode + multitask mode
+//⭐️⭐️⭐️Force Landscape Mode + multitask mode
 - (void)updateFrameWithSettingsBlock:(void (^)(UIMutableApplicationSceneSettings *settings))block {
     __block int currentDebounceToken = self.resizeDebounceToken + 1;
     _resizeDebounceToken = currentDebounceToken;
@@ -566,8 +566,8 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         CGFloat w = self.view.frame.size.width / self.scaleRatio;
         CGFloat h = self.view.frame.size.height / self.scaleRatio;
         CGFloat offsetX = 0;
-        if (LCRealIPhoneModeEnabled()) {
-            CGRect constrained = LCRealIPhoneModeConstrainedRect(CGRectMake(0, 0, w, h));
+        if (LCForceLandscapeModeEnabled(self.bundleId)) {
+            CGRect constrained = LCLandscapeLetterboxedRect(CGRectMake(0, 0, w, h));
             offsetX = constrained.origin.x;
             w = constrained.size.width;
         }
