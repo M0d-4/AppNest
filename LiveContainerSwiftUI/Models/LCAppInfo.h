@@ -36,7 +36,7 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 @property (nonatomic, copy) NSString *ignoredUpdateVersion;
 @property bool doSymlinkInbox;
 @property bool hideLiveContainer;
-@property bool forceIPhoneMode;
+@property bool forceLandscapeMode;
 @property bool dontLoadTweakLoader;
 @property bool dontInjectTweakLoader;
 @property LCOrientationLock orientationLock;
