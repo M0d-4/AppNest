@@ -9,59 +9,42 @@
 #import "../MultitaskSupport/UIKitPrivate+MultitaskSupport.h"
 
 extern void _objc_msgForward(void);
-@interface LCRealIPhoneModeHelper : NSObject
+@interface LCLandscapeLetterboxHelper : NSObject
 + (void)repositionAllWindows;
 // Starts (if not already running) a CADisplayLink-driven loop that
-// re-asserts the crop every frame, for as long as the app is foregrounded.
-// Unlike a timed polling burst, this never "expires" — it keeps enforcing
-// the invariant for the app's entire foreground lifetime, so it cannot miss
-// a geometry change no matter which private API caused it or when it fires,
-// including on iOS/iPadOS versions where the exact resize mechanism isn't
-// known. Safe to call repeatedly; a no-op if already running.
+// re-asserts the letterbox every frame, for as long as the app is
+// foregrounded. Unlike a timed polling burst, this never "expires" — it
+// keeps enforcing the invariant for the app's entire foreground lifetime,
+// so it cannot miss a geometry change no matter which private API caused
+// it or when it fires, including on iOS/iPadOS versions where the exact
+// resize mechanism isn't known. Safe to call repeatedly; a no-op if already
+// running.
 + (void)startEnforcing;
 // Stops the per-frame loop (e.g. when backgrounding) to avoid needless work.
 // Safe to call repeatedly; a no-op if not running.
 + (void)stopEnforcing;
 @end
-// Shared Real iPhone Mode crop helpers (defined alongside the UIWindow hooks
-// further down this file) — forward-declared here so LCRealIPhoneModeHelper,
-// which appears earlier in the file, can use them too.
-static BOOL LCShouldApplyRealIPhoneModeCrop(UIWindow *window);
-static CGRect LCRealIPhoneModeCroppedFrame(CGRect frame);
-// Unlike the crop above, idiom spoofing isn't gated on "not multitask" —
-// whether the guest process is hosted standalone or inside a multitask
-// tile, it should always report being a phone once the feature is on. It's
-// also unrelated to window geometry entirely: no amount of resizing the
-// window changes what UIDevice/UITraitCollection report, and a lot of apps
-// pick their whole UI paradigm (split view vs. plain stack, popovers vs.
-// full-screen sheets, iPad-specific storyboards) off that idiom check
-// rather than off actual window size. That's what made standalone launches
-// still "look like an iPad app" even once the crop itself was working
-// correctly: the crop only ever changed what's on screen, never what the
-// app believes the device to be.
-static BOOL LCShouldReportPhoneIdiom(void) {
-    if (![NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) return NO;
-    NSString *lcappid = NSUserDefaults.lcGuestAppId;
-    if ([lcappid.lowercaseString containsString:@"sidestore"]) return NO;
-    return YES;
-}
-// horizontalSizeClass is a *system-computed* trait — it comes from the real
-// window scene's assigned size, not from our local window.frame crop. In
-// multitask, the host actually tells the system the guest's scene is
-// narrower (see updateSettingsWithBlock: in AppSceneViewController, which
-// routes through the shared crop helper), so the system correctly computes
-// Compact width on its own there — no override needed or wanted. Standalone
-// launches never touch the real scene size at all, only our own window's
-// local frame, so the system still sees a full-width iPad scene and reports
-// Regular width regardless of the visual crop. Apps that adapt via size
-// class (the more modern, Apple-recommended alternative to checking idiom
-// directly) stay in iPad-style layout there unless we force this too.
-static BOOL LCShouldForceCompactWidthTraitCollection(void) {
-    if (![NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) return NO;
-    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCIsMultitaskLaunch"]) return NO;
-    NSString *lcappid = NSUserDefaults.lcGuestAppId;
-    if ([lcappid.lowercaseString containsString:@"sidestore"]) return NO;
-    return YES;
+// Shared Force Landscape Mode letterbox helpers (defined alongside the
+// UIWindow hooks further down this file) — forward-declared here so
+// LCLandscapeLetterboxHelper, which appears earlier in the file, can use
+// them too.
+static BOOL LCShouldApplyLandscapeLetterbox(UIWindow *window);
+static CGRect LCLandscapeLetterboxedFrame(CGRect frame);
+// LCForceLandscapeMode/LCIsMultitaskLaunch were single global keys in the
+// shared app-group defaults, not scoped per app. That's fine as long as
+// only one guest app is ever relevant at a time, but multitasking exists
+// specifically to run several simultaneously (each its own OS
+// process/multitask tile). Any app's launch calling syncLandscapeMode()
+// overwrites that same global key for every OTHER already-running app too
+// — and since the letterbox is enforced continuously (CADisplayLink on the
+// guest side, re-checked on every layout pass on the host side), an
+// already-running, correctly letterboxed app would pick up a completely
+// unrelated app's setting on its very next check and silently stop
+// letterboxing. Scoping the key per app id makes each app's setting
+// independent of whatever any other app's launch (or exit-triggered
+// relaunch) does to the shared suite.
+static NSString *LCForceLandscapeModeScopedKey(NSString *baseKey, NSString *appId) {
+    return [NSString stringWithFormat:@"%@_%@", baseKey, appId ?: @""];
 }
 UIInterfaceOrientation LCOrientationLock = UIInterfaceOrientationUnknown;
 NSMutableArray<NSString*>* LCSupportedUrlSchemes = nil;
@@ -249,24 +232,17 @@ static void Real_UIKitGuestHooksInit(void) {
     if(!NSUserDefaults.lcGuestAppId) return;
 
     // Always install these hooks (unless SideStore); each hook checks the live
-    // value of LCRealIPhoneMode itself, so toggling the setting per app takes
-    // effect immediately without depending on the flag's value at process start.
-    NSString *forceIPhoneAppId = NSUserDefaults.lcGuestAppId;
-    BOOL isSideStore = [forceIPhoneAppId.lowercaseString containsString:@"sidestore"];
+    // value of LCForceLandscapeMode itself, so toggling the setting per app
+    // takes effect immediately without depending on the flag's value at
+    // process start.
+    NSString *forceLandscapeAppId = NSUserDefaults.lcGuestAppId;
+    BOOL isSideStore = [forceLandscapeAppId.lowercaseString containsString:@"sidestore"];
     if (!isSideStore) {
-        NSLog(@"[ForceIPhoneMode] init for appId=%@ LCRealIPhoneMode=%d", lcGuestAppId,
-              [NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]);
+        NSLog(@"[ForceLandscapeMode] init for appId=%@ LCForceLandscapeMode=%d LCIsMultitaskLaunch=%d", lcGuestAppId,
+              [NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", forceLandscapeAppId)],
+              [NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCIsMultitaskLaunch", forceLandscapeAppId)]);
         swizzle(UIWindow.class, @selector(setFrame:), @selector(hook_setFrame:));
         swizzle(UIScreen.class, @selector(bounds), @selector(hook_UIScreen_bounds));
-        // Crop-related hooks only fire for actual window geometry. Idiom
-        // spoofing is a separate concern (see LCShouldReportPhoneIdiom above)
-        // and needs its own swizzles: UI_USER_INTERFACE_IDIOM() expands to
-        // -[UIDevice userInterfaceIdiom], but plenty of code reads idiom off
-        // a UITraitCollection instead (traitCollectionDidChange:, size-class
-        // adaptive presentation controllers, etc.), so both need covering.
-        swizzle(UIDevice.class, @selector(userInterfaceIdiom), @selector(hook_userInterfaceIdiom));
-        swizzle(UITraitCollection.class, @selector(userInterfaceIdiom), @selector(hook_traitCollection_userInterfaceIdiom));
-        swizzle(UITraitCollection.class, @selector(horizontalSizeClass), @selector(hook_traitCollection_horizontalSizeClass));
         // Scene-managed windows are sized directly by the window scene (or, in
         // multitask, by the host sending FBSSceneSettings over XPC) and often
         // never call the public -setFrame: setter at all, so the swizzle above
@@ -305,18 +281,18 @@ static void Real_UIKitGuestHooksInit(void) {
         // (feature on, not multitask, not SideStore, main window) is still
         // re-checked live on every tick, so toggling the setting or the
         // multitask state still takes effect immediately either way.
-        [LCRealIPhoneModeHelper startEnforcing];
+        [LCLandscapeLetterboxHelper startEnforcing];
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidBecomeActiveNotification
                                                           object:nil
                                                            queue:[NSOperationQueue mainQueue]
                                                       usingBlock:^(NSNotification * _Nonnull note) {
-            [LCRealIPhoneModeHelper startEnforcing];
+            [LCLandscapeLetterboxHelper startEnforcing];
         }];
         [[NSNotificationCenter defaultCenter] addObserverForName:UIApplicationDidEnterBackgroundNotification
                                                           object:nil
                                                            queue:[NSOperationQueue mainQueue]
                                                       usingBlock:^(NSNotification * _Nonnull note) {
-            [LCRealIPhoneModeHelper stopEnforcing];
+            [LCLandscapeLetterboxHelper stopEnforcing];
         }];
     }
 
@@ -327,6 +303,8 @@ static void Real_UIKitGuestHooksInit(void) {
     swizzle(UIApplication.class, @selector(setDelegate:), @selector(hook_setDelegate:));
     swizzle(UIScene.class, @selector(scene:didReceiveActions:fromTransitionContext:), @selector(hook_scene:didReceiveActions:fromTransitionContext:));
     swizzle(UIScene.class, @selector(openURL:options:completionHandler:), @selector(hook_openURL:options:completionHandler:));
+    NSString *lcGuestAppIdForOrientation = NSUserDefaults.lcGuestAppId;
+    BOOL forceLandscapeModeEnabled = [NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", lcGuestAppIdForOrientation)];
     NSInteger LCOrientationLockDirection = [NSUserDefaults.guestAppInfo[@"LCOrientationLock"] integerValue];
     if(LCOrientationLockDirection != 0 && [UIDevice.currentDevice userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
         switch (LCOrientationLockDirection) {
@@ -339,19 +317,49 @@ static void Real_UIKitGuestHooksInit(void) {
             default:
                 break;
         }
-        if(!NSUserDefaults.isLiveProcess && LCOrientationLock != UIInterfaceOrientationUnknown) {
-            swizzle(UIApplication.class, @selector(_handleDelegateCallbacksWithOptions:isSuspended:restoreState:), @selector(hook__handleDelegateCallbacksWithOptions:isSuspended:restoreState:));
-            swizzle(FBSSceneParameters.class, @selector(initWithXPCDictionary:), @selector(hook_initWithXPCDictionary:));
-            swizzle(UIViewController.class, @selector(__supportedInterfaceOrientations), @selector(hook___supportedInterfaceOrientations));
-            swizzle(UIViewController.class, @selector(shouldAutorotateToInterfaceOrientation:), @selector(hook_shouldAutorotateToInterfaceOrientation:));
-            swizzle(UIWindow.class, @selector(setAutorotates:forceUpdateInterfaceOrientation:), @selector(hook_setAutorotates:forceUpdateInterfaceOrientation:));
-        }
-
+    } else if (forceLandscapeModeEnabled) {
+        // Force Landscape Mode: a portrait-only iPad app normally just
+        // renders "sideways" (unrotated, filling the whole screen) if the
+        // device is physically held in landscape, since iOS never actually
+        // rotates an app's UI past what it declares support for. Reusing
+        // the same orientation-override mechanism as the phone-specific
+        // lock above -- for the opposite direction -- actually flips the
+        // OS-level scene orientation to landscape, so the status bar/scene
+        // chrome genuinely reflects landscape instead of just sitting
+        // sideways. The app's own layout still isn't designed for
+        // landscape, so LCLandscapeLetterboxedFrame (below) separately
+        // confines its rendered window to portrait-shaped proportions,
+        // centered with black bars filling the rest -- correctly
+        // proportioned portrait UI at a smaller size, rather than a
+        // stretched, broken-looking landscape layout.
+        LCOrientationLock = UIInterfaceOrientationLandscapeRight;
     }
+    if(!NSUserDefaults.isLiveProcess && LCOrientationLock != UIInterfaceOrientationUnknown) {
+        swizzle(UIApplication.class, @selector(_handleDelegateCallbacksWithOptions:isSuspended:restoreState:), @selector(hook__handleDelegateCallbacksWithOptions:isSuspended:restoreState:));
+        swizzle(FBSSceneParameters.class, @selector(initWithXPCDictionary:), @selector(hook_initWithXPCDictionary:));
+        swizzle(UIViewController.class, @selector(__supportedInterfaceOrientations), @selector(hook___supportedInterfaceOrientations));
+        swizzle(UIViewController.class, @selector(shouldAutorotateToInterfaceOrientation:), @selector(hook_shouldAutorotateToInterfaceOrientation:));
+        swizzle(UIWindow.class, @selector(setAutorotates:forceUpdateInterfaceOrientation:), @selector(hook_setAutorotates:forceUpdateInterfaceOrientation:));
+    }
+
     if(@available(iOS 17.0, *)) {
-        if(NSUserDefaults.isLiveProcess) {
-            swizzle(_UIRemoteKeyboards.class, @selector(startConnection), @selector(hook_startConnection));
-        }
+        // Previously gated to isLiveProcess (multitask) only. The
+        // LiveProcessHandler/XPC visibility calls inside hook_startConnection
+        // and hook_focusApplicationWithProcessIdentifier:... safely no-op via
+        // message-to-nil when that class isn't linked into a process (true
+        // for classic-mode standalone launches, which are LiveContainer.app's
+        // own binary, not the separate LiveProcess extension). But the
+        // keyboard-focus-arbitration-proxy replacement those methods install
+        // is a general iOS mechanism for anything hosting embedded/dlopen'd
+        // guest content that needs correct keyboard focus arbitration -- not
+        // something inherently specific to the LiveProcess extension
+        // architecture. Standalone launches dlopen guest code into a
+        // different bundle's process too, so the same arbitration gap could
+        // plausibly apply there, and its own comments describe it as fixing
+        // a focus-check problem -- exactly the kind of thing that could
+        // explain a keyboard that's slow-but-eventually-successful rather
+        // than outright missing.
+        swizzle(_UIRemoteKeyboards.class, @selector(startConnection), @selector(hook_startConnection));
     }
 
     NSDictionary* guestContainerInfo = [NSUserDefaults guestContainerInfo];
@@ -1160,33 +1168,19 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 
 @end
 
-@implementation UIDevice (LCRealIPhoneModeIdiom)
-- (UIUserInterfaceIdiom)hook_userInterfaceIdiom {
-    if (LCShouldReportPhoneIdiom()) return UIUserInterfaceIdiomPhone;
-    return [self hook_userInterfaceIdiom];
-}
-@end
-
-@implementation UITraitCollection (LCRealIPhoneModeIdiom)
-- (UIUserInterfaceIdiom)hook_traitCollection_userInterfaceIdiom {
-    if (LCShouldReportPhoneIdiom()) return UIUserInterfaceIdiomPhone;
-    return [self hook_traitCollection_userInterfaceIdiom];
-}
-- (UIUserInterfaceSizeClass)hook_traitCollection_horizontalSizeClass {
-    if (LCShouldForceCompactWidthTraitCollection()) return UIUserInterfaceSizeClassCompact;
-    return [self hook_traitCollection_horizontalSizeClass];
-}
-@end
-
 @implementation UIScreen (LiveContainerHook)
 - (CGRect)hook_UIScreen_bounds {
     NSString *appId = NSUserDefaults.lcGuestAppId;
     BOOL isSideStore = [appId.lowercaseString containsString:@"sidestore"];
     CGRect nativeBounds = [self hook_UIScreen_bounds];
-    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && !isSideStore) {
+    if ([NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", appId)] && !isSideStore) {
         CGFloat screenH = nativeBounds.size.height;
         CGFloat screenW = nativeBounds.size.width;
-        CGFloat targetW = MIN(screenW, screenH * (9.0 / 16.0));
+        // Portrait-aspect crop (roughly a typical iPad portrait proportion)
+        // instead of the old 9:16 phone aspect -- this app is a real iPad
+        // app being confined to its own natural portrait shape, not made to
+        // pretend it's a phone.
+        CGFloat targetW = MIN(screenW, screenH * (3.0 / 4.0));
         return CGRectMake(0, 0, targetW, screenH);
     }
     return CGRectMake(0, 0, nativeBounds.size.width, nativeBounds.size.height);
@@ -1196,16 +1190,16 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 // Target for the CADisplayLink below. A plain NSObject can't be a display
 // link target/selector pair cleanly across old runtimes, so this tiny class
 // just forwards each tick to +repositionAllWindows.
-@interface LCRealIPhoneModeDisplayLinkTarget : NSObject
+@interface LCLandscapeLetterboxDisplayLinkTarget : NSObject
 - (void)tick:(CADisplayLink *)link;
 @end
-@implementation LCRealIPhoneModeDisplayLinkTarget
+@implementation LCLandscapeLetterboxDisplayLinkTarget
 - (void)tick:(CADisplayLink *)link {
-    [LCRealIPhoneModeHelper repositionAllWindows];
+    [LCLandscapeLetterboxHelper repositionAllWindows];
 }
 @end
 
-@implementation LCRealIPhoneModeHelper
+@implementation LCLandscapeLetterboxHelper
 + (void)repositionAllWindows {
     [CATransaction begin];
     [CATransaction setDisableActions:YES];
@@ -1218,8 +1212,8 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
             // centering) as the -setFrame:/-layoutSubviews hooks, so this
             // per-frame pass can't apply different logic than everyday
             // resizes do.
-            if (!LCShouldApplyRealIPhoneModeCrop(window)) continue;
-            CGRect targetFrame = LCRealIPhoneModeCroppedFrame(window.frame);
+            if (!LCShouldApplyLandscapeLetterbox(window)) continue;
+            CGRect targetFrame = LCLandscapeLetterboxedFrame(window.frame);
             // Cheap early-out: on the overwhelming majority of frames
             // nothing has moved the window since the last tick, so avoid
             // touching .frame (and re-entering the -setFrame:/-layoutSubviews
@@ -1234,27 +1228,27 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     [CATransaction commit];
 }
 
-static CADisplayLink *LCRealIPhoneModeDisplayLink;
-static LCRealIPhoneModeDisplayLinkTarget *LCRealIPhoneModeDisplayLinkTargetInstance;
+static CADisplayLink *LCLandscapeLetterboxDisplayLink;
+static LCLandscapeLetterboxDisplayLinkTarget *LCLandscapeLetterboxDisplayLinkTargetInstance;
 
 + (void)startEnforcing {
-    if (LCRealIPhoneModeDisplayLink) return; // already running
-    if (!LCRealIPhoneModeDisplayLinkTargetInstance) {
-        LCRealIPhoneModeDisplayLinkTargetInstance = [LCRealIPhoneModeDisplayLinkTarget new];
+    if (LCLandscapeLetterboxDisplayLink) return; // already running
+    if (!LCLandscapeLetterboxDisplayLinkTargetInstance) {
+        LCLandscapeLetterboxDisplayLinkTargetInstance = [LCLandscapeLetterboxDisplayLinkTarget new];
     }
-    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:LCRealIPhoneModeDisplayLinkTargetInstance
+    CADisplayLink *link = [CADisplayLink displayLinkWithTarget:LCLandscapeLetterboxDisplayLinkTargetInstance
                                                        selector:@selector(tick:)];
     // Common run loop modes so this keeps ticking during UI tracking (e.g.
     // scroll views, drags) rather than pausing exactly when a gesture might
     // be actively resizing something.
     [link addToRunLoop:NSRunLoop.mainRunLoop forMode:NSRunLoopCommonModes];
-    LCRealIPhoneModeDisplayLink = link;
+    LCLandscapeLetterboxDisplayLink = link;
 }
 
 + (void)stopEnforcing {
-    if (!LCRealIPhoneModeDisplayLink) return;
-    [LCRealIPhoneModeDisplayLink invalidate];
-    LCRealIPhoneModeDisplayLink = nil;
+    if (!LCLandscapeLetterboxDisplayLink) return;
+    [LCLandscapeLetterboxDisplayLink invalidate];
+    LCLandscapeLetterboxDisplayLink = nil;
 }
 @end
 
@@ -1268,7 +1262,7 @@ static LCRealIPhoneModeDisplayLinkTarget *LCRealIPhoneModeDisplayLinkTargetInsta
     NSString *appid = NSUserDefaults.lcGuestAppId;
     BOOL isSideStore = [appid.lowercaseString containsString:@"sidestore"];
     BOOL isMainAppWindow = (self.windowLevel == UIWindowLevelNormal);
-    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"] && !isSideStore && isMainAppWindow) {
+    if ([NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", appid)] && !isSideStore && isMainAppWindow) {
         self.backgroundColor = [UIColor blackColor];
     }
     // Belt-and-suspenders: -layoutSubviews and -setFrame: both depend on
@@ -1276,15 +1270,15 @@ static LCRealIPhoneModeDisplayLinkTarget *LCRealIPhoneModeDisplayLinkTargetInsta
     // first time a window is shown, especially outside multitask where
     // there's no host-side FBSSceneSettings round-trip to piggyback on,
     // that isn't guaranteed to happen before the window is actually on
-    // screen — so also enforce the crop right here, at the one point
+    // screen — so also enforce the letterbox right here, at the one point
     // that's called exactly once the window is about to become visible.
     // (This swizzle is only installed for apps whose delegate doesn't
     // implement the modern scene APIs — see hook_setDelegate: below —
     // so -layoutSubviews above remains the primary catch-all for the
     // common, scene-delegate case.)
-    if (LCShouldApplyRealIPhoneModeCrop(self)) {
-        CGRect targetFrame = LCRealIPhoneModeCroppedFrame(self.frame);
-        NSLog(@"[ForceIPhoneMode] hook_makeKeyAndVisible currentFrame=%@ targetFrame=%@",
+    if (LCShouldApplyLandscapeLetterbox(self)) {
+        CGRect targetFrame = LCLandscapeLetterboxedFrame(self.frame);
+        NSLog(@"[ForceLandscapeMode] hook_makeKeyAndVisible currentFrame=%@ targetFrame=%@",
               NSStringFromCGRect(self.frame), NSStringFromCGRect(targetFrame));
         if (fabs(self.frame.size.width - targetFrame.size.width) >= 0.5) {
             self.frame = targetFrame;
@@ -1293,43 +1287,47 @@ static LCRealIPhoneModeDisplayLinkTarget *LCRealIPhoneModeDisplayLinkTargetInsta
     [self hook_makeKeyAndVisible];
 }
 
-// Shared decision: does this window need the Real iPhone Mode crop applied
-// by *this* (guest) process at all? False for SideStore, non-main windows,
-// and — critically — for any window running under the multitask host. The
-// multitask host (AppSceneViewController) does its own centering using the
-// tile's actual bounds, which the guest process has no way to know; letting
-// the guest also crop on top of that double-applies the offset and is what
-// made the multitask crop appear off-center.
-static BOOL LCShouldApplyRealIPhoneModeCrop(UIWindow *window) {
-    if (![NSUserDefaults.lcSharedDefaults boolForKey:@"LCRealIPhoneMode"]) return NO;
-    if ([NSUserDefaults.lcSharedDefaults boolForKey:@"LCIsMultitaskLaunch"]) return NO;
+// Shared decision: does this window need the Force Landscape Mode letterbox
+// applied by *this* (guest) process at all? False for SideStore, non-main
+// windows, and — critically — for any window running under the multitask
+// host. The multitask host (AppSceneViewController) does its own centering
+// using the tile's actual bounds, which the guest process has no way to
+// know; letting the guest also letterbox on top of that double-applies the
+// offset and is what made the multitask letterbox appear off-center.
+static BOOL LCShouldApplyLandscapeLetterbox(UIWindow *window) {
     NSString *lcappid = NSUserDefaults.lcGuestAppId;
+    if (![NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", lcappid)]) return NO;
+    if ([NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCIsMultitaskLaunch", lcappid)]) return NO;
     if ([lcappid.lowercaseString containsString:@"sidestore"]) return NO;
     if (window.windowLevel != UIWindowLevelNormal) return NO;
     return YES;
 }
 
-// Computes the centered 9:16 crop of `frame`. Idempotent: feeding an
-// already-cropped rect back in returns the same rect unchanged.
-static CGRect LCRealIPhoneModeCroppedFrame(CGRect frame) {
+// Computes the centered portrait-aspect letterbox of `frame`. Idempotent:
+// feeding an already-letterboxed rect back in returns the same rect
+// unchanged. Roughly a typical iPad portrait proportion (3:4) rather than a
+// phone aspect (9:16) -- this confines a portrait-only iPad app to its own
+// natural portrait shape, smaller and centered, rather than pretending to
+// be a phone.
+static CGRect LCLandscapeLetterboxedFrame(CGRect frame) {
     CGFloat availW = frame.size.width;
     CGFloat availH = frame.size.height;
     if (availW <= 0 || availH <= 0) return frame;
-    CGFloat targetW = MIN(availW, availH * (9.0 / 16.0));
+    CGFloat targetW = MIN(availW, availH * (3.0 / 4.0));
     CGFloat offsetX = frame.origin.x + (availW - targetW) / 2.0;
     return CGRectMake(offsetX, frame.origin.y, targetW, availH);
 }
 
 - (void)hook_setFrame:(CGRect)frame {
-    BOOL shouldForce = LCShouldApplyRealIPhoneModeCrop(self);
-    NSLog(@"[ForceIPhoneMode] hook_setFrame called requestedFrame=%@ windowLevel=%f shouldForce=%d",
+    BOOL shouldForce = LCShouldApplyLandscapeLetterbox(self);
+    NSLog(@"[ForceLandscapeMode] hook_setFrame called requestedFrame=%@ windowLevel=%f shouldForce=%d",
           NSStringFromCGRect(frame), self.windowLevel, shouldForce);
 
-    // Anything that doesn't need the crop — feature off, SideStore, a
+    // Anything that doesn't need the letterbox — feature off, SideStore, a
     // non-main window (overlays, alerts, multitask chrome, etc.), or a
-    // window the multitask host is already cropping itself — must pass
+    // window the multitask host is already letterboxing itself — must pass
     // through untouched. Previously this branch substituted a hardcoded
-    // full-screen rect for *any* uncropped case, which stomped on every
+    // full-screen rect for *any* unletterboxed case, which stomped on every
     // other window's real geometry (including multitask tile assignments),
     // silently breaking layout well beyond just this feature.
     if (!shouldForce) {
@@ -1337,10 +1335,10 @@ static CGRect LCRealIPhoneModeCroppedFrame(CGRect frame) {
         return;
     }
 
-    // Constrain to a 9:16 aspect within whatever area was actually being
+    // Constrain to a portrait aspect within whatever area was actually being
     // requested (the full screen for a normal launch — multitask windows
     // are excluded above, since the host handles those itself).
-    [self hook_setFrame:LCRealIPhoneModeCroppedFrame(frame)];
+    [self hook_setFrame:LCLandscapeLetterboxedFrame(frame)];
 }
 
 // Scene-managed windows are often never explicitly sent -setFrame: at all —
@@ -1352,11 +1350,11 @@ static CGRect LCRealIPhoneModeCroppedFrame(CGRect frame) {
 // can't loop.
 - (void)hook_layoutSubviews {
     [self hook_layoutSubviews];
-    if (!LCShouldApplyRealIPhoneModeCrop(self)) return;
+    if (!LCShouldApplyLandscapeLetterbox(self)) return;
 
     CGRect currentFrame = self.frame;
-    CGRect targetFrame = LCRealIPhoneModeCroppedFrame(currentFrame);
-    NSLog(@"[ForceIPhoneMode] hook_layoutSubviews currentFrame=%@ targetFrame=%@",
+    CGRect targetFrame = LCLandscapeLetterboxedFrame(currentFrame);
+    NSLog(@"[ForceLandscapeMode] hook_layoutSubviews currentFrame=%@ targetFrame=%@",
           NSStringFromCGRect(currentFrame), NSStringFromCGRect(targetFrame));
     // Already constrained (or converged to) the target — nothing to do.
     // Guards against re-triggering ourselves via the .frame set below.
@@ -1425,7 +1423,25 @@ static id<LCMultitaskXPCServiceProtocol> server;
 
     // Initialize LiveProcessHandler XPC and perform first init of "com.apple.frontboard.visibility" monitor
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC), dispatch_get_main_queue(), ^{
-        NSString *selfEnv = [@"UIScene:" stringByAppendingString:UIApplication.sharedApplication.connectedScenes.anyObject._FBSScene.identityToken.stringRepresentation];
+        // connectedScenes is an NSSet (unordered) -- .anyObject picks whichever
+        // member happens to come out first, which is only guaranteed correct
+        // if exactly one scene is connected. If more than one is (plausible
+        // for anything hosting a guest scene), this could silently register
+        // the visibility fix against the WRONG scene's identity token,
+        // leaving the actual foreground scene's keyboard focus unfixed --
+        // which would look exactly like "keyboard doesn't load". Prefer the
+        // scene that's actually foreground-active; fall back to .anyObject
+        // only if none is found, to preserve prior behavior in that case.
+        UIScene *activeScene = nil;
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if (scene.activationState == UISceneActivationStateForegroundActive) {
+                activeScene = scene;
+                break;
+            }
+        }
+        if (!activeScene) activeScene = UIApplication.sharedApplication.connectedScenes.anyObject;
+        if (!activeScene) return; // nothing connected yet; -stringByAppendingString: would throw on nil below
+        NSString *selfEnv = [@"UIScene:" stringByAppendingString:activeScene._FBSScene.identityToken.stringRepresentation];
         [server createEndpointInjectorWithSelfToken:selfEnv sourceToken:NSUserDefaults.lcAppIdentityToken];
     });
 
