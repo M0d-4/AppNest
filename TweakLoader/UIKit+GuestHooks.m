@@ -29,6 +29,7 @@ extern void _objc_msgForward(void);
 // LCLandscapeLetterboxHelper, which appears earlier in the file, can use
 // them too.
 static BOOL LCShouldApplyLandscapeLetterbox(UIWindow *window);
+static BOOL LCShouldApplyLandscapeLetterboxSafetyNet(UIWindow *window);
 static CGRect LCLandscapeLetterboxedFrame(CGRect frame);
 // LCForceLandscapeMode/LCIsMultitaskLaunch were single global keys in the
 // shared app-group defaults, not scoped per app. That's fine as long as
@@ -1236,13 +1237,18 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
         if (![scene isKindOfClass:UIWindowScene.class]) continue;
         for (UIWindow *window in ((UIWindowScene *)scene).windows) {
-            // Reuses the exact same eligibility check (feature on, not
-            // SideStore, main window only, and — importantly — skipped
-            // entirely under multitask, where the host does its own
-            // centering) as the -setFrame:/-layoutSubviews hooks, so this
-            // per-frame pass can't apply different logic than everyday
-            // resizes do.
-            if (!LCShouldApplyLandscapeLetterbox(window)) continue;
+            // Deliberately NOT the same eligibility check as the
+            // -setFrame:/-layoutSubviews hooks: those stay deferential to
+            // the host under multitask so they don't fight its real-time
+            // centering, but this periodic sweep needs to also run under
+            // multitask as a backstop against the window drifting back to
+            // full size outside the host's own resize flow (confirmed
+            // happening a few seconds after launch, with no corresponding
+            // host-side relayout to catch it). The early-out just below
+            // means this can't fight a legitimate host resize -- it only
+            // acts when the current frame has actually drifted from the
+            // target.
+            if (!LCShouldApplyLandscapeLetterboxSafetyNet(window)) continue;
             CGRect targetFrame = LCLandscapeLetterboxedFrame(window.frame);
             // Cheap early-out: on the overwhelming majority of frames
             // nothing has moved the window since the last tick, so avoid
@@ -1325,6 +1331,28 @@ static BOOL LCShouldApplyLandscapeLetterbox(UIWindow *window) {
     NSString *lcappid = NSUserDefaults.lcGuestAppId;
     if (![NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", lcappid)]) return NO;
     if ([NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCIsMultitaskLaunch", lcappid)]) return NO;
+    if ([lcappid.lowercaseString containsString:@"sidestore"]) return NO;
+    if (window.windowLevel != UIWindowLevelNormal) return NO;
+    return YES;
+}
+
+// Same eligibility as LCShouldApplyLandscapeLetterbox but WITHOUT the
+// multitask exclusion -- used only by the periodic CADisplayLink sweep
+// below, never by the real-time -setFrame:/-layoutSubviews hooks. Those
+// stay deferential to the host under multitask (so they don't fight its
+// real-time centering/resizing), but that leaves nothing to catch it if
+// something *else* resets the window's frame outside the host's own
+// resize flow -- which is exactly what happened here: the app's own
+// window reverted to the full 1080x810 tile a few seconds after launch,
+// with no corresponding host-side relayout to correct it, and nothing
+// forced it back since the sweep was skipping multitask entirely. This
+// sweep's existing early-out (skip touching .frame when nothing has
+// actually drifted) means it can't fight the host during a legitimate
+// resize -- it only acts when the current frame doesn't match the target,
+// which is precisely the drift case this exists to catch.
+static BOOL LCShouldApplyLandscapeLetterboxSafetyNet(UIWindow *window) {
+    NSString *lcappid = NSUserDefaults.lcGuestAppId;
+    if (![NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", lcappid)]) return NO;
     if ([lcappid.lowercaseString containsString:@"sidestore"]) return NO;
     if (window.windowLevel != UIWindowLevelNormal) return NO;
     return YES;
