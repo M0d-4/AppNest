@@ -6,6 +6,7 @@
 //
 #import <Foundation/Foundation.h>
 #import <Security/Security.h>
+#import <dlfcn.h>
 #import "utils.h"
 #import <CommonCrypto/CommonDigest.h>
 #import "../../litehook/src/litehook.h"
@@ -16,7 +17,38 @@ OSStatus (*orig_SecItemAdd)(CFDictionaryRef attributes, CFTypeRef *result) = Sec
 OSStatus (*orig_SecItemCopyMatching)(CFDictionaryRef query, CFTypeRef *result) = SecItemCopyMatching;
 OSStatus (*orig_SecItemUpdate)(CFDictionaryRef query, CFDictionaryRef attributesToUpdate) = SecItemUpdate;
 OSStatus orig_SecItemDelete(CFDictionaryRef query);  // defined below; installed as SecItemDelete hook via litehook
-static OSStatus (*real_SecItemDelete)(CFDictionaryRef query) = SecItemDelete;
+static OSStatus (*real_SecItemDelete)(CFDictionaryRef query) = NULL;
+
+// Resolves the true SecItemDelete straight from Security.framework's own
+// export table via dlsym, instead of capturing whatever the global
+// `SecItemDelete` symbol happens to resolve to right now (the plain
+// `= SecItemDelete` capture used for the other four Sec* functions below).
+// That plain capture is a snapshot of a *symbol reference*, and it's exactly
+// what a third-party tweak's own global hook can end up racing against --
+// e.g. a game's cheat/mod dylib that also globally rebinds SecItemDelete.
+// Whichever hook installs "last" wins the process-wide binding, and if that
+// happens to be before this capture runs, it would silently point back at
+// the *other* hook instead of the real system implementation. The next time
+// either hook called through what it thought was "the real one", it would
+// actually call back into the other hook -- a two-function loop that runs
+// until it blows the stack (this is what crashed with 15,807 recursive
+// `orig_SecItemDelete` frames). dlsym'ing directly against the
+// Security.framework image sidesteps the race entirely: it reads the
+// symbol's address from the image that actually defines it, which isn't
+// something another library's GOT-patching can touch.
+static void LCResolveRealSecItemDelete(void) {
+    if (real_SecItemDelete) return;
+    void *security = dlopen("/System/Library/Frameworks/Security.framework/Security", RTLD_NOLOAD);
+    if (security) {
+        real_SecItemDelete = (OSStatus (*)(CFDictionaryRef))dlsym(security, "SecItemDelete");
+    }
+    if (!real_SecItemDelete) {
+        // Security.framework should always already be loaded and dlopen
+        // with RTLD_NOLOAD should always find it -- this is a last-resort
+        // fallback in case it somehow isn't, better than a null call.
+        real_SecItemDelete = SecItemDelete;
+    }
+}
 SecKeyRef (*orig_SecKeyCreateRandomKey)(CFDictionaryRef parameters, CFErrorRef *error) = SecKeyCreateRandomKey;
 SecKeyRef (*orig_SecKeyCreateWithData)(CFDataRef keyData, CFDictionaryRef parameters, CFErrorRef *error) = SecKeyCreateWithData;
 #pragma clang diagnostic push
@@ -275,6 +307,18 @@ OSStatus new_SecItemUpdate(CFDictionaryRef query, CFDictionaryRef attributesToUp
 }
 
 OSStatus orig_SecItemDelete(CFDictionaryRef query){
+    // Defense in depth: even with the dlsym fix above removing the known
+    // cause, this guarantees that *any* hook-chain collision on this symbol
+    // (present or future, ours or a third party's) fails safely -- a wrong
+    // answer for one call -- instead of recursing until it blows the stack.
+    static __thread int lcSecItemDeleteReentrancyDepth = 0;
+    if (lcSecItemDeleteReentrancyDepth > 0) {
+        NSLog(@"[LC] orig_SecItemDelete re-entered -- another hook is looping back into us; returning errSecInteractionNotAllowed instead of recursing");
+        return errSecInteractionNotAllowed;
+    }
+    lcSecItemDeleteReentrancyDepth++;
+    LCResolveRealSecItemDelete();
+
     NSMutableDictionary *scopedQuery = LCCreateScopedDictionary(query, YES, NO, LCSecItemDictionaryKindQuery);
     OSStatus status = real_SecItemDelete((__bridge CFDictionaryRef)scopedQuery);
     if (status == errSecItemNotFound || status == errSecParam) {
@@ -290,6 +334,7 @@ OSStatus orig_SecItemDelete(CFDictionaryRef query){
         }
     }
 
+    lcSecItemDeleteReentrancyDepth--;
     return status;
 }
 
