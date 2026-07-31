@@ -1172,8 +1172,16 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
 - (CGRect)hook_UIScreen_bounds {
     NSString *appId = NSUserDefaults.lcGuestAppId;
     BOOL isSideStore = [appId.lowercaseString containsString:@"sidestore"];
+    BOOL isMultitaskLaunch = [NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCIsMultitaskLaunch", appId)];
     CGRect nativeBounds = [self hook_UIScreen_bounds];
-    if ([NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", appId)] && !isSideStore) {
+    // Under multitask the window's real frame is whatever tile the host
+    // assigns (see LCShouldApplyLandscapeLetterbox) -- not the full native
+    // screen. Reporting a fake portrait-cropped UIScreen.bounds there would
+    // still tell the app "you have this much space" while the actual window
+    // is a different size entirely, so content/render surfaces sized off
+    // these bounds end up mismatched with the real window -- which is what
+    // produced a blank screen rather than just a mis-sized one.
+    if ([NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", appId)] && !isSideStore && !isMultitaskLaunch) {
         CGFloat screenH = nativeBounds.size.height;
         CGFloat screenW = nativeBounds.size.width;
         // Portrait-aspect crop (roughly a typical iPad portrait proportion)
@@ -1259,10 +1267,7 @@ static LCLandscapeLetterboxDisplayLinkTarget *LCLandscapeLetterboxDisplayLinkTar
 
 - (void)hook_makeKeyAndVisible {
     [self updateWindowScene];
-    NSString *appid = NSUserDefaults.lcGuestAppId;
-    BOOL isSideStore = [appid.lowercaseString containsString:@"sidestore"];
-    BOOL isMainAppWindow = (self.windowLevel == UIWindowLevelNormal);
-    if ([NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", appid)] && !isSideStore && isMainAppWindow) {
+    if (LCShouldApplyLandscapeLetterbox(self)) {
         self.backgroundColor = [UIColor blackColor];
     }
     // Belt-and-suspenders: -layoutSubviews and -setFrame: both depend on
