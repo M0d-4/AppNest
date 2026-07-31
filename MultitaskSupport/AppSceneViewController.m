@@ -540,10 +540,17 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
 //⭐️⭐️⭐️Force Landscape Mode + multitask mode
 - (void)viewWillLayoutSubviews {
     [super viewWillLayoutSubviews];
+    BOOL forceLandscapeEnabled = LCForceLandscapeModeEnabled(self.bundleId);
+    NSLog(@"[ForceLandscapeMode] host viewWillLayoutSubviews bundleId=%@ enabled=%d usesHostingControllerAPI=%d hasPresentationView=%d viewBounds=%@",
+          self.bundleId, forceLandscapeEnabled, self.usesHostingControllerAPI,
+          self.presenter.presentationView != nil, NSStringFromCGRect(self.view.bounds));
     if (self.presenter.presentationView) {
-        if (LCForceLandscapeModeEnabled(self.bundleId)) {
+        if (forceLandscapeEnabled) {
             self.contentView.autoresizingMask = UIViewAutoresizingNone;
-            self.contentView.frame = LCLandscapeLetterboxedRect(self.view.bounds);
+            CGRect targetFrame = LCLandscapeLetterboxedRect(self.view.bounds);
+            NSLog(@"[ForceLandscapeMode] host viewWillLayoutSubviews applying letterbox currentFrame=%@ targetFrame=%@",
+                  NSStringFromCGRect(self.contentView.frame), NSStringFromCGRect(targetFrame));
+            self.contentView.frame = targetFrame;
         } else {
             self.contentView.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
             self.contentView.frame = self.view.bounds;
@@ -566,12 +573,15 @@ static void LCStrictAutoWipeContainerForDataUUIDIfNeeded(NSString *dataUUID) {
         CGFloat w = self.view.frame.size.width / self.scaleRatio;
         CGFloat h = self.view.frame.size.height / self.scaleRatio;
         CGFloat offsetX = 0;
-        if (LCForceLandscapeModeEnabled(self.bundleId)) {
+        BOOL forceLandscapeEnabled = LCForceLandscapeModeEnabled(self.bundleId);
+        if (forceLandscapeEnabled) {
             CGRect constrained = LCLandscapeLetterboxedRect(CGRectMake(0, 0, w, h));
             offsetX = constrained.origin.x;
             w = constrained.size.width;
         }
         CGRect frame = CGRectMake(offsetX, 0, w, h);
+        NSLog(@"[ForceLandscapeMode] host updateFrameWithSettingsBlock bundleId=%@ enabled=%d scaleRatio=%f resultFrame=%@",
+              self.bundleId, forceLandscapeEnabled, self.scaleRatio, NSStringFromCGRect(frame));
 
         [self updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
             settings.deviceOrientation = UIDevice.currentDevice.orientation;

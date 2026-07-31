@@ -470,7 +470,10 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     }
     CGFloat offsetX = 0;
     CGFloat constrainedW = viewW;
-    if (LCForceLandscapeModeEnabled(self.appSceneVC.bundleId)) {
+    BOOL forceLandscapeEnabled = LCForceLandscapeModeEnabled(self.appSceneVC.bundleId);
+    NSLog(@"[ForceLandscapeMode] host didUpdateFromSettings bundleId=%@ enabled=%d isMaximized=%d viewW=%f viewH=%f",
+          self.appSceneVC.bundleId, forceLandscapeEnabled, self.isMaximized, viewW, viewH);
+    if (forceLandscapeEnabled) {
         CGRect constrained = LCLandscapeLetterboxedRect(CGRectMake(0, 0, viewW, viewH));
         constrainedW = constrained.size.width;
         offsetX = constrained.origin.x;
