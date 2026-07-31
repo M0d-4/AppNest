@@ -1394,10 +1394,22 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     
     if([guestAppInfo[@"dontInjectTweakLoader"] boolValue] && ![guestAppInfo[@"dontLoadTweakLoader"] boolValue]) {
         tweakLoaderLoaded = true;
+        // This is the runtime fallback used when the exec couldn't be patched
+        // to load TweakLoader.dylib automatically (most commonly
+        // PATCH_EXEC_RESULT_NO_SPACE_FOR_TWEAKLOADER -- see LCAppInfo.m,
+        // where that sets dontInjectTweakLoader=YES on import). The result
+        // was never checked here, so if this dlopen itself fails for any
+        // reason, every tweak in TweakLoader.dylib (Force Landscape Mode,
+        // the keychain hooks, all of it) silently never runs, with nothing
+        // in any log to say why.
+        void *tweakLoaderHandle;
         if([guestAppInfo[@"hideLiveContainer"] boolValue]) {
-            dlopen([lcMainBundle.bundlePath stringByAppendingPathComponent:@"Frameworks/TweakLoader.dylib"].UTF8String, RTLD_LAZY|RTLD_GLOBAL);
+            tweakLoaderHandle = dlopen([lcMainBundle.bundlePath stringByAppendingPathComponent:@"Frameworks/TweakLoader.dylib"].UTF8String, RTLD_LAZY|RTLD_GLOBAL);
         } else {
-            dlopen("@loader_path/../TweakLoader.dylib", RTLD_LAZY|RTLD_GLOBAL);
+            tweakLoaderHandle = dlopen("@loader_path/../TweakLoader.dylib", RTLD_LAZY|RTLD_GLOBAL);
+        }
+        if (!tweakLoaderHandle) {
+            NSLog(@"[LCBootstrap] fallback TweakLoader.dylib dlopen failed: %s", dlerror());
         }
     }
     
