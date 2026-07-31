@@ -1174,14 +1174,36 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
     BOOL isSideStore = [appId.lowercaseString containsString:@"sidestore"];
     BOOL isMultitaskLaunch = [NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCIsMultitaskLaunch", appId)];
     CGRect nativeBounds = [self hook_UIScreen_bounds];
-    // Under multitask the window's real frame is whatever tile the host
-    // assigns (see LCShouldApplyLandscapeLetterbox) -- not the full native
-    // screen. Reporting a fake portrait-cropped UIScreen.bounds there would
-    // still tell the app "you have this much space" while the actual window
-    // is a different size entirely, so content/render surfaces sized off
-    // these bounds end up mismatched with the real window -- which is what
-    // produced a blank screen rather than just a mis-sized one.
-    if ([NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", appId)] && !isSideStore && !isMultitaskLaunch) {
+    BOOL forceLandscapeEnabled = [NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", appId)] && !isSideStore;
+
+    if (isMultitaskLaunch) {
+        // Under multitask the window's real frame is whatever tile the host
+        // assigns -- not the full native screen, and (when Force Landscape
+        // Mode is on) not even the whole tile, since the host further
+        // narrows the visible content area to a centered letterboxed
+        // sub-rect (see LCLandscapeLetterboxedRect in MultitaskSupport).
+        // The guest's own window bounds already correctly track whichever
+        // of those two the host has actually assigned (confirmed by
+        // hook_setFrame's requestedFrame logs matching each), so basing
+        // UIScreen.bounds on nativeBounds (the full device screen) here was
+        // still wrong even without the crop below: it previously fixed a
+        // blank screen (content sized for a fake crop of the WRONG total
+        // area) by reporting an area that also doesn't match what's
+        // actually visible, just a less broken one -- the app's content
+        // still doesn't know to size itself to the narrower letterboxed
+        // area, so it overflows past the right edge instead of fitting it.
+        UIWindow *keyWindow = LCKeyWindowForScene(LCForegroundWindowScene());
+        CGRect tileBounds = keyWindow ? keyWindow.bounds : nativeBounds;
+        if (forceLandscapeEnabled) {
+            CGFloat availW = tileBounds.size.width;
+            CGFloat availH = tileBounds.size.height;
+            CGFloat targetW = (availW > 0 && availH > 0) ? MIN(availW, availH * (3.0 / 4.0)) : availW;
+            return CGRectMake(0, 0, targetW, availH);
+        }
+        return CGRectMake(0, 0, tileBounds.size.width, tileBounds.size.height);
+    }
+
+    if (forceLandscapeEnabled) {
         CGFloat screenH = nativeBounds.size.height;
         CGFloat screenW = nativeBounds.size.width;
         // Portrait-aspect crop (roughly a typical iPad portrait proportion)
