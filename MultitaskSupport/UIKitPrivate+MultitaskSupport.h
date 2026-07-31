@@ -51,7 +51,20 @@ static inline CGRect LCLandscapeLetterboxedRect(CGRect availableBounds) {
 // app already running in a different tile. Each AppSceneViewController
 // already knows its own bundleId, so callers should always pass that.
 static inline BOOL LCForceLandscapeModeEnabled(NSString *appId) {
-    NSString *key = [NSString stringWithFormat:@"LCForceLandscapeMode_%@", appId ?: @""];
+    NSString *normalizedAppId = appId;
+    // Some multitask call sites end up passing the on-disk bundle folder
+    // name (e.g. "com.example.App.app", note the trailing ".app") instead
+    // of the plain bundle identifier the toggle was actually written under
+    // (see LCAppModel.swift, which scopes the key by the plain
+    // bundleIdentifier()). Real bundle identifiers never legitimately end
+    // in ".app", so stripping it here means this lookup always matches the
+    // key that was actually written, regardless of which form a given
+    // caller happens to have on hand. Without this, the host side always
+    // read back false even when the guest side correctly saw the toggle on.
+    if ([normalizedAppId hasSuffix:@".app"]) {
+        normalizedAppId = [normalizedAppId substringToIndex:normalizedAppId.length - 4];
+    }
+    NSString *key = [NSString stringWithFormat:@"LCForceLandscapeMode_%@", normalizedAppId ?: @""];
     return [NSUserDefaults.lcSharedDefaults boolForKey:key];
 }
 
