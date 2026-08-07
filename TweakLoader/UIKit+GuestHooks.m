@@ -1374,25 +1374,36 @@ static CGRect LCLandscapeLetterboxedFrame(CGRect frame) {
 }
 
 - (void)hook_setFrame:(CGRect)frame {
-    BOOL shouldForce = LCShouldApplyLandscapeLetterbox(self);
+    // Deliberately the safety-net check (no multitask exclusion), not
+    // LCShouldApplyLandscapeLetterbox: the host's own settings-driven
+    // resize has a real, if brief, delay before it corrects a window down
+    // to the letterboxed width, and during that window the app can already
+    // read/act on the wrong (full-tile) frame -- which is exactly what
+    // baked a too-wide content layout into a game that only sizes its
+    // content once at launch rather than observing later resizes. Applying
+    // the same crop synchronously here, immediately, closes that window
+    // instead of just correcting it a frame later. Since both sides use
+    // the identical crop formula, this can't fight the host's own
+    // resize -- it converges to the same target either way.
+    BOOL shouldForce = LCShouldApplyLandscapeLetterboxSafetyNet(self);
     NSLog(@"[ForceLandscapeMode] hook_setFrame called requestedFrame=%@ windowLevel=%f shouldForce=%d",
           NSStringFromCGRect(frame), self.windowLevel, shouldForce);
 
-    // Anything that doesn't need the letterbox — feature off, SideStore, a
-    // non-main window (overlays, alerts, multitask chrome, etc.), or a
-    // window the multitask host is already letterboxing itself — must pass
-    // through untouched. Previously this branch substituted a hardcoded
-    // full-screen rect for *any* unletterboxed case, which stomped on every
-    // other window's real geometry (including multitask tile assignments),
-    // silently breaking layout well beyond just this feature.
+    // Anything that doesn't need the letterbox — feature off, SideStore, or
+    // a non-main window (overlays, alerts, multitask chrome, etc.) — must
+    // pass through untouched. Previously this branch substituted a
+    // hardcoded full-screen rect for *any* unletterboxed case, which
+    // stomped on every other window's real geometry (including multitask
+    // tile assignments), silently breaking layout well beyond just this
+    // feature.
     if (!shouldForce) {
         [self hook_setFrame:frame];
         return;
     }
 
-    // Constrain to a portrait aspect within whatever area was actually being
-    // requested (the full screen for a normal launch — multitask windows
-    // are excluded above, since the host handles those itself).
+    // Constrain to a portrait aspect within whatever area was actually
+    // being requested (the full screen for a normal launch, or the current
+    // multitask tile).
     [self hook_setFrame:LCLandscapeLetterboxedFrame(frame)];
 }
 
@@ -1405,7 +1416,7 @@ static CGRect LCLandscapeLetterboxedFrame(CGRect frame) {
 // can't loop.
 - (void)hook_layoutSubviews {
     [self hook_layoutSubviews];
-    if (!LCShouldApplyLandscapeLetterbox(self)) return;
+    if (!LCShouldApplyLandscapeLetterboxSafetyNet(self)) return;
 
     CGRect currentFrame = self.frame;
     CGRect targetFrame = LCLandscapeLetterboxedFrame(currentFrame);
