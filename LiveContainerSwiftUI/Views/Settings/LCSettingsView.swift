@@ -84,6 +84,7 @@ struct LCSettingsView: View {
     @AppStorage("LCWaitForDebugger") var waitForDebugger = false
     @AppStorage("LCSharePrivateDataWithLiveProcess") var sharePrivateDataWithLiveProcess = false
     @AppStorage("BKNoWatchdogs") var disableLiveProcessWatchdog = false
+    @AppStorage("LCDebugLogEnabled", store: LCUtils.appGroupUserDefault) var debugLogEnabled = true
     
     @EnvironmentObject private var sharedModel : SharedModel
     
@@ -302,13 +303,16 @@ struct LCSettingsView: View {
                 }
                 
                 Section {
+                    Toggle(isOn: $debugLogEnabled) {
+                        Text("Debug Log")
+                    }
                     NavigationLink {
                         LCDebugLogView()
                     } label: {
-                        Text("Debug Log")
+                        Text("View Debug Log")
                     }
                 } footer: {
-                    Text("On-device logs from the host app, guest app, and multitask process — readable and shareable without a Mac.")
+                    Text("On-device logs from the host app, guest app, and multitask process — readable and shareable without a Mac. Takes effect the next time each process launches.")
                 }
                 
                 Section {

@@ -2375,12 +2375,7 @@ struct LCAppSettingsView: View {
 
             Section {
                Toggle(isOn: $model.uiForceLandscapeMode) {
-                   HStack {
-                       Image(systemName: "rectangle.landscape.rotate")
-                           .foregroundColor(.blue)
-                           .frame(width: 20)
-                       Text("Force Landscape Mode")
-                   }
+                   Text("Force Landscape Mode")
                }
             } header: {
                 Label("Device Mode", systemImage: "rectangle.landscape.rotate")

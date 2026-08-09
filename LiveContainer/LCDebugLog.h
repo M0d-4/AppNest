@@ -71,6 +71,23 @@ static inline void LCDebugLogTruncateIfNeeded(NSURL *fileURL) {
     [tail writeToURL:fileURL atomically:YES];
 }
 
+// Reads the user-facing "Debug Log" toggle (Settings > Debug Log) directly
+// out of the shared app-group defaults, by suite name -- not via
+// LCUtils.appGroupUserDefault or lcSharedDefaults, since neither is
+// guaranteed to exist yet at the point this header's callers run (in
+// particular LiveProcessMain calls LCDebugLogInstall before
+// LiveContainerMain has set up lcSharedDefaults). NSClassFromString, not a
+// direct [LCSharedUtils ...] send, for the same link-time reason as
+// LCDebugLogDirectory() above. Defaults to YES (logging on) when the key has
+// never been set, so existing installs keep capturing logs as before until
+// someone explicitly flips the new setting off.
+static inline BOOL LCDebugLogEnabled(void) {
+    NSString *suite = [NSClassFromString(@"LCSharedUtils") appGroupID];
+    NSUserDefaults *defaults = suite ? [[NSUserDefaults alloc] initWithSuiteName:suite] : nil;
+    if (!defaults || [defaults objectForKey:@"LCDebugLogEnabled"] == nil) return YES;
+    return [defaults boolForKey:@"LCDebugLogEnabled"];
+}
+
 static inline void LCDebugLogInstall(NSString *tag) {
     // Process-wide, not per-translation-unit: this header is #included
     // separately into LCBootstrap.m, TweakLoader.m, and LiveProcess/main.m,
@@ -79,6 +96,12 @@ static inline void LCDebugLogInstall(NSString *tag) {
     // getenv/setenv is real process state and works everywhere.
     if (getenv("LCDebugLogTag") != NULL) return;
     setenv("LCDebugLogTag", tag.UTF8String, 1);
+
+    // Checked after the guard above (so a disabled run still "claims" the
+    // process and later calls in the same process stay no-ops), but before
+    // ever touching stdout/stderr: when the setting is off, leave the fds
+    // completely alone rather than redirecting to a file nobody reads.
+    if (!LCDebugLogEnabled()) return;
 
     NSURL *fileURL = LCDebugLogFileURL(tag);
     LCDebugLogTruncateIfNeeded(fileURL);
