@@ -2378,7 +2378,7 @@ struct LCAppSettingsView: View {
                    Text("Force Landscape Mode")
                }
             } header: {
-                Label("Device Mode", systemImage: "rectangle.landscape.rotate")
+                Text("Device Mode")
             } footer: {
                Text("For portrait-only apps: runs at a smaller, portrait-shaped size with black borders on the sides instead of filling the whole landscape screen.")
             }
