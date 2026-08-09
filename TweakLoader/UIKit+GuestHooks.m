@@ -309,6 +309,20 @@ static void Real_UIKitGuestHooksInit(void) {
     NSString *lcGuestAppIdForOrientation = NSUserDefaults.lcGuestAppId;
     BOOL forceLandscapeModeEnabled = [NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCForceLandscapeMode", lcGuestAppIdForOrientation)];
     NSInteger LCOrientationLockDirection = [NSUserDefaults.guestAppInfo[@"LCOrientationLock"] integerValue];
+    // Only the phone-specific manual lock below needs the
+    // background/foreground "kick" installed further down (via
+    // hook__handleDelegateCallbacksWithOptions:isSuspended:restoreState:):
+    // that workaround bounces the process through com.apple.springboard and
+    // back ~0.5s after launch to make iOS re-read a changed FBSSceneParameters
+    // orientation. Force Landscape Mode must NOT set this, since it already
+    // gets a correct landscape orientation at scene-connect time via
+    // hook_initWithXPCDictionary/hook___supportedInterfaceOrientations below,
+    // and stays correct continuously via the setFrame/layoutSubviews/
+    // CADisplayLink letterbox enforcement above -- sharing the phone lock's
+    // kick with it was causing a spurious didEnterBackground/
+    // willEnterForeground cycle a couple seconds into every landscape-mode
+    // launch for no benefit.
+    BOOL needsOrientationKickWorkaround = NO;
     if(LCOrientationLockDirection != 0 && [UIDevice.currentDevice userInterfaceIdiom] == UIUserInterfaceIdiomPhone) {
         switch (LCOrientationLockDirection) {
             case 1:
@@ -320,6 +334,7 @@ static void Real_UIKitGuestHooksInit(void) {
             default:
                 break;
         }
+        needsOrientationKickWorkaround = (LCOrientationLock != UIInterfaceOrientationUnknown);
     } else if (forceLandscapeModeEnabled) {
         // Force Landscape Mode: a portrait-only iPad app normally just
         // renders "sideways" (unrotated, filling the whole screen) if the
@@ -338,7 +353,9 @@ static void Real_UIKitGuestHooksInit(void) {
         LCOrientationLock = UIInterfaceOrientationLandscapeRight;
     }
     if(!NSUserDefaults.isLiveProcess && LCOrientationLock != UIInterfaceOrientationUnknown) {
-        swizzle(UIApplication.class, @selector(_handleDelegateCallbacksWithOptions:isSuspended:restoreState:), @selector(hook__handleDelegateCallbacksWithOptions:isSuspended:restoreState:));
+        if (needsOrientationKickWorkaround) {
+            swizzle(UIApplication.class, @selector(_handleDelegateCallbacksWithOptions:isSuspended:restoreState:), @selector(hook__handleDelegateCallbacksWithOptions:isSuspended:restoreState:));
+        }
         swizzle(FBSSceneParameters.class, @selector(initWithXPCDictionary:), @selector(hook_initWithXPCDictionary:));
         swizzle(UIViewController.class, @selector(__supportedInterfaceOrientations), @selector(hook___supportedInterfaceOrientations));
         swizzle(UIViewController.class, @selector(shouldAutorotateToInterfaceOrientation:), @selector(hook_shouldAutorotateToInterfaceOrientation:));
