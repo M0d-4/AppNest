@@ -30,7 +30,9 @@ extern void _objc_msgForward(void);
 // them too.
 static BOOL LCShouldApplyLandscapeLetterbox(UIWindow *window);
 static BOOL LCShouldApplyLandscapeLetterboxSafetyNet(UIWindow *window);
+static BOOL LCIsMultitaskLandscapeLaunch(void);
 static CGRect LCLandscapeLetterboxedFrame(CGRect frame);
+static CGRect LCLandscapeLetterboxedSize(CGRect frame);
 // LCForceLandscapeMode/LCIsMultitaskLaunch were single global keys in the
 // shared app-group defaults, not scoped per app. That's fine as long as
 // only one guest app is ever relevant at a time, but multitasking exists
@@ -1249,13 +1251,18 @@ static LCControlAppURLHandling LCHandleControlAppURL(NSURL *url, NSString** modi
             // acts when the current frame has actually drifted from the
             // target.
             if (!LCShouldApplyLandscapeLetterboxSafetyNet(window)) continue;
-            CGRect targetFrame = LCLandscapeLetterboxedFrame(window.frame);
+            BOOL isMultitask = LCIsMultitaskLandscapeLaunch();
+            // Width-only under multitask -- the host owns centering there;
+            // see LCLandscapeLetterboxedSize.
+            CGRect targetFrame = isMultitask ? LCLandscapeLetterboxedSize(window.frame) : LCLandscapeLetterboxedFrame(window.frame);
             // Cheap early-out: on the overwhelming majority of frames
             // nothing has moved the window since the last tick, so avoid
             // touching .frame (and re-entering the -setFrame:/-layoutSubviews
-            // swizzles) unless the crop has actually drifted.
+            // swizzles) unless the crop has actually drifted. Origin is only
+            // part of the drift check outside multitask, since under
+            // multitask this sweep never touches origin in the first place.
             if (fabs(window.frame.size.width - targetFrame.size.width) < 0.5 &&
-                fabs(window.frame.origin.x - targetFrame.origin.x) < 0.5) {
+                (isMultitask || fabs(window.frame.origin.x - targetFrame.origin.x) < 0.5)) {
                 continue;
             }
             window.frame = targetFrame;
@@ -1373,6 +1380,30 @@ static CGRect LCLandscapeLetterboxedFrame(CGRect frame) {
     return CGRectMake(offsetX, frame.origin.y, targetW, availH);
 }
 
+static BOOL LCIsMultitaskLandscapeLaunch(void) {
+    return [NSUserDefaults.lcSharedDefaults boolForKey:LCForceLandscapeModeScopedKey(@"LCIsMultitaskLaunch", NSUserDefaults.lcGuestAppId)];
+}
+
+// Same crop as LCLandscapeLetterboxedFrame, but leaves origin untouched.
+// Under multitask, horizontal centering is the host's job -- it already
+// offsets its own contentView by exactly this same margin (see
+// AppSceneViewController's viewWillLayoutSubviews). Letting the guest ALSO
+// offset its own window's origin double-applies that margin: visually, both
+// the left and right margins collapse onto the left, and content ends up
+// flush against the right edge with zero margin on that side instead of a
+// matching one -- which is exactly the bug this replaces. Constraining
+// WIDTH here still prevents the app from baking a too-wide content layout
+// (the original overflow-past-the-edge bug this whole mechanism exists to
+// fix); the host remains solely responsible for where that narrower window
+// actually sits on screen.
+static CGRect LCLandscapeLetterboxedSize(CGRect frame) {
+    CGFloat availW = frame.size.width;
+    CGFloat availH = frame.size.height;
+    if (availW <= 0 || availH <= 0) return frame;
+    CGFloat targetW = MIN(availW, availH * (3.0 / 4.0));
+    return CGRectMake(frame.origin.x, frame.origin.y, targetW, availH);
+}
+
 - (void)hook_setFrame:(CGRect)frame {
     // Deliberately the safety-net check (no multitask exclusion), not
     // LCShouldApplyLandscapeLetterbox: the host's own settings-driven
@@ -1402,9 +1433,11 @@ static CGRect LCLandscapeLetterboxedFrame(CGRect frame) {
     }
 
     // Constrain to a portrait aspect within whatever area was actually
-    // being requested (the full screen for a normal launch, or the current
-    // multitask tile).
-    [self hook_setFrame:LCLandscapeLetterboxedFrame(frame)];
+    // being requested. Under multitask, only width is enforced here — the
+    // host already centers its own contentView by the same margin, so also
+    // centering the guest's window on top of that double-applies it.
+    CGRect targetFrame = LCIsMultitaskLandscapeLaunch() ? LCLandscapeLetterboxedSize(frame) : LCLandscapeLetterboxedFrame(frame);
+    [self hook_setFrame:targetFrame];
 }
 
 // Scene-managed windows are often never explicitly sent -setFrame: at all —
@@ -1419,7 +1452,7 @@ static CGRect LCLandscapeLetterboxedFrame(CGRect frame) {
     if (!LCShouldApplyLandscapeLetterboxSafetyNet(self)) return;
 
     CGRect currentFrame = self.frame;
-    CGRect targetFrame = LCLandscapeLetterboxedFrame(currentFrame);
+    CGRect targetFrame = LCIsMultitaskLandscapeLaunch() ? LCLandscapeLetterboxedSize(currentFrame) : LCLandscapeLetterboxedFrame(currentFrame);
     NSLog(@"[ForceLandscapeMode] hook_layoutSubviews currentFrame=%@ targetFrame=%@",
           NSStringFromCGRect(currentFrame), NSStringFromCGRect(targetFrame));
     // Already constrained (or converged to) the target — nothing to do.
