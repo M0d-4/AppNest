@@ -7,12 +7,13 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		173545AF2E2C7913001B3B4C /* SideStore.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 173545A82E2C7913001B3B4C /* SideStore.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
+		173545AF2E2C7913001B3B4C /* SideStoreSupport.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 173545A82E2C7913001B3B4C /* SideStoreSupport.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		17413FBC2D9C0BAE00F3F928 /* LiveContainerSwiftUI.framework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 17413FB52D9C0BAE00F3F928 /* LiveContainerSwiftUI.framework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		174140902D9C0E8200F3F928 /* TweakLoader.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 1741403A2D9C0D0000F3F928 /* TweakLoader.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		174140942D9C0E8200F3F928 /* ZSign.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 174140542D9C0D6D00F3F928 /* ZSign.dylib */; settings = {ATTRIBUTES = (CodeSignOnCopy, ); }; };
 		174140BA2D9C0F9100F3F928 /* TestJITLess.dylib in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 174140AD2D9C0F4100F3F928 /* TestJITLess.dylib */; };
 		174140D62D9C176F00F3F928 /* libarchive.tbd in Frameworks */ = {isa = PBXBuildFile; fileRef = 174140D52D9C176700F3F928 /* libarchive.tbd */; };
+		17442EF63024306800E3F88A /* LiveContainerShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */; };
 		17554B732DA16988004C6D90 /* OpenSSL.xcframework in Embed Frameworks */ = {isa = PBXBuildFile; fileRef = 17554B712DA16988004C6D90 /* OpenSSL.xcframework */; settings = {ATTRIBUTES = (CodeSignOnCopy, RemoveHeadersOnCopy, ); }; };
 		17554B742DA169AA004C6D90 /* OpenSSL.xcframework in Frameworks */ = {isa = PBXBuildFile; fileRef = 17554B712DA16988004C6D90 /* OpenSSL.xcframework */; };
 		17CAE6262F230548008B1977 /* LiveContainerShared.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */; };
@@ -40,7 +41,7 @@
 			containerPortal = 17DCE9952C7067EC00731D42 /* Project object */;
 			proxyType = 1;
 			remoteGlobalIDString = 173545A72E2C7913001B3B4C;
-			remoteInfo = SideStore;
+			remoteInfo = SideStoreSupport;
 		};
 		174140F92D9C1EDA00F3F928 /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -115,7 +116,7 @@
 			dstSubfolderSpec = 10;
 			files = (
 				174140902D9C0E8200F3F928 /* TweakLoader.dylib in Embed Frameworks */,
-				173545AF2E2C7913001B3B4C /* SideStore.framework in Embed Frameworks */,
+				173545AF2E2C7913001B3B4C /* SideStoreSupport.framework in Embed Frameworks */,
 				174140BA2D9C0F9100F3F928 /* TestJITLess.dylib in Embed Frameworks */,
 				17554B732DA16988004C6D90 /* OpenSSL.xcframework in Embed Frameworks */,
 				E1292BEC2DCA3B670065E12D /* LiveContainerShared.framework in Embed Frameworks */,
@@ -173,7 +174,7 @@
 		172CA85D2D9D721700CF6989 /* utils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = utils.h; sourceTree = "<group>"; };
 		172CA85E2D9D721700CF6989 /* utils.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = utils.m; sourceTree = "<group>"; };
 		172CA8652D9D723200CF6989 /* entitlements.xml */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = entitlements.xml; sourceTree = "<group>"; };
-		173545A82E2C7913001B3B4C /* SideStore.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = SideStore.framework; sourceTree = BUILT_PRODUCTS_DIR; };
+		173545A82E2C7913001B3B4C /* SideStoreSupport.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = SideStoreSupport.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		17413FB52D9C0BAE00F3F928 /* LiveContainerSwiftUI.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = LiveContainerSwiftUI.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		1741403A2D9C0D0000F3F928 /* TweakLoader.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = TweakLoader.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
 		174140542D9C0D6D00F3F928 /* ZSign.dylib */ = {isa = PBXFileReference; explicitFileType = "compiled.mach-o.dylib"; includeInIndex = 0; path = ZSign.dylib; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -214,7 +215,7 @@
 				"SideStore-Bridging-Header.h",
 				XPCServer.h,
 			);
-			target = 173545A72E2C7913001B3B4C /* SideStore */;
+			target = 173545A72E2C7913001B3B4C /* SideStoreSupport */;
 		};
 		174140F52D9C1C9B00F3F928 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
@@ -223,7 +224,6 @@
 				Notification.m,
 				TweakLoader.m,
 				"UIKit+GuestHooks.m",
-				utils.m,
 			);
 			target = 174140392D9C0D0000F3F928 /* TweakLoader */;
 		};
@@ -343,13 +343,6 @@
 				"SideStore-Bridging-Header.h",
 			);
 		};
-		174140F62D9C1C9B00F3F928 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = 174140372D9C0D0000F3F928 /* Sources */;
-			membershipExceptions = (
-				utils.h,
-			);
-		};
 		176614FC2E2C851800B1F478 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			buildPhase = 173545A42E2C7913001B3B4C /* Sources */;
@@ -377,9 +370,9 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		172CA8992D9D72C300CF6989 /* Resources */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (172CA8BD2D9D74B700CF6989 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 172CA8C32D9D76AD00CF6989 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Resources; sourceTree = "<group>"; };
 		172CA8AD2D9D741F00CF6989 /* fishhook */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (58AB1E2C2E479B67003668F2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 5822D4F32E206BF2004F7F58 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = fishhook; sourceTree = "<group>"; };
-		173545A92E2C7913001B3B4C /* SideStore */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (173546D32E2C82AE001B3B4C /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 176614FC2E2C851800B1F478 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, 173546D42E2C82AE001B3B4C /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = SideStore; sourceTree = "<group>"; };
+		173545A92E2C7913001B3B4C /* SideStoreSupport */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (173546D32E2C82AE001B3B4C /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 176614FC2E2C851800B1F478 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, 173546D42E2C82AE001B3B4C /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = SideStoreSupport; sourceTree = "<group>"; };
 		17413FB62D9C0BAE00F3F928 /* LiveContainerSwiftUI */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = LiveContainerSwiftUI; sourceTree = "<group>"; };
-		174140162D9C0C1B00F3F928 /* TweakLoader */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (174140F52D9C1C9B00F3F928 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 174140F62D9C1C9B00F3F928 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = TweakLoader; sourceTree = "<group>"; };
+		174140162D9C0C1B00F3F928 /* TweakLoader */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (174140F52D9C1C9B00F3F928 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = TweakLoader; sourceTree = "<group>"; };
 		174140552D9C0D6D00F3F928 /* ZSign */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ZSign; sourceTree = "<group>"; };
 		174140AE2D9C0F4100F3F928 /* TestJITLess */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = TestJITLess; sourceTree = "<group>"; };
 		17780D3B2E1C02420077E636 /* litehook */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (17780E512E1C039D0077E636 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = litehook; sourceTree = "<group>"; };
@@ -397,6 +390,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				17442EF63024306800E3F88A /* LiveContainerShared.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -526,7 +520,7 @@
 				174140552D9C0D6D00F3F928 /* ZSign */,
 				174140AE2D9C0F4100F3F928 /* TestJITLess */,
 				E1292AE72DCA3A660065E12D /* LiveProcess */,
-				173545A92E2C7913001B3B4C /* SideStore */,
+				173545A92E2C7913001B3B4C /* SideStoreSupport */,
 				17CAE6182F230449008B1977 /* LaunchAppExtension */,
 				17E23DE02F443A9300C55733 /* ShareExtension */,
 				19A100052F70000000A0B001 /* SafariWebExtension */,
@@ -546,7 +540,7 @@
 				174140AD2D9C0F4100F3F928 /* TestJITLess.dylib */,
 				E1292AE52DCA3A660065E12D /* LiveProcess.appex */,
 				E1292BD62DCA3B660065E12D /* LiveContainerShared.framework */,
-				173545A82E2C7913001B3B4C /* SideStore.framework */,
+				173545A82E2C7913001B3B4C /* SideStoreSupport.framework */,
 				17CAE6172F230449008B1977 /* LaunchAppExtension.appex */,
 				17E23DDF2F443A9300C55733 /* ShareExtension.appex */,
 				19A100042F70000000A0B001 /* SafariWebExtension.appex */,
@@ -603,9 +597,9 @@
 /* End PBXHeadersBuildPhase section */
 
 /* Begin PBXNativeTarget section */
-		173545A72E2C7913001B3B4C /* SideStore */ = {
+		173545A72E2C7913001B3B4C /* SideStoreSupport */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 173545B02E2C7913001B3B4C /* Build configuration list for PBXNativeTarget "SideStore" */;
+			buildConfigurationList = 173545B02E2C7913001B3B4C /* Build configuration list for PBXNativeTarget "SideStoreSupport" */;
 			buildPhases = (
 				173545A32E2C7913001B3B4C /* Headers */,
 				173545A42E2C7913001B3B4C /* Sources */,
@@ -617,13 +611,13 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				173545A92E2C7913001B3B4C /* SideStore */,
+				173545A92E2C7913001B3B4C /* SideStoreSupport */,
 			);
-			name = SideStore;
+			name = SideStoreSupport;
 			packageProductDependencies = (
 			);
-			productName = SideStore;
-			productReference = 173545A82E2C7913001B3B4C /* SideStore.framework */;
+			productName = SideStoreSupport;
+			productReference = 173545A82E2C7913001B3B4C /* SideStoreSupport.framework */;
 			productType = "com.apple.product-type.framework";
 		};
 		17413FB42D9C0BAE00F3F928 /* LiveContainerSwiftUI */ = {
@@ -959,7 +953,7 @@
 				174140AC2D9C0F4100F3F928 /* TestJITLess */,
 				E1292AE42DCA3A660065E12D /* LiveProcess */,
 				E1292BD52DCA3B660065E12D /* LiveContainerShared */,
-				173545A72E2C7913001B3B4C /* SideStore */,
+				173545A72E2C7913001B3B4C /* SideStoreSupport */,
 				17CAE6162F230449008B1977 /* LaunchAppExtension */,
 				19A100062F70000000A0B001 /* SafariWebExtension */,
 				17E23DDE2F443A9300C55733 /* ShareExtension */,
@@ -1137,7 +1131,7 @@
 /* Begin PBXTargetDependency section */
 		173545AD2E2C7913001B3B4C /* PBXTargetDependency */ = {
 			isa = PBXTargetDependency;
-			target = 173545A72E2C7913001B3B4C /* SideStore */;
+			target = 173545A72E2C7913001B3B4C /* SideStoreSupport */;
 			targetProxy = 173545AC2E2C7913001B3B4C /* PBXContainerItemProxy */;
 		};
 		174140FA2D9C1EDA00F3F928 /* PBXTargetDependency */ = {
@@ -1213,7 +1207,7 @@
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
-				PRODUCT_BUNDLE_IDENTIFIER = com.kdt.livecontainer.SideStore;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kdt.livecontainer.SideStoreSupport;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -1221,7 +1215,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_INSTALL_MODULE = YES;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
-				SWIFT_OBJC_BRIDGING_HEADER = "SideStore/SideStore-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "SideStoreSupport/SideStore-Bridging-Header.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1255,7 +1249,7 @@
 				MARKETING_VERSION = 1.0;
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
-				PRODUCT_BUNDLE_IDENTIFIER = com.kdt.livecontainer.SideStore;
+				PRODUCT_BUNDLE_IDENTIFIER = com.kdt.livecontainer.SideStoreSupport;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -1263,7 +1257,7 @@
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_INSTALL_MODULE = YES;
 				SWIFT_INSTALL_OBJC_HEADER = NO;
-				SWIFT_OBJC_BRIDGING_HEADER = "SideStore/SideStore-Bridging-Header.h";
+				SWIFT_OBJC_BRIDGING_HEADER = "SideStoreSupport/SideStore-Bridging-Header.h";
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
 				SWIFT_VERSION = 5.0;
 				TARGETED_DEVICE_FAMILY = "1,2";
@@ -1512,7 +1506,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				OTHER_LDFLAGS = "-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace";
+				OTHER_LDFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1548,7 +1542,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				OTHER_LDFLAGS = "-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace";
+				OTHER_LDFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1811,12 +1805,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 3.7.11;
-				OTHER_LDFLAGS = (
-					"-Wl,-U,_OBJC_CLASS_$__LSOpenConfiguration",
-					"-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace",
-					"-Wl,-U,_FBSOpenApplicationOptionKeyActivateAsClassic",
-					"-Wl,-U,_FBSOpenApplicationOptionKeyPayloadURL",
-				);
+				OTHER_LDFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -1854,12 +1843,7 @@
 					"@executable_path/../../Frameworks",
 				);
 				MARKETING_VERSION = 3.7.11;
-				OTHER_LDFLAGS = (
-					"-Wl,-U,_OBJC_CLASS_$__LSOpenConfiguration",
-					"-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace",
-					"-Wl,-U,_FBSOpenApplicationOptionKeyActivateAsClassic",
-					"-Wl,-U,_FBSOpenApplicationOptionKeyPayloadURL",
-				);
+				OTHER_LDFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = "$(PRODUCT_BUNDLE_IDENTIFIER)";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -2115,11 +2099,7 @@
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				OTHER_CFLAGS = "-fcommon";
-				OTHER_LDFLAGS = (
-					"-Wl,-U,_OBJC_CLASS_$__LSOpenConfiguration",
-					"-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace",
-					"-Wl,-U,_FBSOpenApplicationOptionKeyActivateAsClassic",
-				);
+				OTHER_LDFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.kdt.livecontainer.LiveContainerShared;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
@@ -2161,11 +2141,7 @@
 				MODULE_VERIFIER_SUPPORTED_LANGUAGES = "objective-c objective-c++";
 				MODULE_VERIFIER_SUPPORTED_LANGUAGE_STANDARDS = "gnu17 gnu++20";
 				OTHER_CFLAGS = "-fcommon";
-				OTHER_LDFLAGS = (
-					"-Wl,-U,_OBJC_CLASS_$__LSOpenConfiguration",
-					"-Wl,-U,_OBJC_CLASS_$_LSApplicationWorkspace",
-					"-Wl,-U,_FBSOpenApplicationOptionKeyActivateAsClassic",
-				);
+				OTHER_LDFLAGS = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.kdt.livecontainer.LiveContainerShared;
 				PRODUCT_NAME = "$(TARGET_NAME:c99extidentifier)";
 				SKIP_INSTALL = YES;
@@ -2181,7 +2157,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		173545B02E2C7913001B3B4C /* Build configuration list for PBXNativeTarget "SideStore" */ = {
+		173545B02E2C7913001B3B4C /* Build configuration list for PBXNativeTarget "SideStoreSupport" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				173545B12E2C7913001B3B4C /* Debug */,

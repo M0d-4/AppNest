@@ -256,9 +256,6 @@ private struct AppListSecondaryToolbarButton: View {
 }
 
 struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
-    @Binding var appDataFolderNames: [String]
-    @Binding var tweakFolderNames: [String]
-    
     @State var didAppear = false
     // ipa choosing stuff
     @State var choosingIPA = false
@@ -333,20 +330,6 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     @StateObject private var unhideActionAlert = AlertHelper<String>()
     @State private var isDrainingInstallQueue = false
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-    
     var sortedApps: [LCAppModel] {
         return sharedAppSortManager.sortedApps
     }
@@ -463,11 +446,9 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
         }
     }
 
-    init(appDataFolderNames: Binding<[String]>, tweakFolderNames: Binding<[String]>, searchContext: SearchContext) {
-        _installOptions = State(initialValue: [])
-        _appDataFolderNames = appDataFolderNames
-        _tweakFolderNames = tweakFolderNames
+    init(searchContext: SearchContext) {
         self.searchContext = searchContext
+        _installOptions = State(initialValue: [])
     }
     
     var body: some View {
@@ -2038,7 +2019,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                     if hidden {
                         LCAppSkeletonIcon(showLabels: appGridShowLabels)
                     } else {
-                        LCAppBanner(appModel: app, delegate: self, appDataFolders: $appDataFolderNames, tweakFolders: $tweakFolderNames, interfaceStyle: .grid) { _ in
+                        LCAppBanner(appModel: app, delegate: self, appDataFolders: $sharedModel.appDataFolderNames, tweakFolders: $sharedModel.tweakFolderNames, interfaceStyle: .grid) { _ in
                             cancelGridDrag(draggingApp: $draggingApp, cleanupID: $dragCleanupID)
                         }
                         .onDrag {
@@ -2094,7 +2075,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
     func appRow(app: LCAppModel, isHidden: Bool) -> some View {
         VStack(spacing: 0) {
             ZStack(alignment: .leading) {
-            LCAppBanner(appModel: app, delegate: self, appDataFolders: $appDataFolderNames, tweakFolders: $tweakFolderNames, updateAction: updateAction(for: app))
+            LCAppBanner(appModel: app, delegate: self, appDataFolders: $sharedModel.appDataFolderNames, tweakFolders: $sharedModel.tweakFolderNames, updateAction: updateAction(for: app))
                 .padding(.leading, isMultiSelectMode ? 36 : 0)
                 .animation(.easeInOut(duration: 0.2), value: isMultiSelectMode)
                 .allowsHitTesting(!isMultiSelectMode && !isDeleting)
@@ -2208,7 +2189,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
 
                         LCUtils.removeAppKeychain(dataUUID: container.folderName)
                         DispatchQueue.main.async {
-                            self.appDataFolderNames.removeAll { $0 == container.folderName }
+                            sharedModel.appDataFolderNames.removeAll { $0 == container.folderName }
                         }
                     }
                     // Legacy: handle apps whose containerInfo was nil but dataUUID exists.
@@ -2221,7 +2202,7 @@ struct LCAppListView : View, LCAppBannerDelegate, LCAppModelDelegate {
                         try? fm.removeItem(at: sharedLegacy)
 
                         DispatchQueue.main.async {
-                            self.appDataFolderNames.removeAll { $0 == legacyUUID }
+                            sharedModel.appDataFolderNames.removeAll { $0 == legacyUUID }
                         }
                     }
                 }

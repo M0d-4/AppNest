@@ -9,26 +9,23 @@ import Foundation
 import SwiftUI
 
 struct LCTabView: View {
-    @Binding var appDataFolderNames: [String]
-    @Binding var tweakFolderNames: [String]
-    
     @State var errorShow = false
     @State var crashReportShow = false
     @State var errorInfo = ""
-    
-    @State var previousSelectedTab : LCTabIdentifier = .apps
     
     @EnvironmentObject var sharedModel : SharedModel
     @EnvironmentObject var sceneDelegate: SceneDelegate
     @State var shouldToggleMainWindowOpen = false
     @Environment(\.scenePhase) var scenePhase
+    @State var previousSelectedTab : LCTabIdentifier = .apps
+    
     private var downloadHelper: DownloadHelper { sharedModel.downloadHelper }
     
     @StateObject var searchContextAppList = SearchContext()
     @StateObject var searchContextSource = SearchContext()
 
     private var appListView: LCAppListView {
-        LCAppListView(appDataFolderNames: $appDataFolderNames, tweakFolderNames: $tweakFolderNames, searchContext: searchContextAppList)
+        LCAppListView(searchContext: searchContextAppList)
     }
 
     private var sourcesView: LCSourcesView {
@@ -41,32 +38,6 @@ struct LCTabView: View {
     var body: some View {
         ZStack(alignment: .bottom) {
         Group {
-            if #available(iOS 19.0, *), SharedModel.isLiquidGlassSearchEnabled {
-                TabView(selection: Binding(
-                    get: { sharedModel.selectedTab },
-                    set: { if !sharedModel.isMultiSelectMode { sharedModel.selectedTab = $0 } }
-                )) {
-                    if DataManager.shared.model.multiLCStatus != 2 {
-                        Tab("lc.tabView.sources".loc, systemImage: "books.vertical", value: LCTabIdentifier.sources) {
-                            sourcesView
-                        }
-                    }
-                    Tab("lc.tabView.apps".loc, systemImage: "square.stack.3d.up.fill", value: LCTabIdentifier.apps) {
-                        appListView
-                    }
-                    if DataManager.shared.model.multiLCStatus != 2 {
-                        Tab("lc.tabView.tweaks".loc, systemImage: "wrench.and.screwdriver", value: LCTabIdentifier.tweaks) {
-                            LCTweaksView(tweakFolders: $tweakFolderNames)
-                        }
-                    }
-                    Tab("lc.tabView.updates".loc, systemImage: "arrow.down.circle", value: LCTabIdentifier.updates) {
-                        LCUpdatesView()
-                    }
-                    Tab("lc.tabView.settings".loc, systemImage: "gearshape.fill", value: LCTabIdentifier.settings) {
-                        LCSettingsView(appDataFolderNames: $appDataFolderNames)
-                    }
-                }
-            } else {
                 TabView(selection: Binding(
                     get: { sharedModel.selectedTab },
                     set: { if !sharedModel.isMultiSelectMode { sharedModel.selectedTab = $0 } }
@@ -84,7 +55,7 @@ struct LCTabView: View {
                         }
                         .tag(LCTabIdentifier.apps)
                     if DataManager.shared.model.multiLCStatus != 2 {
-                        LCTweaksView(tweakFolders: $tweakFolderNames)
+                        LCTweaksView()
                             .tabItem{
                                 Label("lc.tabView.tweaks".loc, systemImage: "wrench.and.screwdriver")
                             }
@@ -96,13 +67,12 @@ struct LCTabView: View {
                         }
                         .tag(LCTabIdentifier.updates)
                     
-                    LCSettingsView(appDataFolderNames: $appDataFolderNames)
+                    LCSettingsView()
                         .tabItem {
                             Label("lc.tabView.settings".loc, systemImage: "gearshape.fill")
                         }
                         .tag(LCTabIdentifier.settings)
                 }
-            }
         }
         .downloadAlert(helper: downloadHelper)
         .environmentObject(downloadHelper)

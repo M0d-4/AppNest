@@ -50,8 +50,6 @@ struct LCSettingsView: View {
     @State var errorInfo = ""
     @State var successShow = false
     @State var successInfo = ""
-    
-    @Binding var appDataFolderNames: [String]
 
     @State private var certificateDataFound = false
     
@@ -92,11 +90,9 @@ struct LCSettingsView: View {
     
     let storeName = LCUtils.getStoreName()
     
-    init(appDataFolderNames: Binding<[String]>) {
+    init() {
         _certificateDataFound = State(initialValue: LCSharedUtils.certificatePassword() != nil)
         _store = State(initialValue: LCUtils.store())
-        
-        _appDataFolderNames = appDataFolderNames
     }
     
     var body: some View {
@@ -296,7 +292,7 @@ struct LCSettingsView: View {
 
                 Section {
                     NavigationLink {
-                        LCDataManagementView(appDataFolderNames: $appDataFolderNames)
+                        LCDataManagementView()
                     } label: {
                         Text("lc.settings.dataManagement".loc)
                     }

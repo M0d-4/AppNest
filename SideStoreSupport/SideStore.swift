@@ -1,12 +1,24 @@
 //
 //  SideStore.swift
-//  SideStore
+//  SideStoreSupport
 //
 //  Created by s s on 2025/7/20.
 //
 
 import Foundation
 import AppIntents
+import UserNotifications
+
+@available(iOS 17.0, *)
+func performIntentRefresh(identifier: String, mangledTypeName: String, intentProgress: Progress) async throws {
+    intentProgress.totalUnitCount = 100
+    if UserDefaults.isSideStore() {
+        try await SideStoreIntentCaller.shared.callRefreshIntent(mangledTypeName: mangledTypeName)
+    } else {
+        RefreshHandler.shared.progress = intentProgress
+        try await RefreshHandler.shared.startRefresh(identifier: identifier, mangledName: mangledTypeName)
+    }
+}
 
 @available(iOS 17.0, *)
 public struct RefreshAllAppsWidgetIntent: AppIntent, ProgressReportingIntent
@@ -18,9 +30,7 @@ public struct RefreshAllAppsWidgetIntent: AppIntent, ProgressReportingIntent
     
     public func perform() async throws -> some IntentResult
     {
-        RefreshHandler.shared.progress = progress
-        progress.totalUnitCount = 100
-        try await RefreshHandler.shared.startRefresh()
+        try await performIntentRefresh(identifier: "RefreshAllAppsWidgetIntent", mangledTypeName: "9SideStore26RefreshAllAppsWidgetIntentV", intentProgress: progress)
         return .result()
     }
 }
@@ -48,13 +58,12 @@ public struct RefreshAllAppsIntent: AppIntent, CustomIntentMigratedAppIntent, Pr
         }
     }
     
-    public func perform() async throws -> some IntentResult
+    public func perform() async throws -> some IntentResult & ProvidesDialog
     {
-        RefreshHandler.shared.progress = progress
-        progress.totalUnitCount = 100
-        try await RefreshHandler.shared.startRefresh()
+        try await performIntentRefresh(identifier: "RefreshAllIntent", mangledTypeName: "9SideStore20RefreshAllAppsIntentV", intentProgress: progress)
         return .result(dialog: "All apps have been refreshed.")
     }
+    
 }
 
 
@@ -67,17 +76,7 @@ final class RefreshHandler: NSObject, RefreshServer, @unchecked Sendable {
     var client: RefreshClient? = nil
     var ext: NSExtension? = nil
     
-    private static var _shared: RefreshHandler? = nil
-    static var shared: RefreshHandler {
-        get {
-            if let _shared {
-                return _shared
-            } else {
-                _shared = RefreshHandler()
-                return _shared!
-            }
-        }
-    }
+    static var shared = RefreshHandler()
     
     private func terminateSideStoreIfNeeded() {
         guard sideStorePid > 0 else {
@@ -87,7 +86,7 @@ final class RefreshHandler: NSObject, RefreshServer, @unchecked Sendable {
     }
     
     
-    func startRefresh() async throws {
+    func startRefresh(identifier: String, mangledName: String) async throws {
         if sideStorePid <= 0 || getpgid(sideStorePid) <= 0, let c {
             c.resume(throwing: NSError(domain: "SideStore", code: 1, userInfo: [NSLocalizedDescriptionKey: "Built-in SideStore quit unexpectedly"]))
             self.c = nil
@@ -152,7 +151,7 @@ final class RefreshHandler: NSObject, RefreshServer, @unchecked Sendable {
             
             try await withUnsafeThrowingContinuation { c in
                 self.launchContinuation = c
-                DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 300) {
                     if let c = self.launchContinuation {
                         c.resume(throwing: NSError(domain: "SideStore", code: 1, userInfo: [NSLocalizedDescriptionKey: "Built-in SideStore failed to start in reasonable time"]))
                         self.launchContinuation = nil
@@ -161,7 +160,7 @@ final class RefreshHandler: NSObject, RefreshServer, @unchecked Sendable {
                 }
             }
         }
-        self.client?.refreshAllApps()
+        self.client?.refreshAllApps(withIdentifier: identifier, mangledTypeName: mangledName)
         
         try await withUnsafeThrowingContinuation { c in
             self.c = c
@@ -191,6 +190,18 @@ final class RefreshHandler: NSObject, RefreshServer, @unchecked Sendable {
     func finishedLaunching() {
         launchContinuation?.resume()
         launchContinuation = nil
+    }
+
+    func add(_ request: UNNotificationRequest) {
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error {
+                NSLog("Failed to add SideStore notification: \(error)")
+            }
+        }
+    }
+
+    func removePendingNotificationRequests(withIdentifiers identifiers: [String]) {
+        UNUserNotificationCenter.current().removePendingNotificationRequests(withIdentifiers: identifiers)
     }
     
 }

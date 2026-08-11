@@ -3,7 +3,7 @@
 #include <dlfcn.h>
 #include <stdlib.h>
 #include <objc/runtime.h>
-#include "utils.h"
+#import "../LiveContainer/utils.h"
 #include "../LiveContainer/LCDebugLog.h"
 
 static NSString *const kDisabledTweaksKey = @"disabledItems";

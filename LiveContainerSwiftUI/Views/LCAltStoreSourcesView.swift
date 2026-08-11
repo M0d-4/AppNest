@@ -658,13 +658,8 @@ struct LCSourcesView: View {
                 )
             }
         }
-        .apply {
-            if #available(iOS 19.0, *), SharedModel.isLiquidGlassSearchEnabled {
-                $0
-            } else {
-                $0.searchable(text: $searchContext.query, prompt: Text("lc.sources.searchPrompt".loc))
-            }
-        }
+        .searchable(text: $searchContext.query, placement: .navigationBarDrawer(displayMode: .always), prompt: Text("lc.sources.searchPrompt".loc))
+
         .onAppear {
             if !isViewAppeared {
                 guard sharedModel.selectedTab == .sources, let link = sharedModel.deepLink else { return }

@@ -420,3 +420,58 @@ struct IconImageView: View {
         }
     }
 }
+
+
+extension UIViewController {
+    func presentConfirmation(
+        title: String,
+        message: String,
+        confirmTitle: String,
+        cancelTitle: String
+    ) async -> Bool? {
+        guard viewIfLoaded?.window != nil, presentedViewController == nil else {
+            return nil
+        }
+
+        return await withUnsafeContinuation { continuation in
+            let finishConfirmation =  { (result: Bool?, alert: UIAlertController?) in
+                alert?.dismiss(animated: true) {
+                    continuation.resume(returning: result)
+                }
+            }
+            
+            let alert = UIAlertController(title: title, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: confirmTitle, style: .destructive) { [weak alert] _ in
+                finishConfirmation(true, alert)
+            })
+            alert.addAction(UIAlertAction(title: cancelTitle, style: .cancel) { [weak alert] _ in
+                finishConfirmation(false, alert)
+            })
+            present(alert, animated: true)
+        }
+    }
+
+    func showError(_ message: String) {
+        guard viewIfLoaded?.window != nil else {
+            return
+        }
+
+        let presentError = { [weak self] in
+            guard let self else {
+                return
+            }
+            let alert = UIAlertController(title: "lc.common.error".loc, message: message, preferredStyle: .alert)
+            alert.addAction(UIAlertAction(title: "lc.common.ok".loc, style: .default))
+            alert.addAction(UIAlertAction(title: "lc.common.copy".loc, style: .default) { _ in
+                UIPasteboard.general.string = message
+            })
+            self.present(alert, animated: true)
+        }
+
+        if let presentedViewController {
+            presentedViewController.dismiss(animated: true, completion: presentError)
+        } else {
+            presentError()
+        }
+    }
+}

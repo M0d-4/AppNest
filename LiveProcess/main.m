@@ -13,7 +13,7 @@
 #import "../LiveContainer/LCDebugLog.h"
 #import "../LiveContainer/Tweaks/Tweaks.h"
 #import "../MultitaskSupport/LCMultitaskXPCService.h"
-#import "../SideStore/XPCServer.h"
+#import "../SideStoreSupport/XPCServer.h"
 
 @implementation LiveProcessHandler
 static NSExtensionContext *extensionContext;

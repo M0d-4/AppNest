@@ -111,9 +111,9 @@ struct LCTweakFolderView : View {
 
     init(baseUrl: URL, isRoot: Bool = false, tweakFolders: Binding<[String]>, copyMode: LCTweakCopyMode? = nil) {
         _baseUrl = State(initialValue: baseUrl)
-        _tweakFolders = tweakFolders
         self.isRoot = isRoot
         self.copyMode = copyMode
+        _tweakFolders = tweakFolders
         _tweakItems = State(initialValue: LCTweakFolderView.loadTweakItems(baseUrl))
         _disabledTweaks = State(initialValue: LCTweakFolderView.loadDisabledTweaks(baseUrl))
     }
@@ -991,12 +991,11 @@ struct LCTweakFolderView : View {
 }
 
 struct LCTweaksView: View {
-    @Binding var tweakFolders : [String]
     @StateObject private var moveContext = LCTweakMoveContext()
     
     var body: some View {
         NavigationView {
-            LCTweakFolderView(baseUrl: LCPath.tweakPath, isRoot: true, tweakFolders: $tweakFolders)
+            LCTweakFolderView(baseUrl: LCPath.tweakPath, isRoot: true)
         }
         .environmentObject(moveContext)
         .navigationViewStyle(StackNavigationViewStyle())
