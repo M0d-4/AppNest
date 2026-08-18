@@ -5,6 +5,7 @@
 #include <objc/runtime.h>
 #import "../LiveContainer/utils.h"
 #include "../LiveContainer/LCDebugLog.h"
+#include "../litehook/src/litehook.h"
 
 static NSString *const kDisabledTweaksKey = @"disabledItems";
 static NSString *const kContainerInfoFileName = @"LCContainerInfo.plist";
@@ -696,15 +697,6 @@ static char* hook_realpath(const char *path, char *resolved_path) {
 }
 
 static void installCFileHooks(void) {
-    extern void *orig_open;
-    extern void *orig_openat;
-    extern void *orig_stat;
-    extern void *orig_lstat;
-    extern void *orig_fstat;
-    extern void *orig_access;
-    extern void *orig_fopen;
-    extern void *orig_realpath;
-    
     // Hook C file functions using litehook
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, open, hook_open, (void**)&orig_open);
     litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, openat, hook_openat, (void**)&orig_openat);
