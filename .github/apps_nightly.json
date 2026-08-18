@@ -1,12 +1,12 @@
 {
   "name": "LiveContainer (nightly)",
   "identifier": "com.livecontainer.source.nightly",
-  "website": "https://github.com/LiveContainer/LiveContainer",
+  "website": "https://github.com/SideloadLabs/AppNest",
   "subtitle": "LiveContainer (nightly) official AltStore Source.",
   "description": "This is the official AltStore Source for LiveContainer (nightly).\n\n Run iOS apps without actually installing them!",
   "tintColor": "#0784FC",
-  "iconURL": "https://raw.githubusercontent.com/LiveContainer/LiveContainer/main/screenshots/AppIcon1024.png",
-  "headerURL": "https://raw.githubusercontent.com/LiveContainer/LiveContainer/main/screenshots/header.png",
+  "iconURL": "https://raw.githubusercontent.com/SideloadLabs/AppNest/main/screenshots/AppIcon1024.png",
+  "headerURL": "https://raw.githubusercontent.com/SideloadLabs/AppNest/main/screenshots/header.png",
   "apps": [
     {
       "beta": false,
@@ -16,15 +16,15 @@
       "subtitle": "Run iOS apps without actually installing them!",
       "version": "3.4.50",
       "versionDate": "2025-04-26",
-      "versionDescription": "This is a nightly release [created automatically with GitHub Actions workflow](https://github.com/LiveContainer/LiveContainer/actions/runs/14679205373/attempts/1).",
+      "versionDescription": "This is a nightly release [created automatically with GitHub Actions workflow](https://github.com/SideloadLabs/AppNest/actions/runs/14679205373/attempts/1).",
       "downloadURL": "https://github.com/M0d-4/LiveContainer/releases/download/nightly/LiveContainer.ipa",
       "localizedDescription": "Run iOS apps without actually installing them!",
-      "iconURL": "https://raw.githubusercontent.com/LiveContainer/LiveContainer/main/screenshots/AppIcon1024.png",
+      "iconURL": "https://raw.githubusercontent.com/SideloadLabs/AppNest/main/screenshots/AppIcon1024.png",
       "tintColor": "#0784FC",
       "category": "utilities",
       "size": 2785962,
       "screenshotURLs": [
-        "https://raw.githubusercontent.com/LiveContainer/LiveContainer/main/screenshots/1.png"
+        "https://raw.githubusercontent.com/SideloadLabs/AppNest/main/screenshots/1.png"
       ],
       "appPermissions": {
         "entitlements": [
@@ -82,7 +82,7 @@
         {
           "version": "3.4.50",
           "date": "2025-04-26T07:00:00Z",
-          "localizedDescription": "This is a nightly release [created automatically with GitHub Actions workflow](https://github.com/LiveContainer/LiveContainer/actions/runs/14679205373/attempts/1).",
+          "localizedDescription": "This is a nightly release [created automatically with GitHub Actions workflow](https://github.com/SideloadLabs/AppNest/actions/runs/14679205373/attempts/1).",
           "downloadURL": "https://github.com/M0d-4/LiveContainer/releases/download/nightly/LiveContainer.ipa",
           "size": 2785962
         }
