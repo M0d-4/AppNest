@@ -82,10 +82,6 @@ static id SSSceneObserver;
     return LCSharedUtils.appGroupID;
 }
 
-+ (NSString*)hook_baseAltStoreAppGroupID {
-    return @"group.com.SideStore.SideStore";
-}
-
 + (NSBundle*)hook_realMainBundle {
     if (!NSUserDefaults.isLiveProcess) return NSUserDefaults.lcMainBundle;
     
@@ -202,7 +198,6 @@ void installSideStoreHooks(void) {
     swizzleClassMethod(NSBundle.class, @selector(storeAppBundleIdentifier), @selector(hook_storeAppBundleIdentifier));
     swizzle(NSBundle.class, @selector(altstoreAppGroup), @selector(hook_altstoreAppGroup));
     swizzleClassMethod(NSBundle.class, @selector(realMainBundle), @selector(hook_realMainBundle));
-    swizzleClassMethod(NSBundle.class, @selector(baseAltStoreAppGroupID), @selector(hook_baseAltStoreAppGroupID));
     
     // replace altStoreSourceURL
     Method altStoreSourceURLMethod = class_getClassMethod(PrivClass(Source), @selector(altStoreSourceURL));
