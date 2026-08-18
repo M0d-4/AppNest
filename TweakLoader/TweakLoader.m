@@ -163,7 +163,13 @@ static NSString *gGlobalTweakPath = nil;
 static NSString *gTweakFolderName = nil;
 
 // Thread-local storage for per-tweak resource path
-static __thread NSString *gCurrentTweakResourcePath = nil;
+// NOTE: __thread storage cannot hold an ARC-strong object (Clang cannot emit a
+// static initializer for a thread-local with non-trivial ownership), so this is
+// declared __unsafe_unretained. This is safe because every assignment site keeps
+// a strong reference to the same string alive on the stack (tweakResourceBasePath /
+// previousTweakResourcePath in loadTweakAtURL) for the entire duration during which
+// this thread-local is read, so it never dangles.
+static __thread NSString *__unsafe_unretained gCurrentTweakResourcePath = nil;
 
 static BOOL stringMatchesPattern(NSString *value, NSString *pattern) {
     if (![pattern isKindOfClass:NSString.class] || pattern.length == 0) {
