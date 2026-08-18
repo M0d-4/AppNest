@@ -283,7 +283,7 @@ final class LCAppBannerActions: ObservableObject {
     }
 
     func openSettings() {
-        delegate.openNavigationView(view: AnyView(LCAppSettingsView(model: model, appDataFolders: $appDataFolders, tweakFolders: $tweakFolders)))
+        delegate.openNavigationView(view: AnyView(LCAppSettingsView(model: model)))
     }
 
     func openDataFolder() {
