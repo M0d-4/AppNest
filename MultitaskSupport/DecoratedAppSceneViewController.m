@@ -22,6 +22,18 @@
 - (NSURL *)hook_containerURLForSecurityApplicationGroupIdentifier:(NSString *)groupIdentifier;
 - (BOOL)hook_createDirectoryAtPath:(NSString *)path withIntermediateDirectories:(BOOL)createIntermediates attributes:(NSDictionary *)attributes error:(NSError **)error;
 @end
+
+@interface DecoratedAppSceneViewController()
+@property(nonatomic) BOOL navBarIsOverlay;
+@property(nonatomic) BOOL lastConstraintBottomBar;
+@property(nonatomic) BOOL lastConstraintHideBar;
+@property(nonatomic) BOOL hasBuiltConstraints;
+@property(nonatomic) NSLayoutConstraint *navigationBarEdgeConstraint;
+@property(nonatomic) UIBarButtonItem *titleBarButtonItem;
+@property(nonatomic, copy) UIMenu *(^titleMenuProviderBlock)(NSArray<UIMenuElement *> *);
+- (NSArray<UIMenuElement *> *)buildTitleMenuChildren;
+@end
+@end
 @interface MultitaskDockManager (Private)
 - (void)refreshMenu;
 @end
@@ -109,7 +121,7 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     
 
     __weak typeof(self) weakSelf = self;
-    [self.navigationItem setTitleMenuProvider:^UIMenu *(NSArray<UIMenuElement *> *suggestedActions){
+    self.titleMenuProviderBlock = ^UIMenu *(NSArray<UIMenuElement *> *suggestedActions){
         if(!weakSelf.appSceneVC.isAppRunning) {
             return [UIMenu menuWithTitle:NSLocalizedString(@"lc.multitaskAppWindow.appTerminated", nil) children:@[]];
         } else {
@@ -117,8 +129,34 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
             pidText = [pidText stringByAppendingFormat:@"\n🐞 Visibility Grant: %@", self.appSceneVC.injector!=nil ? @"ON" : @"OFF"];
             return [UIMenu menuWithTitle:pidText children:menuItems];
         }
+        return [UIMenu menuWithTitle:@"" children:[weakSelf buildTitleMenuChildren]];
+    };
+    [self.navigationItem setTitleMenuProvider:self.titleMenuProviderBlock];
+
+    // Title as a bar button item so it gets a background chip in overlay mode.
+    UIDeferredMenuElement *deferredTitleMenu = [UIDeferredMenuElement elementWithUncachedProvider:^(void (^completion)(NSArray<UIMenuElement *> *_Nonnull)){
+        if(!weakSelf.appSceneVC.isAppRunning) {
+            completion(@[[UIMenu menuWithTitle:NSLocalizedString(@"lc.multitaskAppWindow.appTerminated", nil) children:@[]]]);
+            return;
+        }
+        completion([weakSelf buildTitleMenuChildren]);
     }];
-    
+    UIButtonConfiguration *titleConfig = [UIButtonConfiguration plainButtonConfiguration];
+    titleConfig.buttonSize = UIButtonConfigurationSizeSmall;
+    titleConfig.title = windowName;
+    UIImageSymbolConfiguration *chevronSize = [UIImageSymbolConfiguration configurationWithPointSize:12 weight:UIImageSymbolWeightBold];
+    UIImageSymbolConfiguration *chevronPalette = [UIImageSymbolConfiguration configurationWithPaletteColors:@[UIColor.secondaryLabelColor, UIColor.tertiarySystemFillColor]];
+    UIImage *chevronImage = [UIImage systemImageNamed:@"chevron.down.circle.fill" withConfiguration:[chevronSize configurationByApplyingConfiguration:chevronPalette]];
+    titleConfig.image = chevronImage;
+    titleConfig.imagePlacement = NSDirectionalRectEdgeTrailing;
+    titleConfig.imagePadding = 4;
+    titleConfig.baseForegroundColor = UIColor.labelColor;
+    UIButton *titleButton = [UIButton buttonWithConfiguration:titleConfig primaryAction:nil];
+    titleButton.menu = [UIMenu menuWithTitle:@"" children:@[deferredTitleMenu]];
+    titleButton.showsMenuAsPrimaryAction = YES;
+    self.titleBarButtonItem = [[UIBarButtonItem alloc] initWithCustomView:titleButton];
+
+
     UIImage *minimizeImage = [UIImage systemImageNamed:@"minus.circle"];
     UIImageConfiguration *minimizeConfig = [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightMedium];
     minimizeImage = [minimizeImage imageWithConfiguration:minimizeConfig];
@@ -146,13 +184,51 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
         self.navigationItem.rightBarButtonItems = barButtonItems;
     }
 
+    // setupDecoratedView ran updateVerticalConstraints further up, back when titleBarButtonItem
+    // was still nil, so an app launching straight into maximized overlay mode would come up with
+    // no name on the bar at all until something else forced a rebuild. Put it on now. This touches
+    // the side opposite the traffic lights, so it won't disturb what we just set above.
+    if(self.navBarIsOverlay) {
+        self.navigationItem.title = nil;
+        [self.navigationItem setTitleMenuProvider:nil];
+        [self applyTitleBarItem];
+    }
+
     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
         [self adjustNavigationBarButtonSpacingWithNegativeSpacing:-8.0 rightMargin:-4.0];
     });
 
     return self;
 }
-//⭐️⭐️⭐️
+
+// Both the windowed title menu and the overlay title button build from here, so the two can't
+// drift apart. Rebuilt on every open, so the PID is current.
+- (NSArray<UIMenuElement *> *)buildTitleMenuChildren {
+    __weak typeof(self) weakSelf = self;
+    NSString *pidText = [NSString stringWithFormat:@"PID: %d", self.pid];
+    pidText = [pidText stringByAppendingFormat:@"\n🐞 Visibility Grant: %@", self.appSceneVC.injector!=nil ? @"ON" : @"OFF"];
+    // Inline so the actions sit at the top level with the PID as a section header.
+    UIMenu *pidHeaderMenu = [UIMenu menuWithTitle:pidText image:nil identifier:nil options:UIMenuOptionsDisplayInline children:@[
+        [UIAction actionWithTitle:@"🐞 Toggle Visibility Grant" image:[UIImage systemImageNamed:@"doc.on.doc"] identifier:nil handler:^(UIAction * _Nonnull action) {
+            [weakSelf.appSceneVC setEnableVisibility:weakSelf.appSceneVC.injector==nil];
+        }],
+        [UIAction actionWithTitle:@"lc.multitask.copyPid".loc image:[UIImage systemImageNamed:@"doc.on.doc"] identifier:nil handler:^(UIAction * _Nonnull action) {
+            UIPasteboard.generalPasteboard.string = @(weakSelf.appSceneVC.pid).stringValue;
+        }],
+        [UIAction actionWithTitle:@"lc.multitask.enablePip".loc image:[UIImage systemImageNamed:@"pip.enter"] identifier:nil handler:^(UIAction * _Nonnull action) {
+            if ([PiPManager.shared isPiPWithVC:weakSelf.appSceneVC]) {
+                [PiPManager.shared stopPiP];
+            } else {
+                [PiPManager.shared startPiPWithVC:weakSelf.appSceneVC];
+            }
+        }],
+        [UICustomViewMenuElement elementWithViewProvider:^UIView *(UICustomViewMenuElement *element) {
+            return [weakSelf scaleSliderViewWithTitle:@"lc.multitask.scale".loc min:0.5 max:2.0 value:weakSelf.scaleRatio stepInterval:0.01];
+        }]
+    ]];
+    return @[pidHeaderMenu];
+}
+
 - (void)setupDecoratedView {
     
     NSInteger toolbarMode = [NSUserDefaults.lcSharedDefaults integerForKey:@"LCMultitaskToolbarMode"];
@@ -246,6 +322,8 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     
 
     [[NSUserDefaults lcSharedDefaults] addObserver:self forKeyPath:@"LCMultitaskToolbarMode" options:NSKeyValueObservingOptionNew context:NULL];
+    [[NSUserDefaults lcSharedDefaults] addObserver:self forKeyPath:@"LCMultitaskBottomWindowBar" options:NSKeyValueObservingOptionNew context:NULL];
+    [[NSUserDefaults lcSharedDefaults] addObserver:self forKeyPath:@"LCMultitaskOverlayMode" options:NSKeyValueObservingOptionNew context:NULL];
     
     [self updateOriginalFrame];
     [self.view layoutIfNeeded];
@@ -361,6 +439,11 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
         CGRect maxFrame = UIEdgeInsetsInsetRect(self.view.window.frame, self.view.window.safeAreaInsets);
         CGRect newFrame = CGRectMake(self.originalFrame.origin.x * maxFrame.size.width, self.originalFrame.origin.y * maxFrame.size.height, self.originalFrame.size.width, self.originalFrame.size.height);
         [UIView animateWithDuration:0.3 delay:0 options:UIViewAnimationOptionCurveEaseInOut animations:^{
+            // Clear isMaximized here rather than in the completion so the rebuild below sees it.
+            // Overlay mode only applies while maximized, so this is what moves the bar back into
+            // the stack view.
+            self.isMaximized = NO;
+            [self updateVerticalConstraints];
             self.view.frame = newFrame;
             self.view.layer.borderWidth = 1;
             self.resizeHandle.alpha = 1;
@@ -369,7 +452,6 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
                 [self updateWindowedFrameWithSettings:settings];
             }];
         } completion:^(BOOL finished) {
-            self.isMaximized = NO;
             UIImage *maximizeImage = [UIImage systemImageNamed:@"arrow.up.left.and.arrow.down.right.circle"];
             UIImageConfiguration *maximizeConfig = [UIImageSymbolConfiguration configurationWithPointSize:16.0 weight:UIImageSymbolWeightMedium];
             self.maximizeButton.image = [maximizeImage imageWithConfiguration:maximizeConfig];
@@ -494,7 +576,6 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     }
     
     [_appSceneVC.presenter.scene updateSettings:newSettings withTransitionContext:newContext completion:nil];
- 
 }
 
 
@@ -582,12 +663,37 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
         return;
     }
     
-    
-    if ([keyPath isEqualToString:@"LCMultitaskMaximized"] || _isMaximized) {
-        [self.appSceneVC updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
-            [self updateMaximizedFrameWithSettings:settings];
-        }];
-    }
+    [self.view layoutIfNeeded];
+    [UIView animateWithDuration:0.3 animations:^{
+        if([keyPath isEqualToString:@"LCMultitaskBottomWindowBar"]) {
+            BOOL bottomWindowBar = [change[NSKeyValueChangeNewKey] boolValue];
+            // Swap the two sides rather than clearing one of them. In overlay mode the side
+            // opposite the traffic lights is holding the title item, and nilling it out here
+            // would throw the title away.
+            NSArray *previousLeft = self.navigationItem.leftBarButtonItems;
+            self.navigationItem.leftBarButtonItems = self.navigationItem.rightBarButtonItems;
+            self.navigationItem.rightBarButtonItems = previousLeft;
+            // Overlay mode keeps the bar out of the stack view entirely, so there's nothing to
+            // re-arrange. updateVerticalConstraints moves it with its edge constraint instead.
+            if(!self.navBarIsOverlay) {
+                if(bottomWindowBar) {
+                    [self.mainStackView addArrangedSubview:self.navigationBar];
+                } else {
+                    [self.mainStackView insertArrangedSubview:self.navigationBar atIndex:0];
+                }
+            }
+        }
+
+        [self updateVerticalConstraints];
+        [self adjustNavigationBarButtonSpacingWithNegativeSpacing:-8.0 rightMargin:-4.0];
+
+        if(_isMaximized) {
+            [self.appSceneVC updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
+                [self updateMaximizedFrameWithSettings:settings];
+            }];
+        }
+        [self.view layoutIfNeeded];
+    }];
 }
 
 
@@ -647,81 +753,183 @@ static UIInterfaceOrientation LCCurrentInterfaceOrientation(void) {
     // FIXME: how to bring view to front when touching the passthrough view?
     [self.view.superview bringSubviewToFront:self.view];
 }
-//⭐️⭐️⭐️
-- (void)updateVerticalConstraints {
-    
+- (void)applyTitleBarItem {
+    // The title goes on the opposite side from the traffic lights. With the bottom bar the
+    // lights sit on the left, so the title takes the right, and the other way around otherwise.
     NSInteger toolbarMode = [NSUserDefaults.lcSharedDefaults integerForKey:@"LCMultitaskToolbarMode"];
-    BOOL forceHideInMaximized = (MultitaskDockManager.shared.isCollapsed && _isMaximized);
-    BOOL shouldHideBar = (toolbarMode == 2) || forceHideInMaximized;
-    
-    
-    CGFloat navBarHeight = shouldHideBar ? 0 : 44.0;
-    self.navigationBar.hidden = shouldHideBar;
-
-    
-    if(_isMaximized) {
-        __weak typeof(self) weakSelf = self;
-        self.appSceneVC.nextUpdateSettingsBlock = ^(UIMutableApplicationSceneSettings *settings) {
-            [weakSelf updateMaximizedFrameWithSettings:settings];
-        };
-    }
-
-   
-    if (self.activatedVerticalConstraints) {
-        [NSLayoutConstraint deactivateConstraints:self.activatedVerticalConstraints];
-    }
-
-    NSMutableArray *newConstraints = [NSMutableArray array];
-    UIView *appView = _appSceneVC.view;
-
-  
-    if (shouldHideBar) {
-       
-        [self.mainStackView insertArrangedSubview:self.navigationBar atIndex:0];
-        [newConstraints addObject:[self.navigationBar.heightAnchor constraintEqualToConstant:0]];
-        
-      
-        [newConstraints addObject:[appView.topAnchor constraintEqualToAnchor:self.view.topAnchor]];
-        [newConstraints addObject:[appView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]];
-
-    } else if (toolbarMode == 1) {
-        [self.mainStackView addArrangedSubview:self.navigationBar];
-        [newConstraints addObject:[self.navigationBar.heightAnchor constraintEqualToConstant:navBarHeight]];
-        
-       
-        [newConstraints addObject:[appView.topAnchor constraintEqualToAnchor:self.view.topAnchor]];
-        [newConstraints addObject:[appView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-navBarHeight]];
-
+    NSArray *titleItems = (self.navBarIsOverlay && self.titleBarButtonItem) ? @[self.titleBarButtonItem] : nil;
+    if(toolbarMode == 1) {
+        self.navigationItem.rightBarButtonItems = titleItems;
     } else {
-      
-        [self.mainStackView insertArrangedSubview:self.navigationBar atIndex:0];
-        [newConstraints addObject:[self.navigationBar.heightAnchor constraintEqualToConstant:navBarHeight]];
-        
-       
-        [newConstraints addObject:[appView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:navBarHeight]];
-        [newConstraints addObject:[appView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]];
+        self.navigationItem.leftBarButtonItems = titleItems;
+    }
+}
+
+- (void)animateNavigationBarHidden:(BOOL)hidden bottomBar:(BOOL)bottomBar {
+    // Slide the bar with its safe area edge constraint instead of a transform. An interrupted
+    // transform animation leaves stale state sitting on the view, and going through layout keeps
+    // the change scoped to the bar, so appSceneVC.view next to it doesn't get pushed around.
+    if(!self.navigationBarEdgeConstraint) {
+        self.navigationBar.alpha = hidden ? 0 : 1;
+        self.navigationBar.hidden = hidden;
+        return;
+    }
+    if(!hidden) {
+        self.navigationBar.hidden = NO;
+    }
+    self.navigationBarEdgeConstraint.constant = hidden ? (bottomBar ? 44 : -44) : 0;
+    self.navigationBar.userInteractionEnabled = !hidden;
+    [UIView animateWithDuration:0.25
+                          delay:0
+                        options:UIViewAnimationOptionCurveEaseInOut | UIViewAnimationOptionBeginFromCurrentState
+                     animations:^{
+        self.navigationBar.alpha = hidden ? 0 : 1;
+        [self.view layoutIfNeeded];
+    } completion:^(BOOL finished) {
+        if(hidden && finished) self.navigationBar.hidden = YES;
+    }];
+}
+
+- (void)updateVerticalConstraints {
+    NSInteger toolbarMode = [NSUserDefaults.lcSharedDefaults integerForKey:@"LCMultitaskToolbarMode"];
+    BOOL bottomWindowBar = (toolbarMode == 1);
+    BOOL overlayEnabled = [NSUserDefaults.lcSharedDefaults boolForKey:@"LCMultitaskOverlayMode"];
+    BOOL overlayMode = overlayEnabled && self.isMaximized && toolbarMode != 2;
+    BOOL forceHideInMaximized = (MultitaskDockManager.shared.isCollapsed && _isMaximized);
+    BOOL hideWindowBar = (toolbarMode == 2) || (!overlayMode && forceHideInMaximized);
+    BOOL wasOverlay = self.navBarIsOverlay;
+
+    // Collapsing or expanding the dock in overlay mode doesn't change any of the bar's
+    // constraints or its items. All that changes is whether the bar is visible. If we tear the
+    // constraints down and rebuild them anyway, the embedded scene gets a new frame for one
+    // layout pass and the app visibly zooms. Slide the bar instead and leave the rest alone.
+    BOOL configChanged = !self.hasBuiltConstraints
+                      || (wasOverlay != overlayMode)
+                      || (self.lastConstraintBottomBar != bottomWindowBar)
+                      || (!overlayMode && self.lastConstraintHideBar != hideWindowBar);
+    if(!configChanged) {
+        [self animateNavigationBarHidden:(overlayMode ? forceHideInMaximized : hideWindowBar) bottomBar:bottomWindowBar];
+        return;
     }
 
- 
-    self.activatedVerticalConstraints = newConstraints;
-    [NSLayoutConstraint activateConstraints:self.activatedVerticalConstraints];
-    
     [self.view layoutIfNeeded];
+    [UIView animateWithDuration:0.3 animations:^{
+        CGFloat navBarHeight = hideWindowBar ? 0 : 44;
+        BOOL barHiddenNow = overlayMode ? forceHideInMaximized : hideWindowBar;
+        self.navigationBar.alpha = barHiddenNow ? 0 : 1;
+        self.navigationBar.hidden = barHiddenNow;
+        self.navigationBar.userInteractionEnabled = !barHiddenNow;
+
+        // Update safe area insets
+        if(self.isMaximized) {
+            self.appSceneVC.shouldSkipDebounceOnce = YES;
+            __weak typeof(self) weakSelf = self;
+            [self.appSceneVC updateSettingsWithBlock:^(UIMutableApplicationSceneSettings *settings) {
+                [weakSelf updateMaximizedFrameWithSettings:settings];
+            }];
+        }
+
+        self.hasBuiltConstraints = YES;
+        self.lastConstraintBottomBar = bottomWindowBar;
+        self.lastConstraintHideBar = hideWindowBar;
+        self.navBarIsOverlay = overlayMode;
+
+        // Hand the window name over to the button in overlay mode and take it back afterwards,
+        // so we never show both at once.
+        self.navigationItem.title = overlayMode ? nil : self.title;
+        [self.navigationItem setTitleMenuProvider:overlayMode ? nil : self.titleMenuProviderBlock];
+        [self applyTitleBarItem];
+
+        [NSLayoutConstraint deactivateConstraints:self.activatedVerticalConstraints];
+
+        if(overlayMode) {
+            // Pull the bar out of the stack view so it stops taking up a row of its own and
+            // floats over the app instead, then pin it to the safe area.
+            if(!wasOverlay) {
+                if([self.mainStackView.arrangedSubviews containsObject:self.navigationBar]) {
+                    [self.mainStackView removeArrangedSubview:self.navigationBar];
+                }
+                [self.navigationBar removeFromSuperview];
+                self.navigationBar.translatesAutoresizingMaskIntoConstraints = NO;
+                self.navigationBar.autoresizingMask = UIViewAutoresizingNone;
+                [self.view addSubview:self.navigationBar];
+            }
+            [self.view bringSubviewToFront:self.navigationBar];
+
+            UILayoutGuide *safeArea = self.view.safeAreaLayoutGuide;
+            self.navigationBarEdgeConstraint = bottomWindowBar
+                ? [self.navigationBar.bottomAnchor constraintEqualToAnchor:safeArea.bottomAnchor]
+                : [self.navigationBar.topAnchor constraintEqualToAnchor:safeArea.topAnchor];
+            self.navigationBarEdgeConstraint.constant = forceHideInMaximized ? (bottomWindowBar ? 44 : -44) : 0;
+            self.activatedVerticalConstraints = @[
+                [self.appSceneVC.view.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+                [self.appSceneVC.view.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor],
+                [self.navigationBar.heightAnchor constraintEqualToConstant:44],
+                [self.navigationBar.leadingAnchor constraintEqualToAnchor:safeArea.leadingAnchor],
+                [self.navigationBar.trailingAnchor constraintEqualToAnchor:safeArea.trailingAnchor],
+                self.navigationBarEdgeConstraint
+            ];
+        } else {
+            if(wasOverlay) {
+                [self.navigationBar removeFromSuperview];
+                self.navigationBar.translatesAutoresizingMaskIntoConstraints = YES;
+                self.navigationBar.autoresizingMask = UIViewAutoresizingFlexibleWidth;
+                if(toolbarMode == 1) {
+                    [self.mainStackView addArrangedSubview:self.navigationBar];
+                } else {
+                    [self.mainStackView insertArrangedSubview:self.navigationBar atIndex:0];
+                }
+            }
+            self.navigationBarEdgeConstraint = nil;
+
+            UIView *appView = _appSceneVC.view;
+            if(hideWindowBar) {
+                [self.mainStackView insertArrangedSubview:self.navigationBar atIndex:0];
+                self.activatedVerticalConstraints = @[
+                    [self.navigationBar.heightAnchor constraintEqualToConstant:0],
+                    [appView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+                    [appView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+                ];
+            } else if(toolbarMode == 1) {
+                [self.mainStackView addArrangedSubview:self.navigationBar];
+                self.activatedVerticalConstraints = @[
+                    [self.navigationBar.heightAnchor constraintEqualToConstant:navBarHeight],
+                    [appView.topAnchor constraintEqualToAnchor:self.view.topAnchor],
+                    [appView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor constant:-navBarHeight]
+                ];
+            } else {
+                [self.mainStackView insertArrangedSubview:self.navigationBar atIndex:0];
+                self.activatedVerticalConstraints = @[
+                    [self.navigationBar.heightAnchor constraintEqualToConstant:navBarHeight],
+                    [appView.topAnchor constraintEqualToAnchor:self.view.topAnchor constant:navBarHeight],
+                    [appView.bottomAnchor constraintEqualToAnchor:self.view.bottomAnchor]
+                ];
+            }
+        }
+        [NSLayoutConstraint activateConstraints:self.activatedVerticalConstraints];
+
+        [self.view bringSubviewToFront:self.resizeHandle];
+
+        [self.view layoutIfNeeded];
+    }];
 }
 
 
 
 //⭐️⭐️⭐️
 - (UIEdgeInsets)updateMaximizedSafeAreaWithSettings:(UIMutableApplicationSceneSettings *)settings {
-    
     NSInteger toolbarMode = [NSUserDefaults.lcSharedDefaults integerForKey:@"LCMultitaskToolbarMode"];
-    
+    BOOL overlayEnabled = [NSUserDefaults.lcSharedDefaults boolForKey:@"LCMultitaskOverlayMode"];
+    // Work out the overlay state from the pref and _isMaximized rather than reading
+    // navBarIsOverlay. setupDecoratedView calls updateMaximizedFrameWithSettings before
+    // updateVerticalConstraints has had a chance to set that property, so it would still be NO
+    // here and we'd inset self.view.frame when we shouldn't. That leaves gaps around the app
+    // until something triggers the next scene push.
+    BOOL overlayMode = overlayEnabled && _isMaximized && toolbarMode != 2;
+
     UIEdgeInsets safeAreaInsets = self.view.window.safeAreaInsets;
 
-    
-
-    if (toolbarMode == 2 || self.navigationBar.hidden) {
-        
+    if (toolbarMode == 2 || self.navigationBar.hidden || overlayMode) {
         settings.peripheryInsets = safeAreaInsets;
         safeAreaInsets = UIEdgeInsetsZero;
         

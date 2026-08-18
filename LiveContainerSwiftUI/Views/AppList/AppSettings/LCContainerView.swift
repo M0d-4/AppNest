@@ -175,6 +175,127 @@ struct LCContainerView : View {
                 }
 
                 Section {
+                    Toggle(isOn: $container.spoofProfileEnabled) {
+                        Text("Container Device Spoofing")
+                    }
+                    .onChange(of: container.spoofProfileEnabled) { _ in
+                        saveContainer()
+                    }
+
+                    if container.spoofProfileEnabled {
+                        HStack {
+                            Text("Device Name")
+                            TextField("Optional", text: $typingSpoofDeviceName)
+                                .multilineTextAlignment(.trailing)
+                                .onSubmit { commitSpoofDeviceName() }
+                        }
+                        HStack {
+                            Text("Device Model")
+                            TextField("e.g. iPhone17,1", text: $typingSpoofDeviceModel)
+                                .multilineTextAlignment(.trailing)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                                .onSubmit { commitSpoofDeviceModel() }
+                        }
+                        HStack {
+                            Text("Hardware Model")
+                            TextField("e.g. D93AP", text: $typingSpoofHardwareModel)
+                                .multilineTextAlignment(.trailing)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                                .onSubmit { commitSpoofHardwareModel() }
+                        }
+                        HStack {
+                            Text("System Version")
+                            TextField("e.g. 18.4.1", text: $typingSpoofSystemVersion)
+                                .multilineTextAlignment(.trailing)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                                .onSubmit { commitSpoofSystemVersion() }
+                        }
+                        HStack {
+                            Text("Locale Identifier")
+                            TextField("e.g. en_US", text: $typingSpoofLocaleIdentifier)
+                                .multilineTextAlignment(.trailing)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                                .onSubmit { commitSpoofLocaleIdentifier() }
+                        }
+                        HStack {
+                            Text("Time Zone")
+                            TextField("e.g. America/New_York", text: $typingSpoofTimeZoneIdentifier)
+                                .multilineTextAlignment(.trailing)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                                .onSubmit { commitSpoofTimeZoneIdentifier() }
+                        }
+                        HStack {
+                            Text("Battery Level")
+                            TextField("0.0 - 1.0", text: $typingSpoofBatteryLevel)
+                                .multilineTextAlignment(.trailing)
+                                .keyboardType(.decimalPad)
+                                .onSubmit { commitSpoofBatteryLevel() }
+                        }
+                        Picker("Battery State", selection: $spoofBatteryStateSelection) {
+                            Text("Unknown").tag(0)
+                            Text("Unplugged").tag(1)
+                            Text("Charging").tag(2)
+                            Text("Full").tag(3)
+                        }
+                        .onChange(of: spoofBatteryStateSelection) { newValue in
+                            container.spoofBatteryState = newValue
+                            saveContainer()
+                        }
+                        Toggle("Low Power Mode", isOn: $spoofLowPowerModeEnabled)
+                            .onChange(of: spoofLowPowerModeEnabled) { newValue in
+                                container.spoofLowPowerModeEnabled = newValue
+                                saveContainer()
+                            }
+                        Picker("Radio Access Technology", selection: $typingSpoofRadioAccessTechnology) {
+                            Text("LTE").tag("CTRadioAccessTechnologyLTE")
+                            Text("5G NR (Non-Standalone)").tag("CTRadioAccessTechnologyNRNSA")
+                            Text("WCDMA (3G)").tag("CTRadioAccessTechnologyWCDMA")
+                        }
+                        .onChange(of: typingSpoofRadioAccessTechnology) { newValue in
+                            container.spoofRadioAccessTechnology = newValue
+                            saveContainer()
+                        }
+                        HStack {
+                            Text("Subscriber Identifier")
+                            TextField("Optional", text: $typingSpoofSubscriberIdentifier)
+                                .multilineTextAlignment(.trailing)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                                .onSubmit { commitSpoofSubscriberIdentifier() }
+                        }
+                        HStack {
+                            Text("Carrier Token (Base64)")
+                            TextField("Optional", text: $typingSpoofSubscriberCarrierTokenBase64)
+                                .multilineTextAlignment(.trailing)
+                                .autocapitalization(.none)
+                                .disableAutocorrection(true)
+                                .onSubmit { commitSpoofSubscriberCarrierTokenBase64() }
+                        }
+                        Toggle("Override SIM Inserted State", isOn: $spoofSubscriberSIMInsertedEnabled)
+                            .onChange(of: spoofSubscriberSIMInsertedEnabled) { newValue in
+                                container.spoofSubscriberSIMInsertedEnabled = newValue
+                                saveContainer()
+                            }
+                        if spoofSubscriberSIMInsertedEnabled {
+                            Toggle("SIM Inserted", isOn: $spoofSubscriberSIMInserted)
+                                .onChange(of: spoofSubscriberSIMInserted) { newValue in
+                                    container.spoofSubscriberSIMInserted = newValue
+                                    saveContainer()
+                                }
+                        }
+                    }
+                } footer: {
+                    if container.spoofProfileEnabled {
+                        Text("Per-container overrides. Device Name, Device Model, Hardware Model, System Version, Locale, Time Zone, Battery, and Radio Access Technology take effect on next launch. Subscriber Identifier, Carrier Token, and SIM Inserted state are stored but not yet enforced natively.")
+                    }
+                }
+
+                Section {
                     if inUse {
                         Text("lc.container.inUse".loc)
                             .foregroundStyle(.gray)
@@ -321,6 +442,57 @@ struct LCContainerView : View {
         }
         container.spoofedIdentifier = newIDFV.uuidString
         delegate.saveContainer(container: container)
+    }
+
+    func commitSpoofDeviceName() {
+        container.spoofDeviceName = typingSpoofDeviceName
+        saveContainer()
+    }
+
+    func commitSpoofDeviceModel() {
+        container.spoofDeviceModel = typingSpoofDeviceModel
+        saveContainer()
+    }
+
+    func commitSpoofHardwareModel() {
+        container.spoofHardwareModel = typingSpoofHardwareModel
+        saveContainer()
+    }
+
+    func commitSpoofSystemVersion() {
+        container.spoofSystemVersion = typingSpoofSystemVersion
+        saveContainer()
+    }
+
+    func commitSpoofLocaleIdentifier() {
+        container.spoofLocaleIdentifier = typingSpoofLocaleIdentifier
+        saveContainer()
+    }
+
+    func commitSpoofTimeZoneIdentifier() {
+        container.spoofTimeZoneIdentifier = typingSpoofTimeZoneIdentifier
+        saveContainer()
+    }
+
+    func commitSpoofBatteryLevel() {
+        guard let level = Double(typingSpoofBatteryLevel), level >= 0, level <= 1 else {
+            errorInfo = "Battery level must be a number between 0.0 and 1.0"
+            errorShow = true
+            typingSpoofBatteryLevel = String(format: "%.2f", container.spoofBatteryLevel)
+            return
+        }
+        container.spoofBatteryLevel = level
+        saveContainer()
+    }
+
+    func commitSpoofSubscriberIdentifier() {
+        container.spoofSubscriberIdentifier = typingSpoofSubscriberIdentifier
+        saveContainer()
+    }
+
+    func commitSpoofSubscriberCarrierTokenBase64() {
+        container.spoofSubscriberCarrierTokenBase64 = typingSpoofSubscriberCarrierTokenBase64
+        saveContainer()
     }
 
     func saveContainer() {

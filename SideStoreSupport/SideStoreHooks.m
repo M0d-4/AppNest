@@ -50,6 +50,10 @@
 
 @implementation NSBundle(SideStoreHooks)
 
++ (NSString*)hook_baseAltStoreAppGroupID {
+    return @"group.com.SideStore.SideStore";
+}
+
 + (NSString*)hook_appbundleIdentifier {
     return @"com.kdt.livecontainer";
 }
@@ -58,7 +62,7 @@
     return LCSharedUtils.appGroupID;
 }
 
-+ (NSBundle*)hook_activeBundle {
++ (NSBundle*)hook_realMainBundle {
     if (!NSUserDefaults.isLiveProcess) return NSUserDefaults.lcMainBundle;
     
     static NSBundle* lcAppBundle = nil;
@@ -139,9 +143,10 @@ void SideStoreMyAppsViewController_hook_escapeButtonTapped(UICollectionViewContr
 
 void installSideStoreHooks(void) {
 
+    swizzleClassMethod(NSBundle.class, @selector(baseAltStoreAppGroupID), @selector(hook_baseAltStoreAppGroupID));
     swizzleClassMethod(NSBundle.class, @selector(appbundleIdentifier), @selector(hook_appbundleIdentifier));
     swizzle(NSBundle.class, @selector(altstoreAppGroup), @selector(hook_altstoreAppGroup));
-    swizzleClassMethod(NSBundle.class, @selector(activeBundle), @selector(hook_activeBundle));
+    swizzleClassMethod(NSBundle.class, @selector(realMainBundle), @selector(hook_realMainBundle));
     
     // replace altStoreSourceURL
     Method altStoreSourceURLMethod = class_getClassMethod(PrivClass(Source), @selector(altStoreSourceURL));

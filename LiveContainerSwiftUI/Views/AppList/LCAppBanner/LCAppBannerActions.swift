@@ -476,7 +476,7 @@ final class LCAppBannerActions: ObservableObject {
     }
 
     func openSafariViewToCreateAppClip() async {
-        guard let style = await delegate.promptForGeneratedIconStyle() else {
+        guard let style = await delegate.promptForGeneratedIconStyle(hasCustomIcon: model.uiCustomIconName != nil) else {
             return
         }
 
@@ -493,7 +493,7 @@ final class LCAppBannerActions: ObservableObject {
     }
 
     func saveIcon() async {
-        guard let style = await delegate.promptForGeneratedIconStyle() else {
+        guard let style = await delegate.promptForGeneratedIconStyle(hasCustomIcon: model.uiCustomIconName != nil) else {
             return
         }
         guard let img = appInfo.generateLiveContainerWrappedIcon(with: style) else {

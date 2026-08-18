@@ -3,6 +3,8 @@
 #import <CoreLocation/CoreLocation.h>
 #import "LCUtils.h"
 
+extern NSString* const LCCustomIconName;
+
 typedef NS_ENUM(NSInteger, LCOrientationLock){
     Disabled = 0,
     Landscape = 1,
@@ -65,6 +67,11 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 @property UIColor* cachedColorDark;
 @property UIImage* cachedIcon;
 @property UIImage* cachedIconDark;
+
+@property NSString* customDisplayName;
+// nil, LCCustomIconName, or a name from -alternateIconNames
+@property NSString* customIconName;
+@property UIColor* customColor;
 
 // GPS Addon Section
 @property BOOL spoofGPS;
@@ -186,6 +193,15 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 - (void)clearIconCache;
 + (void)flushSystemIconCache;
 - (NSString*)displayName;
+- (NSString*)originalDisplayName;
+- (NSArray<NSString*>*)alternateIconNames;
+- (UIImage*)imageForIconName:(NSString*)name;
+- (UIImage*)customIconImage;
+- (NSString*)customIconPath;
+// nil deletes the imported image
+- (BOOL)setCustomIconImage:(UIImage*)image;
+- (BOOL)hasCustomization;
+- (void)resetCustomization;
 - (NSString*)bundlePath;
 - (NSString*)bundleIdentifier;
 - (NSString*)version;

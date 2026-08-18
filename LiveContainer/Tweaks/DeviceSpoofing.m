@@ -403,6 +403,7 @@ static NSString *g_currentProfileName = nil;
 static const LCDeviceProfile * _Atomic g_currentProfile = NULL;
 
 static NSString *g_customDeviceModel = nil;
+static NSString *g_customHardwareModel = nil;
 static NSString *g_customSystemVersion = nil;
 static NSString *g_customBuildVersion = nil;
 static NSString *g_customKernelVersion = nil;
@@ -671,6 +672,11 @@ static BOOL (*orig_CTCarrier_allowsVOIP)(id self, SEL _cmd) = NULL;
 static NSArray *(*orig_EAAccessoryManager_connectedAccessories)(id self, SEL _cmd) = NULL;
 static float (*orig_AVAudioSession_outputVolume)(id self, SEL _cmd) = NULL;
 static BOOL (*orig_AVAudioSession_secondaryAudioShouldBeSilencedHint)(id self, SEL _cmd) = NULL;
+static double (*orig_AVAudioSession_sampleRate)(id self, SEL _cmd) = NULL;
+static double (*orig_AVAudioSession_outputLatency)(id self, SEL _cmd) = NULL;
+static double (*orig_AVAudioSession_inputLatency)(id self, SEL _cmd) = NULL;
+static unsigned long long (*orig_MTLDevice_recommendedMaxWorkingSetSize)(id self, SEL _cmd) = NULL;
+static BOOL (*orig_MTLDevice_supportsRaytracing)(id self, SEL _cmd) = NULL;
 static BOOL (*orig_SKPaymentQueue_canMakePayments)(id self, SEL _cmd) = NULL;
 static BOOL (*orig_PKPaymentAuthorizationViewController_canMakePayments)(id self, SEL _cmd) = NULL;
 static BOOL (*orig_PKPaymentAuthorizationViewController_canMakePaymentsUsingNetworks)(id self, SEL _cmd, NSArray *networks) = NULL;
@@ -706,6 +712,7 @@ static const char *LCSpoofedMachineModel(void) {
 }
 
 static const char *LCSpoofedHardwareModel(void) {
+    if (g_customHardwareModel.length > 0) return g_customHardwareModel.UTF8String;
     if (g_currentProfile) return g_currentProfile->hardwareModel;
     return NULL;
 }
@@ -841,6 +848,52 @@ static float LCSpoofedAudioOutputVolume(void) {
         volume = 0.35f + ((float)arc4random_uniform(41) / 100.0f); // 0.35 - 0.75
     });
     return volume;
+}
+
+static double LCSpoofedAudioSampleRate(void) {
+    static double sampleRate = 44100.0;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        static const double rates[] = {44100.0, 48000.0, 96000.0};
+        sampleRate = rates[arc4random_uniform(3)];
+    });
+    return sampleRate;
+}
+
+static double LCSpoofedAudioOutputLatency(void) {
+    static double latency = 0.01;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        latency = (5 + arc4random_uniform(26)) / 1000.0; // 5ms - 30ms
+    });
+    return latency;
+}
+
+static double LCSpoofedAudioInputLatency(void) {
+    static double latency = 0.01;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        latency = (5 + arc4random_uniform(26)) / 1000.0; // 5ms - 30ms
+    });
+    return latency;
+}
+
+static unsigned long long LCSpoofedGPUWorkingSetSize(void) {
+    static unsigned long long workingSetSize = 4ULL * 1024ULL * 1024ULL * 1024ULL;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        workingSetSize = (2 + arc4random_uniform(7)) * 1024ULL * 1024ULL * 1024ULL; // 2-8 GB
+    });
+    return workingSetSize;
+}
+
+static BOOL LCSpoofedGraphicsSupportsRaytracing(void) {
+    static BOOL supportsRaytracing = NO;
+    static dispatch_once_t onceToken;
+    dispatch_once(&onceToken, ^{
+        supportsRaytracing = arc4random_uniform(2) == 1;
+    });
+    return supportsRaytracing;
 }
 
 static NSString *LCSpoofedLocaleRegionCode(void) {
@@ -3114,6 +3167,22 @@ static NSString *hook_MTLDevice_familyName(id self, SEL _cmd) {
     return @"Apple GPU";
 }
 
+static unsigned long long hook_MTLDevice_recommendedMaxWorkingSetSize(id self, SEL _cmd) {
+    if (LCDeviceSpoofingIsActive()) {
+        return LCSpoofedGPUWorkingSetSize();
+    }
+    if (orig_MTLDevice_recommendedMaxWorkingSetSize) return orig_MTLDevice_recommendedMaxWorkingSetSize(self, _cmd);
+    return 4ULL * 1024ULL * 1024ULL * 1024ULL;
+}
+
+static BOOL hook_MTLDevice_supportsRaytracing(id self, SEL _cmd) {
+    if (LCDeviceSpoofingIsActive()) {
+        return LCSpoofedGraphicsSupportsRaytracing();
+    }
+    if (orig_MTLDevice_supportsRaytracing) return orig_MTLDevice_supportsRaytracing(self, _cmd);
+    return NO;
+}
+
 static void LCInstallMTLDeviceHooksIfNeeded(id device) {
     if (!device) return;
     Class deviceClass = [device class];
@@ -3137,6 +3206,30 @@ static void LCInstallMTLDeviceHooksIfNeeded(id device) {
                 orig_MTLDevice_familyName = (NSString *(*)(id, SEL))currentFamily;
             }
             method_setImplementation(familyMethod, (IMP)hook_MTLDevice_familyName);
+        }
+    }
+
+    SEL workingSetSelector = NSSelectorFromString(@"recommendedMaxWorkingSetSize");
+    Method workingSetMethod = class_getInstanceMethod(deviceClass, workingSetSelector);
+    if (workingSetMethod) {
+        IMP currentWorkingSet = method_getImplementation(workingSetMethod);
+        if (currentWorkingSet != (IMP)hook_MTLDevice_recommendedMaxWorkingSetSize) {
+            if (!orig_MTLDevice_recommendedMaxWorkingSetSize) {
+                orig_MTLDevice_recommendedMaxWorkingSetSize = (unsigned long long (*)(id, SEL))currentWorkingSet;
+            }
+            method_setImplementation(workingSetMethod, (IMP)hook_MTLDevice_recommendedMaxWorkingSetSize);
+        }
+    }
+
+    SEL raytracingSelector = NSSelectorFromString(@"supportsRaytracing");
+    Method raytracingMethod = class_getInstanceMethod(deviceClass, raytracingSelector);
+    if (raytracingMethod) {
+        IMP currentRaytracing = method_getImplementation(raytracingMethod);
+        if (currentRaytracing != (IMP)hook_MTLDevice_supportsRaytracing) {
+            if (!orig_MTLDevice_supportsRaytracing) {
+                orig_MTLDevice_supportsRaytracing = (BOOL (*)(id, SEL))currentRaytracing;
+            }
+            method_setImplementation(raytracingMethod, (IMP)hook_MTLDevice_supportsRaytracing);
         }
     }
 }
@@ -3835,6 +3928,30 @@ static BOOL hook_AVAudioSession_secondaryAudioShouldBeSilencedHint(id self, SEL 
     }
     if (orig_AVAudioSession_secondaryAudioShouldBeSilencedHint) return orig_AVAudioSession_secondaryAudioShouldBeSilencedHint(self, _cmd);
     return NO;
+}
+
+static double hook_AVAudioSession_sampleRate(id self, SEL _cmd) {
+    if (LCDeviceSpoofingIsActive()) {
+        return LCSpoofedAudioSampleRate();
+    }
+    if (orig_AVAudioSession_sampleRate) return orig_AVAudioSession_sampleRate(self, _cmd);
+    return 44100.0;
+}
+
+static double hook_AVAudioSession_outputLatency(id self, SEL _cmd) {
+    if (LCDeviceSpoofingIsActive()) {
+        return LCSpoofedAudioOutputLatency();
+    }
+    if (orig_AVAudioSession_outputLatency) return orig_AVAudioSession_outputLatency(self, _cmd);
+    return 0.01;
+}
+
+static double hook_AVAudioSession_inputLatency(id self, SEL _cmd) {
+    if (LCDeviceSpoofingIsActive()) {
+        return LCSpoofedAudioInputLatency();
+    }
+    if (orig_AVAudioSession_inputLatency) return orig_AVAudioSession_inputLatency(self, _cmd);
+    return 0.01;
 }
 
 static BOOL hook_SLComposeViewController_isAvailableForServiceType(id self, SEL _cmd, NSString *serviceType) {
@@ -5228,6 +5345,10 @@ void LCSetSpoofedDeviceModel(NSString *model) {
     LC_DEVICE_SPOOFING_CONFIG_MUTATION_GUARD();
     g_customDeviceModel = [model copy];
 }
+void LCSetSpoofedHardwareModel(NSString *hardwareModel) {
+    LC_DEVICE_SPOOFING_CONFIG_MUTATION_GUARD();
+    g_customHardwareModel = [hardwareModel copy];
+}
 void LCSetSpoofedSystemVersion(NSString *version) {
     LC_DEVICE_SPOOFING_CONFIG_MUTATION_GUARD();
     g_customSystemVersion = [version copy];
@@ -6139,6 +6260,18 @@ void DeviceSpoofingGuestHooksInit(void) {
             SEL secondarySilenceSelector = NSSelectorFromString(@"secondaryAudioShouldBeSilencedHint");
             if (secondarySilenceSelector && [audioSessionClass instancesRespondToSelector:secondarySilenceSelector]) {
                 LCInstallInstanceHook(audioSessionClass, secondarySilenceSelector, (IMP)hook_AVAudioSession_secondaryAudioShouldBeSilencedHint, (IMP *)&orig_AVAudioSession_secondaryAudioShouldBeSilencedHint);
+            }
+            SEL sampleRateSelector = NSSelectorFromString(@"sampleRate");
+            if (sampleRateSelector && [audioSessionClass instancesRespondToSelector:sampleRateSelector]) {
+                LCInstallInstanceHook(audioSessionClass, sampleRateSelector, (IMP)hook_AVAudioSession_sampleRate, (IMP *)&orig_AVAudioSession_sampleRate);
+            }
+            SEL outputLatencySelector = NSSelectorFromString(@"outputLatency");
+            if (outputLatencySelector && [audioSessionClass instancesRespondToSelector:outputLatencySelector]) {
+                LCInstallInstanceHook(audioSessionClass, outputLatencySelector, (IMP)hook_AVAudioSession_outputLatency, (IMP *)&orig_AVAudioSession_outputLatency);
+            }
+            SEL inputLatencySelector = NSSelectorFromString(@"inputLatency");
+            if (inputLatencySelector && [audioSessionClass instancesRespondToSelector:inputLatencySelector]) {
+                LCInstallInstanceHook(audioSessionClass, inputLatencySelector, (IMP)hook_AVAudioSession_inputLatency, (IMP *)&orig_AVAudioSession_inputLatency);
             }
         }
 

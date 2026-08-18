@@ -29,27 +29,37 @@ extension LCUtils {
         
         // check if re-sign is needed
         // if signature is invalid, we need to re-sign. dylib and framework's main binary are supported
-        let fileURLs = try fm.contentsOfDirectory(at: tweakFolderUrl, includingPropertiesForKeys: nil)
-
         var filesToSign: [URL] = []
-        
-        for fileURL in fileURLs {
-            var fileURL = fileURL
+
+        guard let enumerator = fm.enumerator(at: tweakFolderUrl, includingPropertiesForKeys: [.isDirectoryKey], options: [.skipsHiddenFiles]) else {
+            return
+        }
+
+        while let next = enumerator.nextObject() as? URL {
+            var fileURL = next
             let attributes = try fm.attributesOfItem(atPath: fileURL.path)
             let fileType = attributes[.type] as? FileAttributeType
             if(fileType != FileAttributeType.typeDirectory && fileType != FileAttributeType.typeRegular) {
                 continue
             }
             let name = fileURL.lastPathComponent
+            if name.hasSuffix(".disabled") {
+                if fileType == FileAttributeType.typeDirectory {
+                    enumerator.skipDescendants()
+                }
+                continue
+            }
             let baseName = name.hasSuffix(".disabled") ? String(name.dropLast(".disabled".count)) : name
             if(fileType == FileAttributeType.typeDirectory) {
                 if(!baseName.hasSuffix(".framework")) {
                     continue
                 }
                 guard let frameworkBundle = Bundle(url: fileURL), let executableURL = frameworkBundle.executableURL else {
+                    enumerator.skipDescendants()
                     continue
                 }
                 fileURL = executableURL
+                enumerator.skipDescendants()
             } else if (fileType == FileAttributeType.typeRegular && !baseName.hasSuffix(".dylib")) {
                 continue
             }

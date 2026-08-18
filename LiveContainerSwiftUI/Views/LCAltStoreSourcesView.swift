@@ -834,6 +834,8 @@ private struct LCSourceDetailView: View {
     @State private var searchText = ""
     @State private var sourcePendingRemoval: AltStoreSourcesViewModel.SourceItem?
     @Environment(\.dismiss) private var dismiss
+    @EnvironmentObject private var sharedModel: SharedModel
+    @AppStorage("LCSourcesInstalledAppAction", store: LCUtils.appGroupUserDefault) private var installedAppAction: String = "install"
     
     private struct ResolvedApp: Identifiable {
         let id: UUID
@@ -854,6 +856,21 @@ private struct LCSourceDetailView: View {
     
     private var isAnyLoading: Bool {
         items.contains { $0.isLoading }
+    }
+    
+    private func installedApp(forBundleIdentifier bundleIdentifier: String) -> LCAppModel? {
+        (sharedModel.apps + sharedModel.hiddenApps).first { model in
+            model.appInfo.bundleIdentifier() == bundleIdentifier
+        }
+    }
+    
+    private func runInstalledApp(_ model: LCAppModel) {
+        withAnimation {
+            sharedModel.selectedTab = .apps
+        }
+        Task { @MainActor in
+            try? await model.runApp()
+        }
     }
     
     private var singleItemError: (AltStoreSourcesViewModel.SourceItem, String)? {
@@ -926,7 +943,14 @@ private struct LCSourceDetailView: View {
                     LazyVStack(spacing: 12) {
                         ForEach(filteredApps) { resolved in
                             VStack(alignment: .leading, spacing: 4) {
-                                LCSourceAppBanner(app: resolved.app, source: resolved.source, installAction: onInstall)
+                                LCSourceAppBanner(
+                                    app: resolved.app,
+                                    source: resolved.source,
+                                    installAction: onInstall,
+                                    installedApp: installedApp(forBundleIdentifier: resolved.app.bundleIdentifier),
+                                    installedAppAction: installedAppAction,
+                                    runAction: runInstalledApp
+                                )
                                 if isCombinedView {
                                     Text(resolved.source.name)
                                         .font(.caption2)
@@ -1005,6 +1029,7 @@ private struct ManageSourcesSheet: View {
     @State private var isAddingManual = false
     @State private var sourcePendingRemoval: AltStoreSourcesViewModel.SourceItem?
     @FocusState private var isManualFieldFocused: Bool
+    @AppStorage("LCSourcesInstalledAppAction", store: LCUtils.appGroupUserDefault) private var installedAppAction: String = "install"
     
     var body: some View {
         NavigationView {
@@ -1067,6 +1092,20 @@ private struct ManageSourcesSheet: View {
                     .padding(.vertical, 4)
                 } header: {
                     Text("lc.sources.manage.manual".loc)
+                }
+                
+                Section {
+                    Picker(selection: $installedAppAction) {
+                        Text("lc.common.run".loc).tag("run")
+                        Text("lc.common.install".loc).tag("install")
+                        Text("lc.common.update".loc).tag("update")
+                    } label: {
+                        Text("lc.sources.manage.installedAppAction".loc)
+                    }
+                } header: {
+                    Text("lc.sources.manage.installedAppAction".loc)
+                } footer: {
+                    Text("lc.sources.manage.installedAppAction.footer".loc)
                 }
             }
             .listStyle(.insetGrouped)
@@ -1131,9 +1170,32 @@ private struct LCSourceAppBanner: View {
     let app: AltStoreSourceApp
     let source: AltStoreSource
     let installAction: (AltStoreSourceApp) -> Void
+    var installedApp: LCAppModel? = nil
+    var installedAppAction: String = "install"
+    var runAction: ((LCAppModel) -> Void)? = nil
     
     @AppStorage("dynamicColors") private var dynamicColors = true
     @Environment(\.colorScheme) var colorScheme
+    
+    private var updateIsAvailable: Bool {
+        guard let installedApp, let latest = app.latestVersion else { return false }
+        let installedVersion = installedApp.appInfo.version() ?? ""
+        return installedVersion != latest.version
+    }
+    
+    private var buttonTitleKey: String {
+        guard installedApp != nil else {
+            return "lc.common.install".loc
+        }
+        switch installedAppAction {
+        case "run":
+            return "lc.common.run".loc
+        case "update":
+            return updateIsAvailable ? "lc.common.update".loc : "lc.common.open".loc
+        default:
+            return "lc.common.install".loc
+        }
+    }
     
     private var primaryColor: Color {
         guard dynamicColors else { return Color("FontColor") }
@@ -1204,9 +1266,13 @@ private struct LCSourceAppBanner: View {
             .allowsHitTesting(false)
             Spacer()
             Button {
-                installAction(app)
+                if installedAppAction == "run", let installedApp {
+                    runAction?(installedApp)
+                } else {
+                    installAction(app)
+                }
             } label: {
-                Text("lc.common.install".loc)
+                Text(buttonTitleKey)
                     .bold()
                     .foregroundColor(.white)
                     .lineLimit(1)

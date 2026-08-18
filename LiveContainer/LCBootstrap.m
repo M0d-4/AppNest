@@ -648,6 +648,16 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
         tweakFolder = [docPath stringByAppendingPathComponent:@"Tweaks"];
     }
     setenv("LC_GLOBAL_TWEAKS_FOLDER", tweakFolder.UTF8String, 1);
+    setenv("LC_GLOBAL_TWEAKS_PATH", tweakFolder.UTF8String, 1);
+
+    // Get app-specific tweak folder
+    NSString *selectedTweakFolder = guestAppInfo[@"LCTweakFolder"];
+    if (selectedTweakFolder && [selectedTweakFolder isKindOfClass:NSString.class] && selectedTweakFolder.length > 0) {
+        setenv("LC_TWEAK_FOLDER_NAME", selectedTweakFolder.UTF8String, 1);
+        
+        NSString *containerTweakPath = [tweakFolder stringByAppendingPathComponent:selectedTweakFolder];
+        setenv("LC_CONTAINER_TWEAK_PATH", containerTweakPath.UTF8String, 1);
+    }
 
     // Update TweakLoader symlink
     NSString *tweakLoaderPath = [tweakFolder stringByAppendingPathComponent:@"TweakLoader.dylib"];
@@ -832,6 +842,7 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     // spoofSDKVersion.
     BOOL useProfileSpoofing = !isSideStore && [guestAppInfo[@"deviceSpoofingEnabled"] boolValue];
     BOOL legacyContainerIDFVEnabled = [guestContainerInfo[@"spoofIdentifierForVendor"] boolValue];
+    BOOL containerSpoofProfileEnabled = !isSideStore && [guestContainerInfo[@"spoofProfileEnabled"] boolValue];
     LCDeviceSpoofingBeginConfiguration();
     LCSetDeviceSpoofingEnabled(NO);
     // Reset per-launch version/kernel overrides so previous guest settings cannot leak.
@@ -839,6 +850,7 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     LCSetSpoofedBuildVersion(nil);
     LCSetSpoofedKernelVersion(nil);
     LCSetSpoofedKernelRelease(nil);
+    LCSetSpoofedHardwareModel(nil);
 
     if(useProfileSpoofing) {
         NSString *deviceProfile = guestAppInfo[@"deviceSpoofProfile"];
@@ -1326,11 +1338,68 @@ static NSString* invokeAppMain(NSString *selectedApp, NSString *selectedContaine
     // which supports both blocking (blockDeviceInfoReads) and spoofing with a stable public API.
     // No need to also hook LSApplicationWorkspace.deviceIdentifierForVendor here.
 
+    // Per-container device spoofing overrides (LCContainerView.swift "Container Device
+    // Spoofing" section). These are independent of, and take precedence over, the
+    // app-level profile spoofing above -- a container can turn spoofing on even if the
+    // app-level toggle is off, and any field it sets here overrides the profile value.
+    //
+    // Not every container-level field has a native counterpart yet:
+    //  - spoofSystemName has no override setter (DeviceSpoofing.m only ever reports "iOS").
+    //  - spoofSubscriberIdentifier / spoofSubscriberCarrierTokenBase64 / SIM-inserted state
+    //    have no corresponding hooks in DeviceSpoofing.m at all (no CTTelephonyNetworkInfo
+    //    subscriber/SIM hooks exist), so those three fields are stored but not yet enforced.
+    if (containerSpoofProfileEnabled) {
+        NSString *containerDeviceName = guestContainerInfo[@"spoofDeviceName"];
+        if (containerDeviceName.length > 0) {
+            LCSetSpoofedDeviceName(containerDeviceName);
+        }
+        NSString *containerDeviceModel = guestContainerInfo[@"spoofDeviceModel"];
+        if (containerDeviceModel.length > 0) {
+            LCSetSpoofedDeviceModel(containerDeviceModel);
+        }
+        NSString *containerHardwareModel = guestContainerInfo[@"spoofHardwareModel"];
+        if (containerHardwareModel.length > 0) {
+            LCSetSpoofedHardwareModel(containerHardwareModel);
+        }
+        NSString *containerSystemVersion = guestContainerInfo[@"spoofSystemVersion"];
+        if (containerSystemVersion.length > 0) {
+            LCSetSpoofedSystemVersion(containerSystemVersion);
+        }
+        NSString *containerLocale = guestContainerInfo[@"spoofLocaleIdentifier"];
+        if (containerLocale.length > 0) {
+            LCSetSpoofedLocale(containerLocale);
+        }
+        NSString *containerTimeZone = guestContainerInfo[@"spoofTimeZoneIdentifier"];
+        if (containerTimeZone.length > 0) {
+            LCSetSpoofedTimezone(containerTimeZone);
+        }
+        id containerBatteryLevel = guestContainerInfo[@"spoofBatteryLevel"];
+        if ([containerBatteryLevel isKindOfClass:[NSNumber class]]) {
+            LCSetSpoofedBatteryLevel([containerBatteryLevel floatValue]);
+        }
+        id containerBatteryState = guestContainerInfo[@"spoofBatteryState"];
+        if ([containerBatteryState isKindOfClass:[NSNumber class]]) {
+            LCSetSpoofedBatteryState([containerBatteryState integerValue]);
+        }
+        if ([guestContainerInfo[@"spoofLowPowerModeEnabled"] boolValue]) {
+            LCSetSpoofedLowPowerMode(YES, YES);
+        }
+        NSString *containerRadioAccessTechnology = guestContainerInfo[@"spoofRadioAccessTechnology"];
+        if (containerRadioAccessTechnology.length > 0) {
+            if ([containerRadioAccessTechnology isEqualToString:@"CTRadioAccessTechnologyNRNSA"]) {
+                LCSetSpoofedCellularType(0);
+            } else if ([containerRadioAccessTechnology isEqualToString:@"CTRadioAccessTechnologyWCDMA"]) {
+                LCSetSpoofedCellularType(2);
+            } else {
+                LCSetSpoofedCellularType(1); // default/fallback: LTE
+            }
+        }
+    }
 
     LCDeviceSpoofingEndConfiguration();
     
     // Install DeviceSpoofing hooks after Dyld so Dyld stays the authoritative owner for shared hook surfaces.
-    if (useProfileSpoofing) {
+    if (useProfileSpoofing || containerSpoofProfileEnabled) {
         LCSetDeviceSpoofingEnabled(YES);
         DeviceSpoofingGuestHooksInit();
     }

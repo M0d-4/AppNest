@@ -70,6 +70,7 @@ NSDictionary<NSString *, NSDictionary *> *LCGetAvailableDeviceProfiles(void);
 
 // Custom spoofing values
 void LCSetSpoofedDeviceModel(NSString *model);
+void LCSetSpoofedHardwareModel(NSString *hardwareModel);   // Override the hw.model / IOPlatformExpertDevice value (e.g. "D93AP"); independent of the selected device profile
 void LCSetSpoofedSystemVersion(NSString *version);
 void LCSetSpoofedBuildVersion(NSString *build);
 void LCSetSpoofedKernelVersion(NSString *kernelVersion);
@@ -219,6 +220,14 @@ void LCSetAlbumBlacklistArray(NSArray<NSString *> *blacklist); // "<localId>-<ti
 // Device attestation spoofing
 void LCSetDeviceCheckSpoofingEnabled(BOOL enabled);  // DCDevice
 void LCSetAppAttestSpoofingEnabled(BOOL enabled);    // DCAppAttestService
+
+// Audio fingerprint spoofing - sample rate / latency (AVAudioSession)
+// Randomized once per process when device spoofing is active; no explicit
+// setters yet, mirrors the existing LCSpoofedAudioOutputVolume() pattern.
+
+// Graphics fingerprint spoofing - GPU working set size / ray tracing (MTLDevice)
+// Randomized once per process when device spoofing is active; no explicit
+// setters yet, mirrors the existing GPU name spoofing pattern.
 
 // Random generation helpers
 NSString *LCGenerateRandomUUID(void);

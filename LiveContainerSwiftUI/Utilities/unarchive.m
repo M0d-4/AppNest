@@ -3,6 +3,24 @@
 #include "archive.h"
 #include "archive_entry.h"
 
+static BOOL isSafeArchiveRelativePath(const char *rawPath)
+{
+    if (!rawPath) {
+        return NO;
+    }
+    NSString *entryPath = [NSString stringWithUTF8String:rawPath];
+    if (entryPath.length == 0 || [entryPath hasPrefix:@"/"]) {
+        return NO;
+    }
+    NSArray<NSString *> *components = [entryPath pathComponents];
+    for (NSString *component in components) {
+        if ([component isEqualToString:@".."]) {
+            return NO;
+        }
+    }
+    return YES;
+}
+
 static int
 copy_data(struct archive *ar, struct archive *aw, NSProgress *progress)
 {
@@ -81,7 +99,15 @@ int extract(NSString* fileToExtract, NSString* extractionPath, NSProgress* progr
         if (r < ARCHIVE_WARN)
             break;
         
-        NSString* currentFile = [NSString stringWithUTF8String:archive_entry_pathname(entry)];
+        const char *entryPathname = archive_entry_pathname(entry);
+        if (!isSafeArchiveRelativePath(entryPathname)) {
+            archive_read_close(a);
+            archive_read_free(a);
+            archive_write_close(ext);
+            archive_write_free(ext);
+            return 1;
+        }
+        NSString* currentFile = [NSString stringWithUTF8String:entryPathname];
         NSString* fullOutputPath = [extractionPath stringByAppendingPathComponent:currentFile];
         //printf("extracting %@ to %@\n", currentFile, fullOutputPath);
         archive_entry_set_pathname(entry, fullOutputPath.fileSystemRepresentation);

@@ -6258,6 +6258,160 @@
         }
       }
     },
+    "lc.appList.generatedIconStyleSelector.custom" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom"
+          }
+        }
+      }
+    },
+    "lc.appSettings.appIcon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Icon"
+          }
+        }
+      }
+    },
+    "lc.appSettings.appName" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "App Name"
+          }
+        }
+      }
+    },
+    "lc.appSettings.bannerColor" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Banner Color"
+          }
+        }
+      }
+    },
+    "lc.appSettings.chooseCustomIcon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose Custom Icon"
+          }
+        }
+      }
+    },
+    "lc.appSettings.chooseFromFiles" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose from Files"
+          }
+        }
+      }
+    },
+    "lc.appSettings.chooseFromPhotos" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Choose from Photos"
+          }
+        }
+      }
+    },
+    "lc.appSettings.customIcon" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Custom"
+          }
+        }
+      }
+    },
+    "lc.appSettings.customIconReadErr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to read the selected image."
+          }
+        }
+      }
+    },
+    "lc.appSettings.customIconSaveErr" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Failed to save the custom icon."
+          }
+        }
+      }
+    },
+    "lc.appSettings.customization" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Customization"
+          }
+        }
+      }
+    },
+    "lc.appSettings.customizationDesc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "These settings only change how this app is presented by LiveContainer. The name and icon are also used for App Clips you create."
+          }
+        }
+      }
+    },
+    "lc.appSettings.noAlternateIcons" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "This app doesn't provide any alternate icons. You can still choose a custom one."
+          }
+        }
+      }
+    },
+    "lc.appSettings.resetCustomization" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Reset All Customization"
+          }
+        }
+      }
+    },
     "lc.appSettings.bundleId" : {
       "extractionState" : "manual",
       "localizations" : {
@@ -11387,6 +11541,39 @@
           "stringUnit" : {
             "state" : "translated",
             "value" : "安裝"
+          }
+        }
+      }
+    },
+    "lc.common.run" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Run"
+          }
+        }
+      }
+    },
+    "lc.common.open" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Open"
+          }
+        }
+      }
+    },
+    "lc.common.update" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Update"
           }
         }
       }
@@ -42232,6 +42419,17 @@
         }
       }
     },
+    "lc.settings.overlayMode": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Overlay Mode"
+          }
+        }
+      }
+    },
     "lc.settings.redirectURLToHost": {
       "extractionState": "stale",
       "localizations": {
@@ -44924,6 +45122,28 @@
           "stringUnit": {
             "state": "translated",
             "value": "手動新增"
+          }
+        }
+      }
+    },
+    "lc.sources.manage.installedAppAction": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Installed App Button"
+          }
+        }
+      }
+    },
+    "lc.sources.manage.installedAppAction.footer": {
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose what the button on an already-installed app shows in the Sources view: Run it, reinstall it, or update it when a newer version is available."
           }
         }
       }

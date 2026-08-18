@@ -5,6 +5,7 @@
 
 import Foundation
 import UIKit
+import SwiftUI
 
 final class LCAppBannerRootView: UIView {
     static let bannerHeight: CGFloat = 88
@@ -144,7 +145,12 @@ final class LCAppBannerRootView: UIView {
         traitCollection: UITraitCollection
     ) {
         let icon = appInfo.iconIsDarkIcon(darkModeIcon) ?? UIImage()
-        let mainColor = Self.extractMainHueColor(appInfo: appInfo, icon: icon, darkModeIcon: darkModeIcon)
+        let mainColor: UIColor
+        if let uiCustomColor = model.uiCustomColor {
+            mainColor = UIColor(uiCustomColor)
+        } else {
+            mainColor = Self.extractMainHueColor(appInfo: appInfo, icon: icon, darkModeIcon: darkModeIcon)
+        }
         let accentColor = dynamicColors ? mainColor : (UIColor(named: "FontColor") ?? .systemBlue)
         let textColor = Self.readableTextColor(for: accentColor, traitCollection: traitCollection)
 
