@@ -33,7 +33,6 @@
 @property(nonatomic, copy) UIMenu *(^titleMenuProviderBlock)(NSArray<UIMenuElement *> *);
 - (NSArray<UIMenuElement *> *)buildTitleMenuChildren;
 @end
-@end
 @interface MultitaskDockManager (Private)
 - (void)refreshMenu;
 @end
