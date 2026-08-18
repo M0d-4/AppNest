@@ -2,6 +2,7 @@
 #import <UIKit/UIKit.h>
 #include <dlfcn.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 #include <objc/runtime.h>
 #import "../LiveContainer/utils.h"
 #include "../LiveContainer/LCDebugLog.h"
@@ -730,7 +731,6 @@ static void TweakLoaderConstructor() {
         }
     }
 
-    const char *tweakFolderC = getenv("LC_GLOBAL_TWEAKS_FOLDER");
     const char *tweakFolderC = getenv("LC_GLOBAL_TWEAKS_FOLDER");
     const char *globalTweakPathC = getenv("LC_GLOBAL_TWEAKS_PATH");
     const char *containerTweakPathC = getenv("LC_CONTAINER_TWEAK_PATH");
