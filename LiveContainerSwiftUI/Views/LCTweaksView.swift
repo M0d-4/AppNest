@@ -260,8 +260,8 @@ struct LCTweakFolderView : View {
                     }
                 }
             }
-            if isRoot && !isCopyMode {
-                ToolbarItem(placement: .topBarLeading) {
+            ToolbarItem(placement: .topBarLeading) {
+                if isRoot && !isCopyMode {
                     Button("Isolated Tweaks", systemImage: "folder.badge.gearshape") {
                         isolatedManagementPresent = true
                     }
@@ -798,7 +798,7 @@ struct LCTweakFolderView : View {
                 fm.fileExists(atPath: fileUrl.path, isDirectory: &isDirectory)
                 let isFramework = isDirectory.boolValue && fileUrl.lastPathComponent.hasSuffix(".framework")
                 let isTweak = !isDirectory.boolValue && fileUrl.lastPathComponent.hasSuffix(".dylib")
-                items.append(LCTweakItem(fileUrl: fileUrl, isFolder: isDirectory.boolValue, isFramework: isFramework, isTweak: isTweak))
+                items.append(LCTweakItem(fileUrl: fileUrl, isFolder: isDirectory.boolValue, isFramework: isFramework, isTweak: isTweak, isPackage: false, needsSigning: false))
             }
         } catch {
             NSLog("[LC] failed to load tweaks \(error.localizedDescription)")
@@ -969,7 +969,7 @@ struct LCTweakFolderView : View {
         }
 
         if isDebPackageURL(artifactURL) {
-            try await installDebPackage(artifactURL)
+            try await installDebPackage(from: artifactURL, fm: fm)
             return
         }
 
@@ -1358,10 +1358,11 @@ struct LCTweakFolderView : View {
 
 struct LCTweaksView: View {
     @StateObject private var moveContext = LCTweakMoveContext()
+    @State private var tweakFolders: [String] = []
     
     var body: some View {
         NavigationView {
-            LCTweakFolderView(baseUrl: LCPath.tweakPath, isRoot: true)
+            LCTweakFolderView(baseUrl: LCPath.tweakPath, isRoot: true, tweakFolders: $tweakFolders)
         }
         .environmentObject(moveContext)
         .navigationViewStyle(StackNavigationViewStyle())
