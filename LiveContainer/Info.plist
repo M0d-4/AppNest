@@ -120,6 +120,7 @@
 	<string>The guest app is requesting for this permission.</string>
 	<key>NSBonjourServices</key>
 	<array>
+		<string>_FC9F5ED42C8A._tcp</string>
 		<string>_airplay._tcp</string>
 		<string>_raop._tcp</string>
 		<string>_companion-link._tcp</string>

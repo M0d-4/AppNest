@@ -163,6 +163,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		172978E8302EAF07004A3E78 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		172CA8542D9D721700CF6989 /* dyld_bypass_validation.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = dyld_bypass_validation.m; sourceTree = "<group>"; };
 		172CA8552D9D721700CF6989 /* FoundationPrivate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FoundationPrivate.h; sourceTree = "<group>"; };
 		172CA8562D9D721700CF6989 /* LCSharedUtils.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = LCSharedUtils.h; sourceTree = "<group>"; };
@@ -491,6 +492,7 @@
 				172CA85C2D9D721700CF6989 /* UIKitPrivate.h */,
 				172CA85D2D9D721700CF6989 /* utils.h */,
 				172CA85E2D9D721700CF6989 /* utils.m */,
+				172978E8302EAF07004A3E78 /* Info.plist */,
 			);
 			path = LiveContainer;
 			sourceTree = "<group>";
@@ -1711,7 +1713,7 @@
 					"$(PROJECT_DIR)/OpenSSL/Frameworks/iphoneos",
 				);
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Resources/Info.plist;
+				INFOPLIST_FILE = LiveContainer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CraneJailed;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;
@@ -1755,7 +1757,7 @@
 					"$(PROJECT_DIR)/OpenSSL/Frameworks/iphoneos",
 				);
 				GENERATE_INFOPLIST_FILE = NO;
-				INFOPLIST_FILE = Resources/Info.plist;
+				INFOPLIST_FILE = LiveContainer/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CraneJailed;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchStoryboardName = LaunchScreen;

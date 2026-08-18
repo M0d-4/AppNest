@@ -22,9 +22,9 @@ enum JITEnablerType : Int, CaseIterable, Identifiable {
     var displayName: String {
         switch self {
         case .StikJIT: "StikDebug"
-        case .StikJITLC: "StikDebug (Another LiveContainer)"
+        case .StikJITLC: "StikDebug (Another LiveContainer/Multitask)"
         case .StosDebug: "StosDebug"
-        case .StosDebugLC: "StosDebug (Another LiveContainer)"
+        case .StosDebugLC: "StosDebug (Another LiveContainer/Multitask)"
         case .SideStore: "SideStore"
         case .JITStreamerEBLegacy: "JitStreamer-EB (Relaunch)"
         case .SideJITServer: "SideJITServer/JITStreamer 2.0"
@@ -76,7 +76,7 @@ struct LCSettingsView: View {
     @AppStorage("LCLoadTweaksToSelf") var injectToLCItelf = false
     @AppStorage("LCIgnoreJITOnLaunch") var ignoreJITOnLaunch = false
     #if is32BitSupported
-    @AppStorage("selected32BitLayer") var liveExec32Path : String = ""
+    @AppStorage("selected32BitLayer", store: LCUtils.appGroupUserDefault) var liveExec32Path : String = ""
     #endif
     @AppStorage("LCKeepSelectedWhenQuit") var keepSelectedWhenQuit = false
     @AppStorage("LCWaitForDebugger") var waitForDebugger = false
@@ -694,11 +694,30 @@ struct LCSettingsView: View {
                 }
                 
                 guard let data = item as? Data else {
-                    errorInfo = "Failed to decode password data"
+                    errorInfo = "Failed to decode certificate data"
                     errorShow = true
                     return
                 }
-                onSideStoreCertificateCallback(certificateData: data, password: "")
+                
+                let passwordQuery: [String: Any] = [
+                    kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrAccount as String: "signingCertificatePassword",
+                    kSecReturnData as String: true,
+                    kSecMatchLimit as String: kSecMatchLimitOne,
+                    kSecAttrService as String: "com.kdt.livecontainer",
+                    kSecAttrSynchronizable as String: kSecAttrSynchronizableAny
+                ]
+                
+                var passwordItem: CFTypeRef?
+                let passwordStatus = SecItemCopyMatching(passwordQuery as CFDictionary, &passwordItem)
+                var password = ""
+                if passwordStatus == errSecSuccess,
+                   let passwordData = passwordItem as? Data,
+                   let pwd = String(data: passwordData, encoding: .utf8) {
+                    password = pwd
+                }
+                
+                onSideStoreCertificateCallback(certificateData: data, password: password)
                 
                 return
             }
