@@ -105,6 +105,8 @@
 	<true/>
 	<key>NFCReaderUsageDescription</key>
 	<string>The guest app is requesting for this permission.</string>
+	<key>NSAlarmKitUsageDescription</key>
+	<string>The guest app is requesting for this permission.</string>
 	<key>NSAppTransportSecurity</key>
 	<dict>
 		<key>NSAllowsArbitraryLoads</key>
