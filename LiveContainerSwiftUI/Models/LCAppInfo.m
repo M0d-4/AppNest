@@ -597,7 +597,6 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
             isEncrypted |= LCIsMachOEncrypted(header);
         });
         is32bit = !has64bitSlice;
-        LCPatchAppBundleFixupARM64eSlice([NSURL fileURLWithPath:appPath]);
         if (isEncrypted) {
             error = @"The app you tried to install is encrypted. Please provide decrypted app.";
         }
@@ -606,21 +605,21 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
             completetionHandler(NO, error);
             return;
         }
+        if (!is32bit) {
+            LCPatchAppBundleFixupARM64eSlice([NSURL fileURLWithPath:appPath]);
+        } else {
+            self.isJITNeeded = YES;
+            self.classicMode = YES;
+            self.spoofSDKVersion = YES;
+        }
         info[@"LCPatchRevision"] = @(currentPatchRev);
         forceSign = true;
         
         [self save];
-#if !is32BitSupported
-        if(is32bit) {
-            completetionHandler(NO, @"32-bit app is NOT supported!");
-            return;
-        }
-#else
         self.is32bit = is32bit;
-#endif
     }
 
-    if (!LCSharedUtils.certificatePassword || is32bit || self.dontSign) {
+    if (!LCSharedUtils.certificatePassword || self.is32bit || self.dontSign) {
         [NSUserDefaults.standardUserDefaults removeObjectForKey:@"SigningInProgress"];
         completetionHandler(YES, nil);
         return;
@@ -977,7 +976,7 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
     _info[@"LCContainers"] = containerInfo;
     [self save];
 }
-#if is32BitSupported
+
 - (bool)is32bit {
     if(_info[@"is32bit"] != nil) {
         return [_info[@"is32bit"] boolValue];
@@ -990,7 +989,10 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
     [self save];
     
 }
-#endif
+- (bool)is32bitEmulator {
+    return [_infoPlist[@"LC32BitTranslationLayer"] boolValue];
+}
+
 - (bool)dontSign {
     if(_info[@"dontSign"] != nil) {
         return [_info[@"dontSign"] boolValue];
@@ -1005,6 +1007,9 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
 }
 
 - (NSString *)jitLaunchScriptJs {
+    if (self.is32bit && LCUtils.isTXMScriptRequired) {
+        return LCUtils.base64EncodedUniversalJITScript;
+    }
     return _info[@"jitLaunchScriptJs"];
 }
 
@@ -1013,6 +1018,19 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
         _info[@"jitLaunchScriptJs"] = jitLaunchScriptJs;
     } else {
         [_info removeObjectForKey:@"jitLaunchScriptJs"];
+    }
+    if (!_autoSaveDisabled) [self save];
+}
+
+- (NSString *)selected32BitEmulator {
+    return _info[@"selected32BitEmulator"];
+}
+
+- (void)setSelected32BitEmulator:(NSString *)selected32BitEmulator {
+    if (selected32BitEmulator.length > 0) {
+        _info[@"selected32BitEmulator"] = selected32BitEmulator;
+    } else {
+        [_info removeObjectForKey:@"selected32BitEmulator"];
     }
     if (!_autoSaveDisabled) [self save];
 }
@@ -1034,12 +1052,10 @@ static BOOL LCIsContainerScopedAddonKey(NSString *key) {
         LCParseMachO(execPath.UTF8String, true, ^(const char *path, struct mach_header_64 *header, int fd, void *filePtr) {
             sdkVersion = dyld_get_sdk_version((const struct mach_header *)header);
         });
-#if is32BitSupported
-        // for 32bit apps, hardcode spoofed SDK to iOS 11, as lower causes weird crashes
-        if(self.is32bit && sdkVersion < 0xb0000) {
+        // Hardcode spoofed SDK to iOS 11 if lower, as lower causes `Error in compatibility flow` crashes
+        if((self.is32bit || sdkVersion) && sdkVersion < 0xb0000) {
             sdkVersion = 0xb0000;
         }
-#endif
         NSLog(@"[LC] sdkversion = %8x", sdkVersion);
         _info[@"spoofSDKVersion"] = [NSNumber numberWithUnsignedInt:sdkVersion];
     }

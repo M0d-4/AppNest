@@ -24,9 +24,7 @@ final class LCAppBannerRootView: UIView {
     private let lockBadge = LCAppBannerBadgeView(symbolName: "lock.fill")
     private let cameraSpoofBadge = LCAppBannerBadgeView(symbolName: "camera.fill", tint: .systemRed)
     private let deviceSpoofBadge = LCAppBannerBadgeView(symbolName: "iphone.gen3", tint: .systemRed)
-#if is32BitSupported
     private let bit32Badge = LCAppBannerBadgeView(text: "32")
-#endif
     private let nameSpacer = UIView()
     private let nameStack = UIStackView()
     private let detailStack = UIStackView()
@@ -81,9 +79,7 @@ final class LCAppBannerRootView: UIView {
         nameStack.addArrangedSubview(nameLabel)
         nameStack.addArrangedSubview(sharedBadge)
         nameStack.addArrangedSubview(jitBadge)
-#if is32BitSupported
         nameStack.addArrangedSubview(bit32Badge)
-#endif
         nameStack.addArrangedSubview(lockBadge)
         nameStack.addArrangedSubview(cameraSpoofBadge)
         nameStack.addArrangedSubview(deviceSpoofBadge)
@@ -174,7 +170,7 @@ final class LCAppBannerRootView: UIView {
 
         sharedBadge.isHidden = !model.uiIsShared
         sharedBadge.backgroundColor = UIColor(named: "BadgeColor") ?? .systemOrange
-        jitBadge.isHidden = !model.uiIsJITNeeded
+        jitBadge.isHidden = !model.uiIsJITNeeded || model.uiIs32bit
         jitBadge.backgroundColor = UIColor(named: "JITBadgeColor") ?? .systemPurple
         lockBadge.isHidden = !model.uiIsLocked || model.uiIsHidden
         lockBadge.backgroundColor = UIColor(named: "BadgeColor") ?? .systemOrange
@@ -182,10 +178,8 @@ final class LCAppBannerRootView: UIView {
         cameraSpoofBadge.backgroundColor = .clear
         deviceSpoofBadge.isHidden = !model.uiDeviceSpoofingEnabled
         deviceSpoofBadge.backgroundColor = .clear
-#if is32BitSupported
         bit32Badge.isHidden = !model.uiIs32bit
         bit32Badge.backgroundColor = UIColor(named: "32BitBadgeColor") ?? .systemBlue
-#endif
 
         visualBackgroundView.backgroundColor = dynamicColors
             ? mainColor.withAlphaComponent(0.5)

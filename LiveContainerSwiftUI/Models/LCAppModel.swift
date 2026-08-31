@@ -44,9 +44,8 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
     @Published var uiContainers : [LCContainer]
     @Published var uiSelectedContainer : LCContainer?
     @Published var uiAddonSettingsContainerFolderName : String
-#if is32BitSupported
     @Published var uiIs32bit : Bool
-#endif
+    @Published var uiIs32bitEmulator : Bool
     @Published var uiTweakFolder : String? {
         didSet {
             appInfo.tweakFolder = uiTweakFolder
@@ -122,7 +121,13 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             appInfo.jitLaunchScriptJs = jitLaunchScriptJs
         }
     }
-
+    
+    @Published var uiSelected32BitEmulator : String {
+        didSet {
+            appInfo.selected32BitEmulator = uiSelected32BitEmulator
+        }
+    }
+    
     @Published var uiSpoofSDKVersion : Bool {
         didSet {
             appInfo.spoofSDKVersion = uiSpoofSDKVersion
@@ -800,6 +805,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         self.uiDontLoadTweakLoader = appInfo.dontLoadTweakLoader
         self.uiDontSign = appInfo.dontSign
         self.jitLaunchScriptJs = appInfo.jitLaunchScriptJs
+        self.uiSelected32BitEmulator = appInfo.selected32BitEmulator ?? ""
         self.uiSpoofSDKVersion = appInfo.spoofSDKVersion
         self.uiRemark = appInfo.remark ?? ""
         self.uiCustomDisplayName = appInfo.customDisplayName ?? ""
@@ -809,9 +815,8 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
         let customColor: UIColor? = appInfo.customColor
         self.uiCustomColor = customColor.map { Color(uiColor: $0) }
         self.uiAutoCleanCacheOnLaunch = appInfo.autoCleanCacheOnLaunch
-#if is32BitSupported
         self.uiIs32bit = appInfo.is32bit
-#endif
+        self.uiIs32bitEmulator = appInfo.is32bitEmulator
         
         // MARK: GPS Addon Section
         self.uiSpoofGPS = appInfo.spoofGPS
@@ -1406,11 +1411,7 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
             uiSelectedContainer = uiContainers.first { $0.folderName == containerFolderName } ?? uiSelectedContainer
         }
         let currentDataFolder = containerFolderName ?? uiSelectedContainer?.folderName
-        var is32bit = false
-        
-        #if is32BitSupported
-        is32bit = appInfo.is32bit
-        #endif
+        let is32bit = appInfo.is32bit
 
         let classicMode = appInfo.defaultClassicMode
         var shouldMultitask = classicMode == 0 ? (multitask ?? shouldLaunchInMultitaskMode) : false
@@ -1513,11 +1514,14 @@ class LCAppModel: ObservableObject, Hashable, @unchecked Sendable {
                 UserDefaults.standard.setValue(urlStr, forKey: "launchAppUrlScheme")
             }
             UserDefaults.standard.set(uiSelectedContainer?.folderName, forKey: "selectedContainer")
-            var jitNeeded = appInfo.isJITNeeded
+            var jitNeeded = appInfo.isJITNeeded || appInfo.is32bit
             if let forceJIT {
                 jitNeeded = forceJIT
             }
-            if jitNeeded || is32bit {
+#if targetEnvironment(simulator)
+            jitNeeded = false
+#endif
+            if jitNeeded {
                 if shouldMultitask, #available(iOS 17.4, *) {
                     try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<Void, Error>) in
                         LCUtils.launchMultitaskGuestApp(appInfo.displayName()) { pidNumber, error in

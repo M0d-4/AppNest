@@ -16,6 +16,7 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
         var tempTweakFolderNames : [String] = []
         
         var tempApps: [LCAppModel] = []
+        var tempArm32EmuApps: [LCAppModel] = []
         var tempHiddenApps: [LCAppModel] = []
 
         // Cleanup stale export temp artifacts from previous runs/interrupted shares.
@@ -32,10 +33,15 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
                 let newApp = LCAppInfo(bundlePath: "\(LCPath.bundlePath.path)/\(appDir)")!
                 newApp.relativeBundlePath = appDir
                 newApp.isShared = false
+                let model = LCAppModel(appInfo: newApp)
                 if newApp.isHidden {
-                    tempHiddenApps.append(LCAppModel(appInfo: newApp))
+                    tempHiddenApps.append(model)
                 } else {
                     tempApps.append(LCAppModel(appInfo: newApp))
+                    tempURLSchemes?.formUnion(newApp.urlSchemes() as! [String])
+                }
+                if newApp.is32bitEmulator {
+                    tempArm32EmuApps.append(model)
                 }
             }
             if LCPath.lcGroupDocPath != LCPath.docPath {
@@ -48,10 +54,15 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
                     let newApp = LCAppInfo(bundlePath: "\(LCPath.lcGroupBundlePath.path)/\(appDir)")!
                     newApp.relativeBundlePath = appDir
                     newApp.isShared = true
+                    let model = LCAppModel(appInfo: newApp)
                     if newApp.isHidden {
-                        tempHiddenApps.append(LCAppModel(appInfo: newApp))
+                        tempHiddenApps.append(model)
                     } else {
                         tempApps.append(LCAppModel(appInfo: newApp))
+                        tempURLSchemes?.formUnion(newApp.urlSchemes() as! [String])
+                    }
+                    if newApp.is32bitEmulator {
+                        tempArm32EmuApps.append(model)
                     }
                 }
             }
@@ -82,6 +93,7 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
         }
         
         DataManager.shared.model.apps = tempApps
+        DataManager.shared.model.arm32EmuApps = tempArm32EmuApps
         DataManager.shared.model.hiddenApps = tempHiddenApps
         DataManager.shared.model.appDataFolderNames = tempAppDataFolderNames
         DataManager.shared.model.tweakFolderNames = tempTweakFolderNames

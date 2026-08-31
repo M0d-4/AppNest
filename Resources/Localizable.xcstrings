@@ -8806,6 +8806,17 @@
         }
       }
     },
+    "lc.appSettings.selected32BitEmulator" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "32-bit emulator"
+          }
+        }
+      }
+    },
     "lc.appSettings.selectExternalStorage" : {
       "extractionState" : "stale",
       "localizations" : {
@@ -43016,13 +43027,24 @@
         }
       }
     },
-    "lc.settings.silentOpenWebPageDesc": {
-      "extractionState": "manual",
-      "localizations": {
-        "ar": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "بالأساس، AppNest يسألك كيف تفتح رابط. تفعيل هذا الخِيار سوف يفتح AppNest الروابط تِلْقائيًا في التطبيق الحالي."
+    "lc.settings.selected32BitEmulator" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Default 32-bit emulator"
+          }
+        }
+      }
+    },
+    "lc.settings.signer.desc" : {
+      "extractionState" : "manual",
+      "localizations" : {
+        "ar" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "أذا أعطى AltSign خطأ، فحاول أن تستعمل Zsign و العكس صحيح. الرجاء اعادة تشغيل التطبيق LiveContainer بعد تغيير الُموقع."
           }
         },
         "de": {
