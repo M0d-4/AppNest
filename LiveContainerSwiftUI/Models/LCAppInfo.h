@@ -63,7 +63,6 @@ typedef NS_ENUM(NSInteger, MultitaskSpecified){
 @property long long autoCleanTotalBytesSaved;
 @property bool is32bit;
 @property(readonly) bool is32bitEmulator;
-@property(readonly) bool is32bitEmulator;
 @property UIColor* cachedColor;
 @property UIColor* cachedColorDark;
 @property UIImage* cachedIcon;
