@@ -38,7 +38,6 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
                     tempHiddenApps.append(model)
                 } else {
                     tempApps.append(LCAppModel(appInfo: newApp))
-                    tempURLSchemes?.formUnion(newApp.urlSchemes() as! [String])
                 }
                 if newApp.is32bitEmulator {
                     tempArm32EmuApps.append(model)
@@ -59,7 +58,6 @@ struct LiveContainerSwiftUIApp : SwiftUI.App {
                         tempHiddenApps.append(model)
                     } else {
                         tempApps.append(LCAppModel(appInfo: newApp))
-                        tempURLSchemes?.formUnion(newApp.urlSchemes() as! [String])
                     }
                     if newApp.is32bitEmulator {
                         tempArm32EmuApps.append(model)
