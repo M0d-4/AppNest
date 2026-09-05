@@ -310,14 +310,23 @@ int checkCert(NSData *key,
     NSURL* bundleURL = [NSURL fileURLWithPath:appPath];
         
     NSFileManager *fm = [NSFileManager defaultManager];
-    NSDirectoryEnumerator *enumerator = [fm enumeratorAtURL:bundleURL includingPropertiesForKeys:@[NSURLIsRegularFileKey] options:NSDirectoryEnumerationSkipsHiddenFiles errorHandler:nil];
+    NSDirectoryEnumerator *enumerator = [fm enumeratorAtURL:bundleURL includingPropertiesForKeys:@[NSURLIsRegularFileKey, NSURLIsSymbolicLinkKey] options:NSDirectoryEnumerationSkipsHiddenFiles errorHandler:nil];
     NSMutableArray* filesToSign = [NSMutableArray new];
     
     NSError* error;
     
     for (NSURL *fileURL in enumerator) {
         NSNumber *isRegularFile = nil;
-        if (![fileURL getResourceValue:&isRegularFile forKey:NSURLIsRegularFileKey error:&error] || ![isRegularFile boolValue]) {
+        NSNumber *isSymlink = nil;
+        [fileURL getResourceValue:&isRegularFile forKey:NSURLIsRegularFileKey error:&error];
+        [fileURL getResourceValue:&isSymlink forKey:NSURLIsSymbolicLinkKey error:&error];
+        // Versioned framework binaries (e.g. Foo.framework/Foo -> Versions/Current/Foo ->
+        // Versions/A/Foo, common in vendored/XCFramework-derived deps like OpenSSL.framework)
+        // are symlinks, not regular files. Previously they were silently skipped here, so
+        // they never got re-signed with our cert/team and kept their original (now invalid)
+        // signature, causing dyld to refuse loading them at launch. is_64bit_macho() below
+        // uses fopen(), which follows the symlink to the real mach-o payload.
+        if (![isRegularFile boolValue] && ![isSymlink boolValue]) {
             continue;
         }
         if(!is_64bit_macho(fileURL.path.UTF8String)) {
