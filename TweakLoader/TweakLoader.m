@@ -698,15 +698,27 @@ static char* hook_realpath(const char *path, char *resolved_path) {
 }
 
 static void installCFileHooks(void) {
-    // Hook C file functions using litehook
-    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, open, hook_open, (void**)&orig_open);
-    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, openat, hook_openat, (void**)&orig_openat);
-    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, stat, hook_stat, (void**)&orig_stat);
-    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, lstat, hook_lstat, (void**)&orig_lstat);
-    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, fstat, hook_fstat, (void**)&orig_fstat);
-    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, access, hook_access, (void**)&orig_access);
-    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, fopen, hook_fopen, (void**)&orig_fopen);
-    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, realpath, hook_realpath, (void**)&orig_realpath);
+    // Hook C file functions using litehook. litehook_rebind_symbol's 4th
+    // parameter is an exceptionFilter callback (bool(*)(const mach_header_u*)),
+    // not an out-parameter for the original implementation — grab the real
+    // implementation via dlsym before installing each global rebind.
+    orig_open = dlsym(RTLD_DEFAULT, "open");
+    orig_openat = dlsym(RTLD_DEFAULT, "openat");
+    orig_stat = dlsym(RTLD_DEFAULT, "stat");
+    orig_lstat = dlsym(RTLD_DEFAULT, "lstat");
+    orig_fstat = dlsym(RTLD_DEFAULT, "fstat");
+    orig_access = dlsym(RTLD_DEFAULT, "access");
+    orig_fopen = dlsym(RTLD_DEFAULT, "fopen");
+    orig_realpath = dlsym(RTLD_DEFAULT, "realpath");
+
+    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, open, hook_open, NULL);
+    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, openat, hook_openat, NULL);
+    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, stat, hook_stat, NULL);
+    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, lstat, hook_lstat, NULL);
+    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, fstat, hook_fstat, NULL);
+    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, access, hook_access, NULL);
+    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, fopen, hook_fopen, NULL);
+    litehook_rebind_symbol(LITEHOOK_REBIND_GLOBAL, realpath, hook_realpath, NULL);
     
     NSLog(@"[TweakLoader] C file access hooks installed");
 }
