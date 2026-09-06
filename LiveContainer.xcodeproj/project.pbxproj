@@ -348,13 +348,6 @@
 				Frameworks/CydiaSubstrate.framework,
 			);
 		};
-		173546D42E2C82AE001B3B4C /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
-			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
-			buildPhase = 173545A62E2C7913001B3B4C /* Resources */;
-			membershipExceptions = (
-				"SideStore-Bridging-Header.h",
-			);
-		};
 		176614FC2E2C851800B1F478 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */ = {
 			isa = PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet;
 			buildPhase = 173545A42E2C7913001B3B4C /* Sources */;
@@ -382,7 +375,7 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		172CA8992D9D72C300CF6989 /* Resources */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (172CA8BD2D9D74B700CF6989 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 172CA8C32D9D76AD00CF6989 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = Resources; sourceTree = "<group>"; };
 		172CA8AD2D9D741F00CF6989 /* fishhook */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (58AB1E2C2E479B67003668F2 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 5822D4F32E206BF2004F7F58 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = fishhook; sourceTree = "<group>"; };
-		173545A92E2C7913001B3B4C /* SideStoreSupport */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (173546D32E2C82AE001B3B4C /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 176614FC2E2C851800B1F478 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, 173546D42E2C82AE001B3B4C /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = SideStoreSupport; sourceTree = "<group>"; };
+		173545A92E2C7913001B3B4C /* SideStoreSupport */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (173546D32E2C82AE001B3B4C /* PBXFileSystemSynchronizedBuildFileExceptionSet */, 176614FC2E2C851800B1F478 /* PBXFileSystemSynchronizedGroupBuildPhaseMembershipExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = SideStoreSupport; sourceTree = "<group>"; };
 		17413FB62D9C0BAE00F3F928 /* LiveContainerSwiftUI */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = LiveContainerSwiftUI; sourceTree = "<group>"; };
 		174140162D9C0C1B00F3F928 /* TweakLoader */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (174140F52D9C1C9B00F3F928 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = TweakLoader; sourceTree = "<group>"; };
 		174140552D9C0D6D00F3F928 /* ZSign */ = {isa = PBXFileSystemSynchronizedRootGroup; explicitFileTypes = {}; explicitFolders = (); path = ZSign; sourceTree = "<group>"; };
